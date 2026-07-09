@@ -36,7 +36,8 @@ import {
   type InstructionType,
 } from './platform.js'
 
-const PORT = Number(process.env.A_IDENTITY_HTTP_PORT ?? 3399)
+// Render/most hosts inject PORT; fall back to our own var, then the local default.
+const PORT = Number(process.env.PORT ?? process.env.A_IDENTITY_HTTP_PORT ?? 3399)
 
 function readBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
