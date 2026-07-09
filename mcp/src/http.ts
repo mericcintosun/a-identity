@@ -19,6 +19,7 @@ import { getArcStatus } from './arc.js'
 import { getCircleStatus } from './circle.js'
 import { readArcContracts, registerAgentOnchain, createJobOnchain } from './arc-contracts.js'
 import {
+  agentPolicy,
   anchorAgentOnchain,
   approveInstruction,
   assignWallet,
@@ -31,6 +32,7 @@ import {
   listInstructions,
   listPlatformAgents,
   marketplace,
+  updateAgentPermissions,
   type InstructionType,
 } from './platform.js'
 
@@ -210,6 +212,22 @@ const server = http.createServer(async (req, res) => {
     if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
     const r = await anchorAgentOnchain(body.agentId)
     sendJson(res, 'error' in r ? 404 : 200, r)
+    return
+  }
+  // Live policy for one agent (limits + today's spend + reset time)
+  if (req.method === 'GET' && url.pathname === '/api/agents/policy') {
+    const agentId = url.searchParams.get('agentId') ?? ''
+    if (!agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
+    const p = agentPolicy(agentId)
+    sendJson(res, 'error' in p ? 404 : 200, p)
+    return
+  }
+  // Update an agent's permissions (the real policy the engine enforces)
+  if (req.method === 'POST' && url.pathname === '/api/agents/permissions') {
+    const body = (await readBody(req).catch(() => null)) as { agentId?: string; permissions?: Record<string, unknown> } | null
+    if (!body?.agentId || !body?.permissions) { sendJson(res, 400, { error: 'agentId and permissions required' }); return }
+    const a = updateAgentPermissions(body.agentId, body.permissions as never)
+    sendJson(res, 'error' in a ? 404 : 200, { agent: a })
     return
   }
 

@@ -29,6 +29,8 @@ export type Permissions = {
   payeeAllowlist: string[]
   agentToAgent: boolean
   agentToHuman: boolean
+  /** Emergency off switch: when true, every instruction pauses for a human. */
+  frozen: boolean
 }
 
 export type Service = { name: string; priceUsd: number; unit: string }
@@ -58,6 +60,9 @@ export type PlatformAgent = {
   followers: string[]
   activity: { at: string; text: string }[]
   createdAt: string
+  /** Cumulative USD committed today (UTC). Resets at 00:00 UTC. */
+  spentTodayUsd?: number
+  spendDate?: string
 }
 
 export type Wallet = {
@@ -205,6 +210,7 @@ export function createAgent(input: {
     payeeAllowlist: input.permissions.payeeAllowlist ?? [],
     agentToAgent: input.permissions.agentToAgent ?? true,
     agentToHuman: input.permissions.agentToHuman ?? false,
+    frozen: input.permissions.frozen ?? false,
   }
 
   // Services the agent sells on the marketplace. Default: one per capability at
@@ -298,6 +304,61 @@ export async function anchorAgentOnchain(agentId: string) {
   }
 }
 
+// ── policy / permissions ───────────────────────────────────────────────────────
+
+function todayUTC(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** Reset-aware daily spend: returns 0 once the UTC date rolls over. */
+function dailySpent(agent: PlatformAgent): number {
+  return agent.spendDate === todayUTC() ? agent.spentTodayUsd ?? 0 : 0
+}
+
+function addSpend(agent: PlatformAgent, amount: number) {
+  const today = todayUTC()
+  if (agent.spendDate !== today) {
+    agent.spendDate = today
+    agent.spentTodayUsd = 0
+  }
+  agent.spentTodayUsd = (agent.spentTodayUsd ?? 0) + amount
+}
+
+/** Next 00:00 UTC, for the UI "resets at" display. */
+function nextUtcMidnight(): string {
+  const now = new Date()
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0),
+  ).toISOString()
+}
+
+export function updateAgentPermissions(
+  agentId: string,
+  partial: Partial<Permissions>,
+): PlatformAgent | { error: string } {
+  const agent = state.agents.find((a) => a.id === agentId)
+  if (!agent) return { error: 'Unknown agent' }
+  agent.permissions = { ...agent.permissions, ...partial }
+  pushActivity(agent, 'Permissions updated by a human')
+  save(state)
+  return agent
+}
+
+/** Live policy view for one agent: limits + today's spend + reset time. */
+export function agentPolicy(agentId: string) {
+  const agent = state.agents.find((a) => a.id === agentId)
+  if (!agent) return { error: 'Unknown agent' }
+  const spent = dailySpent(agent)
+  return {
+    agentId: agent.id,
+    name: agent.name,
+    permissions: agent.permissions,
+    spentTodayUsd: spent,
+    remainingTodayUsd: Math.max(0, agent.permissions.dailyCapUsd - spent),
+    resetsAt: nextUtcMidnight(),
+  }
+}
+
 // ── instructions ──────────────────────────────────────────────────────────────
 
 export function createInstruction(input: {
@@ -320,13 +381,17 @@ export function createInstruction(input: {
   let policyNote: string
 
   const payeeAllowed = p.payeeAllowlist.length === 0 || p.payeeAllowlist.includes(input.payee)
+  const spentToday = dailySpent(agent)
 
-  if (!payeeAllowed) {
+  if (p.frozen) {
+    status = 'pending_approval'
+    policyNote = 'Agent is frozen; all activity is paused. A human must unfreeze or approve.'
+  } else if (!payeeAllowed) {
     status = 'pending_approval'
     policyNote = `Payee not on the allowlist; a human must approve.`
-  } else if (total > p.dailyCapUsd) {
+  } else if (spentToday + total > p.dailyCapUsd) {
     status = 'pending_approval'
-    policyNote = `Total $${total.toFixed(2)} exceeds the daily cap ($${p.dailyCapUsd}); a human must approve.`
+    policyNote = `Would exceed today's cap ($${spentToday.toFixed(2)} spent + $${total.toFixed(2)} > $${p.dailyCapUsd}); a human must approve.`
   } else if (total <= p.autoApproveUnderUsd) {
     status = 'auto_approved'
     policyNote = `Under the $${p.autoApproveUnderUsd} auto-approve line.`
@@ -334,6 +399,9 @@ export function createInstruction(input: {
     status = 'pending_approval'
     policyNote = `Above the auto-approve line ($${p.autoApproveUnderUsd}); waiting for a human.`
   }
+
+  // Auto-approved payments commit against today's cap immediately.
+  if (status === 'auto_approved') addSpend(agent, total)
 
   const instruction: Instruction = {
     id: id('ix'),
@@ -364,7 +432,10 @@ export function approveInstruction(ixId: string): Instruction | { error: string 
   ix.status = 'approved'
   ix.policyNote = 'Approved by a human.'
   const agent = state.agents.find((a) => a.id === ix.agentId)
-  if (agent) pushActivity(agent, `Instruction ${ix.id} approved by a human`)
+  if (agent) {
+    addSpend(agent, ix.amountUsd * ix.count)
+    pushActivity(agent, `Instruction ${ix.id} approved by a human`)
+  }
   save(state)
   return ix
 }
