@@ -41,6 +41,7 @@ const ERC20_ABI = [
   { type: 'function', name: 'decimals', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint8' }] },
   { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }], outputs: [{ type: 'uint256' }] },
   { type: 'function', name: 'approve', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'transfer', stateMutability: 'nonpayable', inputs: [{ name: 'to', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }] },
 ] as const
 
 const COMMERCE_ABI = [
@@ -200,6 +201,38 @@ export async function createJobOnchain(
     abi: COMMERCE_ABI,
     functionName: 'createJob',
     args: args as never,
+  })
+  await client.waitForTransactionReceipt({ hash })
+  return { executed: true, txHash: hash, explorerUrl: tx(hash) }
+}
+
+/**
+ * Settle a payment in real USDC on Arc: an ERC-20 transfer from the signer to the
+ * payee (USDC is 6 decimals). Prepared without a key; broadcast with one. This is
+ * the actual value-moving rail behind an executed instruction.
+ */
+export async function payUsdcOnchain(
+  to: string,
+  amountUsd: number,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<Prepared | Executed> {
+  const amount = BigInt(Math.round(amountUsd * 1e6))
+  const signer = await walletClient(env)
+  if (!signer) {
+    return {
+      executed: false,
+      contract: CONTRACTS.usdc,
+      function: 'transfer(address to, uint256 amount)',
+      args: [to, amount.toString()],
+      reason: 'No ARC_SIGNER_KEY set. Fund a wallet and export the key to move real USDC.',
+    }
+  }
+  const client = await publicClient()
+  const hash = await signer.client.writeContract({
+    address: CONTRACTS.usdc,
+    abi: ERC20_ABI,
+    functionName: 'transfer',
+    args: [to as `0x${string}`, amount],
   })
   await client.waitForTransactionReceipt({ hash })
   return { executed: true, txHash: hash, explorerUrl: tx(hash) }

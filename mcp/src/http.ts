@@ -258,7 +258,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/instructions/execute') {
     const body = (await readBody(req).catch(() => null)) as { id?: string } | null
     if (!body?.id) { sendJson(res, 400, { error: 'id required' }); return }
-    const ix = executeInstruction(body.id)
+    const ix = await executeInstruction(body.id)
     sendJson(res, 'error' in ix ? 400 : 200, ix)
     return
   }

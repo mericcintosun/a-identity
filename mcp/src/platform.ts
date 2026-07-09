@@ -19,7 +19,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ARC_TESTNET } from './arc.js'
-import { registerAgentOnchain } from './arc-contracts.js'
+import { registerAgentOnchain, payUsdcOnchain } from './arc-contracts.js'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -444,16 +444,33 @@ export function approveInstruction(ixId: string): Instruction | { error: string 
  * Execute an approved or auto-approved instruction. On testnet, without holding
  * any key, execution is SIMULATED and labeled as such; the trail stays honest.
  */
-export function executeInstruction(ixId: string): Instruction | { error: string } {
+export async function executeInstruction(ixId: string): Promise<Instruction | { error: string }> {
   const ix = state.instructions.find((i) => i.id === ixId)
   if (!ix) return { error: 'Unknown instruction' }
   if (ix.status !== 'approved' && ix.status !== 'auto_approved')
     return { error: `Cannot execute from status ${ix.status}` }
-  ix.status = 'executed_simulated'
-  ix.policyNote = 'Executed as a testnet simulation (no key custody, no real funds moved).'
   const agent = state.agents.find((a) => a.id === ix.agentId)
-  if (agent)
-    pushActivity(agent, `Executed (simulated) ${ix.type} of $${(ix.amountUsd * ix.count).toFixed(2)}`)
+  const total = ix.amountUsd * ix.count
+  const isAddr = /^0x[0-9a-fA-F]{40}$/.test(ix.payee)
+
+  // Real settlement when the payee is an Arc address and a signer is configured.
+  if (isAddr) {
+    const res = await payUsdcOnchain(ix.payee, total)
+    if (res.executed) {
+      ix.status = 'executed_onchain'
+      ix.txHash = res.txHash
+      ix.explorerUrl = res.explorerUrl
+      ix.policyNote = `Settled ${total < 0.01 ? total.toFixed(4) : total.toFixed(2)} USDC on Arc.`
+      if (agent) pushActivity(agent, `Settled ${total.toFixed(4)} USDC on Arc to ${short(ix.payee)} (tx ${short(res.txHash)})`)
+      save(state)
+      return ix
+    }
+    ix.policyNote = 'No signer configured; settlement simulated.'
+  }
+
+  ix.status = 'executed_simulated'
+  if (!isAddr) ix.policyNote = 'Executed as a testnet simulation (payee is not an Arc address).'
+  if (agent) pushActivity(agent, `Executed (simulated) ${ix.type} of $${total.toFixed(2)}`)
   save(state)
   return ix
 }
