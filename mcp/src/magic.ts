@@ -53,8 +53,8 @@ export async function sendMagicLink(email: string, env: NodeJS.ProcessEnv = proc
   const from = env.MAGIC_FROM_EMAIL || 'A-Identity <onboarding@resend.dev>'
   const appUrl = (env.APP_URL || 'http://localhost:5173').replace(/\/$/, '')
   const link = `${appUrl}/auth/callback?token=${encodeURIComponent(makeMagicToken(email))}`
-  const html = magicEmailHtml(link)
-  const text = `Sign in to A-Identity\n\nOpen this link to sign in (expires in 15 minutes, one-time):\n${link}\n\nIf you didn't request this, ignore this email.`
+  const html = magicEmailHtml(link, appUrl)
+  const text = `Sign in to A-Identity\n\nTap the sign-in button in this email. The link works once and expires in 15 minutes.\n\nButton not working? Open ${appUrl} and request a fresh sign-in link.\n\nIf you didn't request this, ignore this email.`
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -73,7 +73,7 @@ export async function sendMagicLink(email: string, env: NodeJS.ProcessEnv = proc
 
 /** On-brand, email-client-safe HTML (inline styles + a table button). Brand: ink
  *  #192837, accent #7342e2, cream #f2f2ee; protocol accents 7342E2/2775CA/1AAB7A. */
-function magicEmailHtml(link: string): string {
+function magicEmailHtml(link: string, appUrl: string): string {
   const font = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
   return `<!doctype html><html><body style="margin:0;background:#f2f2ee">
   <div style="background:#f2f2ee;padding:40px 16px;${font}">
@@ -96,7 +96,7 @@ function magicEmailHtml(link: string): string {
             <a href="${link}" style="display:inline-block;padding:14px 34px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px">Sign in &rarr;</a>
           </td>
         </tr></table>
-        <p style="margin:26px 0 0;font-size:12px;line-height:1.5;color:#8a93a0;word-break:break-all">Or paste this link into your browser:<br><a href="${link}" style="color:#7342e2;text-decoration:none">${link}</a></p>
+        <p style="margin:26px 0 0;font-size:12px;line-height:1.5;color:#8a93a0">Button not working? Open <a href="${appUrl}" style="color:#7342e2;text-decoration:none;font-weight:600">A&#8209;Identity</a> and request a fresh sign-in link.</p>
       </td></tr>
       <tr><td align="center" style="padding-top:22px">
         <p style="margin:0;font-size:12px;color:#a0a8b3">The passport and wallet for the agentic economy.</p>
