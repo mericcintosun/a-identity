@@ -32,11 +32,11 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 | 5 | x402 not implemented | ✅ **CLOSED** — real HTTP-402 pay-per-call rail: server returns 402 + requirements, client pays USDC on Arc, server verifies the payment on-chain (with replay protection) and serves the resource. UI panel + E2E coverage |
 | 6 | Core flow disconnected + always simulated | ✅ **CLOSED** — instruction console + on-chain anchor + real USDC settlement, verified end-to-end |
 | 7 | Wallet + Permissions screens fake | ✅ **CLOSED** — Permissions real (policy engine, daily cap, 00:00 UTC reset, freeze); Wallet real (live Arc balance + real payments) |
-| 8 | README `.env` instruction wrong | 🟡 handled for deploy (Render env panel + `PORT` fix); local README still inaccurate |
+| 8 | README `.env` instruction wrong | ✅ **CLOSED** — README "Going live" now documents the real behaviour: the backend does NOT auto-load `.env`; run it with the key inline or `node --env-file=mcp/.env mcp/dist/http.js`. Deploy path (Render env panel + `PORT`) also fixed |
 | 9 | `totalSupply()` reverts (minor) | ✅ **CLOSED** — dropped the reverting totalSupply read and the silently-null registeredAgents field |
 | 10 | Production maturity | ✅ **CLOSED** — deployability (Render + Vercel); tests + CI (node:test unit + full E2E, 34 checks, in GitHub Actions); durable persistence via Postgres (`DATABASE_URL`) with a JSON-file fallback for dev — verified surviving a restart. Set `DATABASE_URL` on Render for a fully durable deploy |
 
-**All 10 original gaps are now closed** (#8 README: deploy path fixed; local README note still applies).
+**All 10 original gaps are now closed** — a clean 10/10.
 
 **#3 KYA** was the last open gap — closed in a later build: agents no longer get a free `'verified'` stamp; they must prove wallet control by signature, and the result is anchored on the real ERC-8004 ValidationRegistry on Arc.
 
