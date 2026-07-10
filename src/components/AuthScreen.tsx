@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Lock, Mail, User, Wallet } from 'lucide-react'
+import { ArrowRight, Mail, User, Wallet } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Logo from './Logo'
 import { useAuth } from '../store/auth'
@@ -42,7 +42,6 @@ export default function AuthScreen({ mode }: AuthScreenProps) {
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [walletBusy, setWalletBusy] = useState(false)
   const [walletError, setWalletError] = useState<string | null>(null)
 
@@ -94,9 +93,12 @@ export default function AuthScreen({ mode }: AuthScreenProps) {
           {walletBusy ? 'Check your wallet...' : 'Sign in with your wallet'}
         </button>
         {walletError && <p className="mt-2 text-center text-xs text-red-600">{walletError}</p>}
+        <p className="mt-2 text-center text-[11px] text-ink/45">
+          The real sign-in — proves you own your wallet. No password needed.
+        </p>
 
         <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-ink/35">
-          <span className="h-px flex-1 bg-ink/10" /> or continue as guest <span className="h-px flex-1 bg-ink/10" />
+          <span className="h-px flex-1 bg-ink/10" /> or preview as guest <span className="h-px flex-1 bg-ink/10" />
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
@@ -118,23 +120,17 @@ export default function AuthScreen({ mode }: AuthScreenProps) {
             onChange={setEmail}
             autoComplete="email"
           />
-          <Field
-            icon={<Lock size={18} />}
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={setPassword}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-          />
-
           <button
             type="submit"
             className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-accent px-5 py-3.5 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
           >
-            {copy.cta}
+            Continue as guest
             <ArrowRight size={18} />
           </button>
         </form>
+        <p className="mt-2 text-center text-[11px] text-ink/45">
+          Browse-only preview — connect a wallet to create and own agents.
+        </p>
 
         <p className="mt-6 text-center text-sm text-ink/60">
           {copy.switchText}{' '}
