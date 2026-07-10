@@ -101,24 +101,51 @@ npm run dev:all
 curl http://localhost:3399/api/arc/contracts
 ```
 
-Copy `.env.example` to `.env` and fill in what you need. All keys are optional
-for the demo; the app runs fully on mock plus live-read without any keys.
+Copy `.env.example` to `.env.local` for the frontend (Vite). The backend reads
+its config from the process env directly — see below. Everything is optional for
+a demo: without a signer key the app still does live contract reads and labels
+on-chain writes as prepared / simulated; add a funded `ARC_SIGNER_KEY` to
+broadcast real transactions.
 
 ## Going live (testnet)
 
 1. **Fund a wallet:** create one in the app (Agent ID -> New agent -> Create
-   wallet), then get testnet USDC at [faucet.circle.com](https://faucet.circle.com).
-2. **Enable real writes:** put that wallet's key in a local `.env` as
-   `ARC_SIGNER_KEY`. Now `register-onchain` and `create-job` broadcast for real.
+   wallet; the keypair is generated in your browser), then get testnet USDC at
+   [faucet.circle.com](https://faucet.circle.com).
+2. **Enable real writes:** the backend reads `ARC_SIGNER_KEY` from `process.env`
+   and does **not** auto-load a `.env` file. Start it with the key inline:
+
+   ```bash
+   ARC_SIGNER_KEY=0x<funded-key> node mcp/dist/http.js
+   # or, keeping it in mcp/.env (Node 20.6+):
+   node --env-file=mcp/.env mcp/dist/http.js
+   ```
+
+   Now on-chain registration, USDC settlement, and job escrow broadcast for real.
 3. **Circle platform:** add `CIRCLE_API_KEY` (from
    [console.circle.com](https://console.circle.com)) to enable the real Circle ping.
+
+## Deploy
+
+Frontend is a static Vite build; the backend is a long-running Node server (not
+serverless).
+
+- **Frontend -> Vercel.** Set `VITE_MCP_URL` to the backend's public URL.
+- **Backend -> Render** (or any host that runs a persistent Node process). Root
+  directory `mcp`, build `npm install --include=dev && npm run build`, start
+  `npm run start:http`. Set `ARC_SIGNER_KEY` in the host's env panel. The server
+  binds to the host-provided `$PORT` and self-pings to stay warm on free tiers.
+
+State persists to `mcp/data/platform.json` (gitignored). On an ephemeral host,
+set `DATABASE_URL` to a Postgres connection string for durable state.
 
 ## Human-on-the-loop
 
 A-Identity never custodies a key autonomously, never deploys a contract on its
 own, and never moves real value without an explicit human approval. Wallet keys
-are returned to the user once and never stored server-side. This is a design
-rule, not an afterthought.
+are generated in the browser and never leave it — the server only ever sees the
+public address, and sign-in is by wallet signature (no passwords). This is a
+design rule, not an afterthought.
 
 ## Roadmap
 
