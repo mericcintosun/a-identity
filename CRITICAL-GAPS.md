@@ -34,7 +34,7 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 | 7 | Wallet + Permissions screens fake | ✅ **CLOSED** — Permissions real (policy engine, daily cap, 00:00 UTC reset, freeze); Wallet real (live Arc balance + real payments) |
 | 8 | README `.env` instruction wrong | 🟡 handled for deploy (Render env panel + `PORT` fix); local README still inaccurate |
 | 9 | `totalSupply()` reverts (minor) | ✅ **CLOSED** — dropped the reverting totalSupply read and the silently-null registeredAgents field |
-| 10 | Production maturity | 🟡 deployability **CLOSED** (Render + Vercel); **tests + CI added** (node:test + GitHub Actions); JSON state still ephemeral on Render (a hosted DB is the only thing left) |
+| 10 | Production maturity | 🟡 deployability **CLOSED** (Render + Vercel); **tests + CI added** — node:test unit tests + a full E2E flow test (32 checks, whole product) run in GitHub Actions; JSON state still ephemeral on Render (a hosted DB is the only thing left) |
 
 **Closed this session:** #1 auth · #2 client-side keys · #4 reputation · #5 real payment rail · #6 core flow · #7 Permissions+Wallet · #9 totalSupply · #10 deployability + tests/CI.
 **Remaining:** only durable persistence (swap the JSON file for a hosted DB) — everything else in the original review is closed.

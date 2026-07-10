@@ -23,8 +23,16 @@ jobs:
       - name: Typecheck frontend
         run: npx tsc --noEmit
 
-      - name: Build backend + run tests
+      - name: Build backend + unit tests
         run: npm test --prefix mcp
+
+      - name: Full E2E flow (start backend, drive the whole product, tear down)
+        run: |
+          node mcp/dist/http.js &
+          BACKEND=$!
+          for i in $(seq 1 30); do curl -sf http://localhost:3399/health >/dev/null && break; sleep 1; done
+          npm run e2e --prefix mcp
+          kill $BACKEND 2>/dev/null || true
 
       - name: Build frontend
         run: npx vite build
