@@ -83,9 +83,21 @@ async function mcp(name, args = {}) {
   return { status: res.status, data: text ? JSON.parse(text) : null }
 }
 
+/** Guest (unverified) session: a plain email login. Browse-only — cannot mutate. */
 async function login(email) {
   const { json } = await api('POST', '/api/auth/login', { body: { email } })
   return json?.token
+}
+
+/** Verified session: Sign-In with Ethereum. Returns { token, address }. */
+async function walletLogin() {
+  const acct = privateKeyToAccount(generatePrivateKey())
+  const { json: n } = await api('POST', '/api/auth/nonce', { body: { address: acct.address } })
+  const signature = await acct.signMessage({ message: n.message })
+  const { json: v } = await api('POST', '/api/auth/verify', {
+    body: { address: acct.address, message: n.message, signature },
+  })
+  return { token: v?.token, address: acct.address }
 }
 
 async function main() {
@@ -135,8 +147,12 @@ async function main() {
   phase('D. Auth')
   const noAuth = await api('POST', '/api/agents', { body: { name: 'NoAuth' } })
   check('write without a token is 401', noAuth.status === 401, `HTTP ${noAuth.status}`)
-  const alice = await login(`alice+${Date.now()}@e2e.test`)
-  check('email login returns a token', typeof alice === 'string' && alice.length > 0)
+  // Guest (unverified email) login: issues a token, but it is browse-only.
+  const guest = await login(`guest+${Date.now()}@e2e.test`)
+  check('email (guest) login returns a token', typeof guest === 'string' && guest.length > 0)
+  const guestWrite = await api('POST', '/api/agents', { token: guest, body: { name: 'GuestTry' } })
+  check('guest (unverified) token cannot create an agent (403)', guestWrite.status === 403, `HTTP ${guestWrite.status}`)
+  // SIWE (verified) — the session the rest of the flow acts with.
   const acct = privateKeyToAccount(generatePrivateKey())
   const nonceRes = await api('POST', '/api/auth/nonce', { body: { address: acct.address } })
   const message = nonceRes.json?.message
@@ -148,6 +164,7 @@ async function main() {
     body: { address: acct.address, message, signature: '0x' + '11'.repeat(65) },
   })
   check('SIWE rejects a bad signature', badVerify.status === 401, `HTTP ${badVerify.status}`)
+  const alice = verifyRes.json?.token // verified (wallet) session used throughout
 
   // ── E. Wallets ────────────────────────────────────────────────────────────────
   phase('E. Wallets')
@@ -172,7 +189,7 @@ async function main() {
 
   // ── G. Ownership ──────────────────────────────────────────────────────────────
   phase('G. Ownership')
-  const bob = await login(`bob+${Date.now()}@e2e.test`)
+  const bob = (await walletLogin()).token // a different verified wallet, not the owner
   const bobTries = await api('POST', '/api/agents/permissions', { token: bob, body: { agentId, permissions: { dailyCapUsd: 9999 } } })
   check('non-owner is 403', bobTries.status === 403, `HTTP ${bobTries.status}`)
 

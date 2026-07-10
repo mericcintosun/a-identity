@@ -2,26 +2,37 @@
  * Session auth for the write side of the platform.
  *
  * This is a SESSION layer, not identity verification (that's KYA). Login issues an
- * HMAC-signed token carrying the user's email; mutating endpoints require it, and
- * agent-scoped actions (pay, approve, set limits) are restricted to the agent's owner.
- * The signing secret comes from AUTH_SECRET; set a strong one in production.
+ * HMAC-signed token carrying the caller's subject (email or wallet address) AND the
+ * method used to establish it. Ownership of an agent is bound to a VERIFIED identity:
+ *  - 'wallet' — proven by a Sign-In-with-Ethereum signature
+ *  - 'email'  — proven by clicking a one-time magic link (Resend)
+ *  - 'guest'  — an unverified, browse-only session (plain /api/auth/login)
+ * Mutating endpoints require a verified caller; guest sessions are read-only. This is
+ * what stops someone from minting a token for an arbitrary email and acting as its
+ * owner. The signing secret comes from AUTH_SECRET; set a strong one in production.
  */
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 const SECRET = process.env.AUTH_SECRET ?? 'a-identity-dev-secret-change-me'
 
+/** How a session's identity was established. Only 'wallet' / 'email' are verified. */
+export type AuthMethod = 'guest' | 'email' | 'wallet'
+
+/** The authenticated caller: who they are + how they proved it. */
+export type Caller = { subject: string; method: AuthMethod }
+
 function sign(data: string): string {
   return createHmac('sha256', SECRET).update(data).digest('base64url')
 }
 
-/** Issue an opaque session token for an email. */
-export function issueToken(email: string): string {
-  const payload = Buffer.from(JSON.stringify({ email, iat: Date.now() })).toString('base64url')
+/** Issue an opaque session token for a subject established via `method`. */
+export function issueToken(subject: string, method: AuthMethod): string {
+  const payload = Buffer.from(JSON.stringify({ sub: subject, method, iat: Date.now() })).toString('base64url')
   return `${payload}.${sign(payload)}`
 }
 
-/** Verify a token and return the email, or null if invalid/tampered. */
-export function verifyToken(token: string | undefined | null): string | null {
+/** Verify a token and return the caller, or null if invalid/tampered. */
+export function verifyToken(token: string | undefined | null): Caller | null {
   if (!token) return null
   const [payload, sig] = token.split('.')
   if (!payload || !sig) return null
@@ -30,9 +41,22 @@ export function verifyToken(token: string | undefined | null): string | null {
   const b = Buffer.from(expected)
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null
   try {
-    const { email } = JSON.parse(Buffer.from(payload, 'base64url').toString()) as { email?: string }
-    return email ?? null
+    const obj = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
+      sub?: string
+      email?: string // legacy tokens carried { email } with no method
+      method?: AuthMethod
+    }
+    const subject = obj.sub ?? obj.email
+    if (!subject) return null
+    // Legacy tokens (no method) fail closed → treated as unverified guests.
+    const method: AuthMethod = obj.method === 'wallet' || obj.method === 'email' ? obj.method : 'guest'
+    return { subject, method }
   } catch {
     return null
   }
+}
+
+/** True only for identities proven by a wallet signature or a magic-link click. */
+export function isVerified(caller: Caller | null): boolean {
+  return caller?.method === 'wallet' || caller?.method === 'email'
 }

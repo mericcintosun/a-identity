@@ -45,7 +45,7 @@ import {
   getAgentKya,
   type InstructionType,
 } from './platform.js'
-import { issueToken, verifyToken } from './auth.js'
+import { issueToken, verifyToken, isVerified } from './auth.js'
 import { magicEnabled, sendMagicLink, verifyMagicToken } from './magic.js'
 import { x402PayTo, paymentRequirements, verifyPayment, premiumResource } from './x402.js'
 import { randomBytes } from 'node:crypto'
@@ -95,14 +95,19 @@ const server = http.createServer(async (req, res) => {
   const caller = verifyToken(
     typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null,
   )
+  // The subject string used for ownership checks (email or wallet address).
+  const callerId = caller?.subject
 
   // ── auth: login (public) ──────────────────────────────────────────────────────
   if (req.method === 'POST' && url.pathname === '/api/auth/login') {
     const body = (await readBody(req).catch(() => null)) as { email?: string; name?: string } | null
     if (!body?.email) { sendJson(res, 400, { error: 'email required' }); return }
     const email = String(body.email).trim().toLowerCase()
+    // Unverified, browse-only session: the email is NOT proven. This token is a
+    // 'guest' — it cannot own agents or mutate. To act, sign in with a wallet or a
+    // magic link (both verified). This is what closes the email-impersonation hole.
     sendJson(res, 200, {
-      token: issueToken(email),
+      token: issueToken(email, 'guest'),
       user: { email, name: body.name?.trim() || email.split('@')[0] },
     })
     return
@@ -147,8 +152,9 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 401, { error: 'signature verification failed' }); return
     }
     nonces.delete(addr)
+    // Wallet ownership proven by signature → a verified session.
     sendJson(res, 200, {
-      token: issueToken(addr),
+      token: issueToken(addr, 'wallet'),
       user: { email: addr, name: `${addr.slice(0, 6)}...${addr.slice(-4)}` },
     })
     return
@@ -170,13 +176,25 @@ const server = http.createServer(async (req, res) => {
     const body = (await readBody(req).catch(() => null)) as { token?: string } | null
     const email = verifyMagicToken(body?.token)
     if (!email) { sendJson(res, 401, { error: 'This sign-in link is invalid or expired.' }); return }
-    sendJson(res, 200, { token: issueToken(email), user: { email, name: email.split('@')[0] } })
+    // Email ownership proven by the one-time link → a verified session.
+    sendJson(res, 200, { token: issueToken(email, 'email'), user: { email, name: email.split('@')[0] } })
     return
   }
 
-  // Guard: every other mutating /api endpoint requires a valid session token.
-  if (req.method === 'POST' && url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/') && !caller) {
-    sendJson(res, 401, { error: 'Authentication required. Log in first.' })
+  // Guard: every other mutating /api endpoint requires a VERIFIED session. No token
+  // → 401. A guest (unverified email) token → 403: guests are browse-only, so a
+  // token minted for an arbitrary email can never act as an agent's owner.
+  const isMutation =
+    req.method === 'POST' && url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/')
+  if (isMutation && !caller) {
+    sendJson(res, 401, { error: 'Authentication required. Sign in with a wallet or an email link.' })
+    return
+  }
+  if (isMutation && !isVerified(caller)) {
+    sendJson(res, 403, {
+      error:
+        'Verified sign-in required. Guest sessions are read-only — sign in with your wallet or an emailed magic link to act.',
+    })
     return
   }
 
@@ -337,7 +355,7 @@ const server = http.createServer(async (req, res) => {
       capabilities: Array.isArray(body.capabilities) ? body.capabilities : [],
       permissions: (body.permissions ?? {}) as never,
       walletAddress: body.walletAddress,
-      owner: caller ?? undefined,
+      owner: callerId,
     })
     sendJson(res, 201, { agent })
     return
@@ -350,7 +368,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/anchor') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string } | null
     if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
-    const r = await anchorAgentOnchain(body.agentId, caller ?? undefined)
+    const r = await anchorAgentOnchain(body.agentId, callerId)
     if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return
@@ -359,7 +377,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/vault') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string; fundUsd?: number } | null
     if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
-    const r = await provisionAgentVault(body.agentId, { fundUsd: body.fundUsd, caller: caller ?? undefined })
+    const r = await provisionAgentVault(body.agentId, { fundUsd: body.fundUsd, caller: callerId })
     if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return
@@ -377,7 +395,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/circle-wallet') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string; fund?: boolean } | null
     if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
-    const r = await provisionCircleWallet(body.agentId, { fund: body.fund, caller: caller ?? undefined })
+    const r = await provisionCircleWallet(body.agentId, { fund: body.fund, caller: callerId })
     if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return
@@ -396,7 +414,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/kya/challenge') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string } | null
     if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
-    const r = startKyaChallenge(body.agentId, caller ?? undefined)
+    const r = startKyaChallenge(body.agentId, callerId)
     if ('error' in r) { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return
@@ -407,7 +425,7 @@ const server = http.createServer(async (req, res) => {
     if (!body?.agentId || !body?.message || !body?.signature) {
       sendJson(res, 400, { error: 'agentId, message, signature required' }); return
     }
-    const r = await verifyKya(body.agentId, body.message, body.signature, caller ?? undefined)
+    const r = await verifyKya(body.agentId, body.message, body.signature, callerId)
     if ('error' in r) { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return
@@ -441,7 +459,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/permissions') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string; permissions?: Record<string, unknown> } | null
     if (!body?.agentId || !body?.permissions) { sendJson(res, 400, { error: 'agentId and permissions required' }); return }
-    const a = updateAgentPermissions(body.agentId, body.permissions as never, caller ?? undefined)
+    const a = updateAgentPermissions(body.agentId, body.permissions as never, callerId)
     sendJson(res, 'error' in a ? errStatus(a.error) : 200, { agent: a })
     return
   }
@@ -455,7 +473,7 @@ const server = http.createServer(async (req, res) => {
     if (!body?.agentId || !body?.type || typeof body.amountUsd !== 'number' || !body?.payee) {
       sendJson(res, 400, { error: 'agentId, type, amountUsd, payee required' }); return
     }
-    const ix = createInstruction({ ...body, caller: caller ?? undefined } as never)
+    const ix = createInstruction({ ...body, caller: callerId } as never)
     sendJson(res, 'error' in ix ? errStatus(ix.error) : 201, ix)
     return
   }
@@ -466,14 +484,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/instructions/approve') {
     const body = (await readBody(req).catch(() => null)) as { id?: string } | null
     if (!body?.id) { sendJson(res, 400, { error: 'id required' }); return }
-    const ix = approveInstruction(body.id, caller ?? undefined)
+    const ix = approveInstruction(body.id, callerId)
     sendJson(res, 'error' in ix ? errStatus(ix.error) : 200, ix)
     return
   }
   if (req.method === 'POST' && url.pathname === '/api/instructions/execute') {
     const body = (await readBody(req).catch(() => null)) as { id?: string } | null
     if (!body?.id) { sendJson(res, 400, { error: 'id required' }); return }
-    const ix = await executeInstruction(body.id, caller ?? undefined)
+    const ix = await executeInstruction(body.id, callerId)
     sendJson(res, 'error' in ix ? errStatus(ix.error) : 200, ix)
     return
   }
