@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Eip1193 } from '../lib/wallets'
 
-const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
+import { MCP_BASE } from '../lib/mcpBase'
 
 export type User = {
   name: string

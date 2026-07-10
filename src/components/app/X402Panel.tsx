@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { encodeFunctionData } from 'viem'
 import { CheckCircle2, ExternalLink, Lock, Zap } from 'lucide-react'
 
-const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
+import { MCP_BASE } from '../../lib/mcpBase'
 
 const ERC20_TRANSFER = [
   {

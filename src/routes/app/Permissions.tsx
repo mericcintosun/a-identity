@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { useAuth, authHeaders } from '../../store/auth'
 
-const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
+import { MCP_BASE } from '../../lib/mcpBase'
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 8)}...${a.slice(-4)}` : a)
 
 type Permissions = {

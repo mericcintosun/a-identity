@@ -8,7 +8,7 @@ import {
   Wallet as WalletIcon,
 } from 'lucide-react'
 
-const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
+import { MCP_BASE } from '../../lib/mcpBase'
 const FAUCET = 'https://faucet.circle.com'
 
 type Agent = { id: string; name: string; walletAddress: string | null }

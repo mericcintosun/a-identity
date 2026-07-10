@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/health", "destination": "https://a-identity-backend.onrender.com/health" },
+    { "source": "/mcp", "destination": "https://a-identity-backend.onrender.com/mcp" },
+    { "source": "/api/:path*", "destination": "https://a-identity-backend.onrender.com/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

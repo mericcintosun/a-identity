@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { authHeaders } from '../../store/auth'
 
-const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
+import { MCP_BASE } from '../../lib/mcpBase'
 /** The signed-in demo user is the viewer/follower identity for the MVP. */
 const VIEWER = 'demo'
 

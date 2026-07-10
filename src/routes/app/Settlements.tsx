@@ -3,7 +3,7 @@ import { ArrowUpRight, CheckCircle2, Clock, ExternalLink, Link2, Send, ShieldQue
 import { authHeaders } from '../../store/auth'
 import X402Panel from '../../components/app/X402Panel'
 
-const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
+import { MCP_BASE } from '../../lib/mcpBase'
 
 type Status =
   | 'auto_approved'

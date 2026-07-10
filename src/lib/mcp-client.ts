@@ -4,7 +4,7 @@
  * enableJsonResponse is true on the server so responses are plain JSON, not SSE.
  */
 
-const BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
+import { MCP_BASE as BASE } from './mcpBase'
 
 let _reqId = 1
 
