@@ -25,7 +25,7 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 
 | # | Gap | Status |
 |---|-----|--------|
-| 1 | No backend auth / approval gate unprotected | ❌ open |
+| 1 | No backend auth / approval gate unprotected | ✅ **CLOSED** — session token required on all writes (401); agent-scoped actions (pay/approve/limits/anchor) restricted to the owner (403) |
 | 2 | Private key server-side + rendered to DOM | ❌ open |
 | 3 | No KYA verification | ❌ open |
 | 4 | Reputation is mock (not on-chain) | ❌ open |
@@ -36,8 +36,8 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 | 9 | `totalSupply()` reverts (minor) | ❌ open |
 | 10 | Production maturity | 🟡 deployability **CLOSED** (Render + Vercel); tests/CI still missing; JSON state ephemeral on Render |
 
-**Closed this session:** #6 fully · #7 fully (Permissions + Wallet) · deployability half of #10 · a real payment rail for #5.
-**Remaining priorities:** #1 auth · #4 reputation · #2 key handling · #9 (minor) · tests/CI (#10).
+**Closed this session:** #1 auth · #6 fully · #7 fully (Permissions + Wallet) · deployability half of #10 · a real payment rail for #5.
+**Remaining priorities:** #4 reputation · #2 key handling · #9 (minor) · tests/CI (#10).
 
 ---
 
