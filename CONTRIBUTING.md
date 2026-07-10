@@ -4,7 +4,7 @@ Two tracks, one repo.
 
 | Track | Owner | Scope |
 | --- | --- | --- |
-| **Backend / networks** | Meris | `mcp/` end to end: Arc + Circle (done, extend), then Stellar. Contract calls, wallet management, on-chain reads/writes, REST endpoints. |
+| **Backend / networks** | Meric | `mcp/` end to end: Arc + Circle (done, extend), then Stellar. Contract calls, wallet management, on-chain reads/writes, REST endpoints. |
 | **Product / GTM** | Aybars | `src/` frontend, `docs/`, pitch, BD, marketing, distribution, content, applications. |
 
 Keep PRs small and scoped to one track where possible. `main` stays deployable.
