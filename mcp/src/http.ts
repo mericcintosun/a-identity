@@ -38,6 +38,7 @@ import {
   type InstructionType,
 } from './platform.js'
 import { issueToken, verifyToken } from './auth.js'
+import { x402PayTo, paymentRequirements, verifyPayment, premiumResource } from './x402.js'
 import { randomBytes } from 'node:crypto'
 
 // Render/most hosts inject PORT; fall back to our own var, then the local default.
@@ -74,7 +75,7 @@ const server = http.createServer(async (req, res) => {
   // Permissive CORS - Vite dev frontend calls this directly.
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id, mcp-protocol-version')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Payment, mcp-session-id, mcp-protocol-version')
 
   if (req.method === 'OPTIONS') { res.writeHead(204).end(); return }
 
@@ -198,6 +199,25 @@ const server = http.createServer(async (req, res) => {
   // ── REST /api/circle (Circle developer platform link state) ──────────────────
   if (req.method === 'GET' && url.pathname === '/api/circle') {
     sendJson(res, 200, await getCircleStatus())
+    return
+  }
+
+  // ── x402: pay-per-request paid resource (real on-chain USDC settlement) ───────
+  if (req.method === 'GET' && url.pathname === '/api/x402/data') {
+    const payTo = await x402PayTo()
+    if (!payTo) { sendJson(res, 501, { error: 'x402 not configured (no payTo / signer key)' }); return }
+    const proof = req.headers['x-payment']
+    if (typeof proof !== 'string' || !proof) {
+      // No payment yet -> 402 with machine-readable requirements.
+      sendJson(res, 402, paymentRequirements(payTo))
+      return
+    }
+    const verified = await verifyPayment(proof, payTo)
+    if (!verified.ok) {
+      sendJson(res, 402, { ...paymentRequirements(payTo), verifyError: verified.reason })
+      return
+    }
+    sendJson(res, 200, await premiumResource(proof))
     return
   }
 

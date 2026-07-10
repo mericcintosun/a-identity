@@ -221,6 +221,19 @@ async function main() {
   const rep = await api('GET', `/api/agents/reputation?agentId=${payer}`)
   check('reputation computed, bounded 0..1000', typeof rep.json?.score === 'number' && rep.json.score >= 0 && rep.json.score <= 1000, String(rep.json?.score))
 
+  // ── N. x402 (pay-per-call rail) ───────────────────────────────────────────────
+  phase('N. x402 (pay-per-call)')
+  const x402 = await api('GET', '/api/x402/data')
+  if (x402.status === 501) {
+    skip('x402 issues a 402 with requirements', 'no signer / payTo configured')
+    skip('x402 rejects an invalid proof', 'x402 not configured')
+  } else {
+    const acc = x402.json?.accepts?.[0]
+    check('unpaid call returns 402 + requirements', x402.status === 402 && !!acc?.payTo && acc?.maxAmountRequired === '1000', `HTTP ${x402.status}`)
+    const fake = await fetch(`${BASE}/api/x402/data`, { headers: { 'X-Payment': '0x' + 'ab'.repeat(32) } })
+    check('x402 rejects an invalid payment proof', fake.status === 402, `HTTP ${fake.status}`)
+  }
+
   // ── summary ─────────────────────────────────────────────────────────────────
   console.log(`\n${passed} passed, ${failed} failed`)
   if (failed) {

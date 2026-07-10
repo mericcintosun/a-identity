@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowUpRight, CheckCircle2, Clock, ExternalLink, Send, ShieldQuestion } from 'lucide-react'
 import { authHeaders } from '../../store/auth'
+import X402Panel from '../../components/app/X402Panel'
 
 const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
 
@@ -262,6 +263,8 @@ export default function Settlements() {
           )}
         </>
       )}
+
+      <X402Panel />
     </div>
   )
 }

@@ -29,7 +29,7 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 | 2 | Private key server-side + rendered to DOM | ✅ **CLOSED** — keypair now generated in the browser (viem); the server only records the public address. Wallet-signature login also means identity = your own wallet |
 | 3 | No KYA verification | ❌ open |
 | 4 | Reputation is mock (not on-chain) | ✅ **CLOSED** — computed from real signals: on-chain USDC settlements (real tx hashes), verified ERC-8004 identity, clean ratio, tenure. No more hardcoded 742 |
-| 5 | x402 not implemented | 🟡 real USDC settlement added (ERC-20 transfer on Arc), but not the x402 protocol |
+| 5 | x402 not implemented | ✅ **CLOSED** — real HTTP-402 pay-per-call rail: server returns 402 + requirements, client pays USDC on Arc, server verifies the payment on-chain (with replay protection) and serves the resource. UI panel + E2E coverage |
 | 6 | Core flow disconnected + always simulated | ✅ **CLOSED** — instruction console + on-chain anchor + real USDC settlement, verified end-to-end |
 | 7 | Wallet + Permissions screens fake | ✅ **CLOSED** — Permissions real (policy engine, daily cap, 00:00 UTC reset, freeze); Wallet real (live Arc balance + real payments) |
 | 8 | README `.env` instruction wrong | 🟡 handled for deploy (Render env panel + `PORT` fix); local README still inaccurate |
@@ -39,9 +39,9 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 **Closed this session:** #1 auth · #2 client-side keys · #4 reputation · #6 core flow · #7 Permissions+Wallet · #9 totalSupply · #10 deployability + tests/CI.
 **Remaining:**
 - **#3 KYA verification** ❌ — agents are still auto-stamped `kya: 'verified'`; no real check (challenge, wallet proof, or ValidationRegistry).
-- **#5 x402 protocol** 🟡 — real USDC settlement is done, but not the HTTP-402 per-request rail (nor Circle Nanopayments) specifically.
-- **#8 README `.env`** 🟡 — deploy path works (Render env + PORT fix); the local README wording is still stale.
-- **#10 durable persistence** 🟡 — state is a JSON file (ephemeral on Render); a hosted DB is the last production item.
+- **#10 durable persistence** 🟡 — state is a JSON file (ephemeral on Render); a Postgres via `DATABASE_URL` is the last production item.
+
+(#5 x402 and #8 README are now closed; see the table above.)
 
 ---
 
