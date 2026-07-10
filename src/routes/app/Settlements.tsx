@@ -4,6 +4,7 @@ import { authHeaders } from '../../store/auth'
 import X402Panel from '../../components/app/X402Panel'
 
 import { MCP_BASE } from '../../lib/mcpBase'
+import { pickPrimaryAgent } from '../../lib/pickAgent'
 
 type Status =
   | 'auto_approved'
@@ -49,7 +50,7 @@ export default function Settlements() {
         const res = await fetch(`${MCP_BASE}/api/platform-agents`, { signal: AbortSignal.timeout(6000) })
         const data = (await res.json()) as { agents: Agent[] }
         setAgents(data.agents)
-        if (data.agents.length) setAgentId((cur) => cur || data.agents[0].id)
+        if (data.agents.length) setAgentId((cur) => cur || pickPrimaryAgent(data.agents)?.id || data.agents[0].id)
         else setLoading(false)
       } catch {
         setError('Settlements need the MCP server on :3399.')

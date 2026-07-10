@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import { MCP_BASE } from '../../lib/mcpBase'
+import { pickPrimaryAgent } from '../../lib/pickAgent'
 const FAUCET = 'https://faucet.circle.com'
 
 type Agent = { id: string; name: string; walletAddress: string | null }
@@ -43,7 +44,7 @@ export default function Wallet() {
         const res = await fetch(`${MCP_BASE}/api/platform-agents`, { signal: AbortSignal.timeout(6000) })
         const data = (await res.json()) as { agents: Agent[] }
         setAgents(data.agents)
-        if (data.agents.length) setAgentId((cur) => cur || data.agents[0].id)
+        if (data.agents.length) setAgentId((cur) => cur || pickPrimaryAgent(data.agents)?.id || data.agents[0].id)
       } catch {
         setError('Wallet needs the MCP server on :3399.')
       } finally {

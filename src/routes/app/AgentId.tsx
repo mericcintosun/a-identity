@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth, authHeaders } from '../../store/auth'
 import { useAgentReputation, useMcpHealth, useResolveAgent } from '../../hooks/useMcp'
+import { pickPrimaryAgent } from '../../lib/pickAgent'
 
 type Stage = 'register' | 'verify' | 'live'
 
@@ -67,7 +68,7 @@ export default function AgentId() {
     ;(async () => {
       try {
         const list = await fetch(`${MCP_BASE}/api/platform-agents`).then((r) => r.json())
-        const first: RealAgent | undefined = list.agents?.[0]
+        const first: RealAgent | undefined = pickPrimaryAgent(list.agents)
         if (!first || cancelled) return
         setRealAgent(first)
         const rep = await fetch(`${MCP_BASE}/api/agents/reputation?agentId=${first.id}`).then((r) => r.json())
