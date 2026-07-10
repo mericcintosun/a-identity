@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend deps
+        run: npm install
+
+      - name: Install backend deps
+        run: npm install --prefix mcp
+
+      - name: Typecheck frontend
+        run: npx tsc --noEmit
+
+      - name: Build backend + run tests
+        run: npm test --prefix mcp
+
+      - name: Build frontend
+        run: npx vite build

@@ -155,6 +155,25 @@ export async function createWallet(): Promise<{ wallet: Wallet; privateKey: stri
   }
 }
 
+/**
+ * Record a wallet whose keypair was generated CLIENT-SIDE. The server only ever
+ * sees the public address — the private key never leaves the browser. This is the
+ * no-custody path, preferred over server-side key generation.
+ */
+export function recordWallet(address: string): { wallet: Wallet } {
+  const existing = state.wallets.find((w) => w.address.toLowerCase() === address.toLowerCase())
+  if (existing) return { wallet: existing }
+  const wallet: Wallet = {
+    address,
+    agentId: null,
+    chain: 'arc-testnet',
+    createdAt: new Date().toISOString(),
+  }
+  state.wallets.push(wallet)
+  save(state)
+  return { wallet }
+}
+
 export function assignWallet(address: string, agentId: string): Wallet | null {
   const wallet = state.wallets.find((w) => w.address.toLowerCase() === address.toLowerCase())
   const agent = state.agents.find((a) => a.id === agentId)

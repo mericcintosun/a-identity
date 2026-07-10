@@ -27,6 +27,7 @@ import {
   createAgent,
   createInstruction,
   createWallet,
+  recordWallet,
   executeInstruction,
   followAgent,
   getWalletBalance,
@@ -249,6 +250,13 @@ const server = http.createServer(async (req, res) => {
 
   // ── Platform: wallets ─────────────────────────────────────────────────────────
   if (req.method === 'POST' && url.pathname === '/api/wallets') {
+    const body = (await readBody(req).catch(() => null)) as { address?: string } | null
+    // Preferred: a client-generated address (server never sees the key).
+    if (body?.address && /^0x[0-9a-fA-F]{40}$/.test(body.address)) {
+      sendJson(res, 201, recordWallet(body.address))
+      return
+    }
+    // Legacy fallback: server-side generation (key returned once, not stored).
     sendJson(res, 201, await createWallet())
     return
   }

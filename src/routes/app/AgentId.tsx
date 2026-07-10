@@ -365,9 +365,17 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
     setWalletBusy(true)
     setError(null)
     try {
-      const res = await fetch(`${MCP_BASE}/api/wallets`, { method: 'POST', headers: { ...authHeaders() } })
-      const data = (await res.json()) as { wallet: { address: string }; privateKey: string }
-      setWallet({ address: data.wallet.address, privateKey: data.privateKey })
+      // Generate the keypair IN THE BROWSER — the private key never touches the server.
+      const { generatePrivateKey, privateKeyToAccount } = await import('viem/accounts')
+      const privateKey = generatePrivateKey()
+      const address = privateKeyToAccount(privateKey).address
+      // Register only the public address with the backend.
+      await fetch(`${MCP_BASE}/api/wallets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ address }),
+      })
+      setWallet({ address, privateKey })
     } catch {
       setError('Wallet creation needs the MCP server. Run: npm run dev:all')
     } finally {
@@ -565,14 +573,14 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
             disabled={walletBusy}
             className="mt-2 rounded-full border border-[#2775CA]/30 px-4 py-2.5 text-sm font-semibold text-[#2775CA] transition-colors hover:bg-[#2775CA]/5 disabled:opacity-50"
           >
-            {walletBusy ? 'Creating...' : 'Create wallet (key shown once, never stored)'}
+            {walletBusy ? 'Creating...' : 'Create wallet (generated in your browser)'}
           </button>
         ) : (
           <div className="mt-2 rounded-xl border border-[#2775CA]/25 bg-[#2775CA]/[0.04] p-4">
             <div className="text-[11px] font-bold text-ink/50">Address</div>
             <div className="break-all font-mono text-xs text-ink">{wallet.address}</div>
             <div className="mt-2 text-[11px] font-bold text-red-600">
-              Private key (copy it now, we never store it)
+              Private key (generated in your browser — the server never sees it)
             </div>
             <div className="break-all font-mono text-xs text-ink/70">{wallet.privateKey}</div>
             <a

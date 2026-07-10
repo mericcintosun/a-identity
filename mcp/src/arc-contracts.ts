@@ -107,16 +107,17 @@ export async function readArcContracts() {
   }
   try {
     const client = await publicClient()
-    const [name, symbol, supply] = await Promise.allSettled([
+    // This registry is not enumerable (totalSupply reverts) and token ids are
+    // non-sequential, so we don't report a registered-agents count from the
+    // contract — better to omit it than to surface a silently-null field.
+    const [name, symbol] = await Promise.allSettled([
       client.readContract({ address: CONTRACTS.identityRegistry, abi: IDENTITY_ABI, functionName: 'name' }),
       client.readContract({ address: CONTRACTS.identityRegistry, abi: IDENTITY_ABI, functionName: 'symbol' }),
-      client.readContract({ address: CONTRACTS.identityRegistry, abi: IDENTITY_ABI, functionName: 'totalSupply' }),
     ])
     out.identity = {
       address: CONTRACTS.identityRegistry,
       name: name.status === 'fulfilled' ? name.value : null,
       symbol: symbol.status === 'fulfilled' ? symbol.value : null,
-      registeredAgents: supply.status === 'fulfilled' ? (supply.value as bigint).toString() : null,
     }
     const [usym, udec] = await Promise.allSettled([
       client.readContract({ address: CONTRACTS.usdc, abi: ERC20_ABI, functionName: 'symbol' }),
