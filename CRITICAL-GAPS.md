@@ -36,11 +36,25 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 | 9 | `totalSupply()` reverts (minor) | ✅ **CLOSED** — dropped the reverting totalSupply read and the silently-null registeredAgents field |
 | 10 | Production maturity | ✅ **CLOSED** — deployability (Render + Vercel); tests + CI (node:test unit + full E2E, 34 checks, in GitHub Actions); durable persistence via Postgres (`DATABASE_URL`) with a JSON-file fallback for dev — verified surviving a restart. Set `DATABASE_URL` on Render for a fully durable deploy |
 
-**All 10 original gaps are now closed** — a clean 10/10.
+**All 10 original gaps are now closed.**
 
 **#3 KYA** was the last open gap — closed in a later build: agents no longer get a free `'verified'` stamp; they must prove wallet control by signature, and the result is anchored on the real ERC-8004 ValidationRegistry on Arc.
 
 Beyond the original gaps, this build also added: an **on-chain spend-policy vault** (trustless limits enforced on Arc), a **Circle Agent Wallet** layer (hosted wallet-layer screening), and the on-chain KYA attestation above — three independent policy/identity guarantees.
+
+---
+
+## 🔁 Independent re-verification (2026-07-11)
+
+The "clean 10/10" above was re-checked objectively against the source (not the doc): frontend typecheck + backend build + 13 unit tests + full E2E (36/36, live Arc reads) + a live-backend probe. The 10 backend gaps hold up — the code is genuinely real and verified. But the re-check found **three residual items the original pass missed, all in the UI/auth layer** — since fixed and **live-verified on production**:
+
+1. **Dashboard was still 100% mock** (`src/routes/app/Dashboard.tsx`) — the app's `/app` landing still rendered the exact figures the original review flagged as fake: reputation **`742`**, wallet **`$142.50`**, `153.50 USDC`, `18` settlements, `6/10` permissions, and a fabricated activity feed. The gap-#4 ("no more hardcoded 742") and gap-#7 ("Wallet real") fixes had corrected `AgentId`/`Wallet` but overlooked the Dashboard. **Fixed:** the Dashboard now reads real data (reputation, live Arc USDC balance, on-chain settlement count, real daily cap, real activity) with an em-dash + empty state when there's no data.
+
+2. **Email login minted a session token with no verification** (`/api/auth/login`) — so the "only the owner can approve" guarantee was spoofable for email-owned agents (anyone could POST a victim's email and act as them). The Resend magic-link was real but bypassable, because this unverified path issued an equivalent token. **Fixed:** tokens now carry the auth method (`guest | email | wallet`); only wallet (SIWE) and magic-link are verified; guest sessions are read-only (mutations → 403). Confirmed live: guest write → 403, verified write → passes.
+
+3. **`AgentId` fell back to a fabricated `742`** when no real score existed. **Fixed:** shows `—` instead.
+
+**Net:** the backend gaps were genuinely closed, but "10/10" overstated the UI/auth surface — a Dashboard-shaped mock and an auth hole survived the original pass. Both are now closed and verified in production. Lesson for the pitch: the real work is real, but audit the *landing surface*, not just the tabs the review named.
 
 ---
 
