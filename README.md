@@ -44,15 +44,31 @@ The backend reads the **real deployed contracts** on Arc Testnet, no mocks:
 Writes (agent registration, job escrow) are wired against the same contracts and
 broadcast for real once a funded signer key is present.
 
+### On-chain policy vault — programmable money that enforces itself
+
+An agent's spend policy can be deployed **as its own smart contract on Arc**:
+`AgentSpendPolicy` (`mcp/contracts/AgentSpendPolicy.sol`). Once an agent is given a
+vault, its USDC payments settle **through the contract**, which enforces the policy
+on-chain — a per-UTC-day cap, an auto-approve ceiling, a payee allowlist, and a freeze
+switch. A payment that breaks a rule **reverts on Arc** with a typed error (verifiable
+on arcscan), not just a server "no"; the human owner can override, adjust limits, freeze,
+or withdraw. The server policy engine stays as the fast pre-check and fallback, so agents
+without a vault behave exactly as before.
+
+Try it: `cd mcp && node --env-file=.env scripts/test-vault.mjs` (needs a funded
+`ARC_SIGNER_KEY`) deploys a vault and plays pay / over-limit-revert / freeze / cap out on
+real Arc testnet — or use the **Permissions → On-chain policy vault** panel in the app.
+
 ## Architecture
 
 ```
 a-identity/
 ├─ src/               React 19 + Vite + Tailwind v4 frontend (landing, app, blog, use cases)
 ├─ mcp/               Backend: MCP server + REST companion (Node + viem)
+│  ├─ contracts/      AgentSpendPolicy.sol — on-chain spend-policy vault (npm run compile)
 │  └─ src/
 │     ├─ arc.ts             Live Arc testnet status (block reads)
-│     ├─ arc-contracts.ts   Real ERC-8004 + ERC-8183 reads/writes (verbatim addresses)
+│     ├─ arc-contracts.ts   Real ERC-8004 + ERC-8183 reads/writes + AgentSpendPolicy vault
 │     ├─ circle.ts          Circle developer platform link (env-gated ping)
 │     ├─ platform.ts        Agents, wallets, instructions, marketplace (write side)
 │     ├─ erc8004.ts         Multi-chain identity provider (mock + rpc)
@@ -79,7 +95,9 @@ GET  /api/wallet-balance        live native-USDC balance
 POST /api/agents                register an agent (KYA + permissions)
 POST /api/instructions          pay / purchase / rental / batch (policy engine)
 POST /api/instructions/approve  human approval
-POST /api/instructions/execute  execute (simulated until a signer exists)
+POST /api/instructions/execute  execute (through the vault if provisioned, else direct; simulated without a signer)
+POST /api/agents/vault          provision an on-chain AgentSpendPolicy vault (real w/ key)
+GET  /api/agents/vault          live on-chain vault policy + balance
 GET  /api/marketplace           Agent House feed
 POST /api/follow                follow an agent
 ```

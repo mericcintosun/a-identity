@@ -13,6 +13,7 @@
  *   H. Policy engine              auto-approve, cumulative daily cap -> pending, freeze
  *   I. Human-on-the-loop          approve a pending payment
  *   J. Settlement                 execute -> real USDC on Arc (with a key) or simulated
+ *   J2. On-chain policy vault     provision an AgentSpendPolicy contract; payment settles through it (enforcedBy=onchain-vault)
  *   K. On-chain identity          anchor -> real ERC-8004 register (with a key) or prepared
  *   L. Social                     follow an agent in Agent House
  *   M. Reputation                 computed from real activity, bounded 0..1000
@@ -203,6 +204,21 @@ async function main() {
   const onchainPay = exec.json?.status === 'executed_onchain'
   check('execute settles (on-chain with a key, else simulated)', onchainPay || exec.json?.status === 'executed_simulated', exec.json?.status)
   if (onchainPay) check('  ↳ on-chain settlement carries a tx hash', /^0x[0-9a-f]{64}$/i.test(exec.json?.txHash || ''))
+
+  // ── J2. On-chain policy vault ─────────────────────────────────────────────────
+  phase('J2. On-chain policy vault (enforced on Arc)')
+  const vaultRes = await api('POST', '/api/agents/vault', { token: alice, body: { agentId: payer, fundUsd: 0.05 } })
+  if (onchainPay) {
+    check('policy vault deployed on Arc', /^0x[0-9a-fA-F]{40}$/.test(vaultRes.json?.vaultAddress || ''), vaultRes.json?.vaultAddress || JSON.stringify(vaultRes.json).slice(0, 70))
+    const vIx = await api('POST', '/api/instructions', { token: alice, body: { agentId: payer, type: 'payment', amountUsd: 0.01, payee } })
+    const vExec = await api('POST', '/api/instructions/execute', { token: alice, body: { id: vIx.json?.id } })
+    check('payment settles THROUGH the vault (enforcedBy=onchain-vault)', vExec.json?.status === 'executed_onchain' && vExec.json?.enforcedBy === 'onchain-vault', `${vExec.json?.status}/${vExec.json?.enforcedBy}`)
+    check('  ↳ vault settlement carries a real Arc tx hash', /^0x[0-9a-f]{64}$/i.test(vExec.json?.txHash || ''))
+    const vRead = await api('GET', `/api/agents/vault?agentId=${payer}`)
+    check('live vault read reports on-chain policy + balance', vRead.status === 200 && typeof vRead.json?.dailyCapUsd === 'number' && typeof vRead.json?.balanceUsd === 'number', `HTTP ${vRead.status}`)
+  } else {
+    check('vault provision returns a prepared note without a signer key', !vaultRes.json?.vaultAddress, JSON.stringify(vaultRes.json || {}).slice(0, 70))
+  }
 
   // ── K. On-chain identity ──────────────────────────────────────────────────────
   phase('K. On-chain identity (ERC-8004)')
