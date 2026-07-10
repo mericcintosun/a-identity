@@ -36,8 +36,12 @@ Live: frontend https://a-identity.vercel.app · backend https://a-identity-backe
 | 9 | `totalSupply()` reverts (minor) | ✅ **CLOSED** — dropped the reverting totalSupply read and the silently-null registeredAgents field |
 | 10 | Production maturity | 🟡 deployability **CLOSED** (Render + Vercel); **tests + CI added** — node:test unit tests + a full E2E flow test (32 checks, whole product) run in GitHub Actions; JSON state still ephemeral on Render (a hosted DB is the only thing left) |
 
-**Closed this session:** #1 auth · #2 client-side keys · #4 reputation · #5 real payment rail · #6 core flow · #7 Permissions+Wallet · #9 totalSupply · #10 deployability + tests/CI.
-**Remaining:** only durable persistence (swap the JSON file for a hosted DB) — everything else in the original review is closed.
+**Closed this session:** #1 auth · #2 client-side keys · #4 reputation · #6 core flow · #7 Permissions+Wallet · #9 totalSupply · #10 deployability + tests/CI.
+**Remaining:**
+- **#3 KYA verification** ❌ — agents are still auto-stamped `kya: 'verified'`; no real check (challenge, wallet proof, or ValidationRegistry).
+- **#5 x402 protocol** 🟡 — real USDC settlement is done, but not the HTTP-402 per-request rail (nor Circle Nanopayments) specifically.
+- **#8 README `.env`** 🟡 — deploy path works (Render env + PORT fix); the local README wording is still stale.
+- **#10 durable persistence** 🟡 — state is a JSON file (ephemeral on Render); a hosted DB is the last production item.
 
 ---
 
