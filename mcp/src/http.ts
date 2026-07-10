@@ -46,6 +46,7 @@ import {
   type InstructionType,
 } from './platform.js'
 import { issueToken, verifyToken } from './auth.js'
+import { magicEnabled, sendMagicLink, verifyMagicToken } from './magic.js'
 import { x402PayTo, paymentRequirements, verifyPayment, premiumResource } from './x402.js'
 import { randomBytes } from 'node:crypto'
 
@@ -150,6 +151,26 @@ const server = http.createServer(async (req, res) => {
       token: issueToken(addr),
       user: { email: addr, name: `${addr.slice(0, 6)}...${addr.slice(-4)}` },
     })
+    return
+  }
+
+  // ── auth: passwordless email magic-link (public; credential-gated behind Resend) ──
+  if (req.method === 'POST' && url.pathname === '/api/auth/magic/request') {
+    const body = (await readBody(req).catch(() => null)) as { email?: string } | null
+    const email = body?.email?.trim().toLowerCase()
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      sendJson(res, 400, { error: 'A valid email is required' }); return
+    }
+    const err = await sendMagicLink(email)
+    if (err) { sendJson(res, magicEnabled() ? 502 : 501, { sent: false, error: err }); return }
+    sendJson(res, 200, { sent: true })
+    return
+  }
+  if (req.method === 'POST' && url.pathname === '/api/auth/magic/verify') {
+    const body = (await readBody(req).catch(() => null)) as { token?: string } | null
+    const email = verifyMagicToken(body?.token)
+    if (!email) { sendJson(res, 401, { error: 'This sign-in link is invalid or expired.' }); return }
+    sendJson(res, 200, { token: issueToken(email), user: { email, name: email.split('@')[0] } })
     return
   }
 

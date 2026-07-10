@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { Eip1193 } from '../lib/wallets'
 
 const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
 
@@ -12,14 +13,15 @@ type AuthState = {
   user: User | null
   /** Session token issued by the backend; required for mutating requests. */
   token: string | null
-  /**
-   * Sign in. Exchanges the email for a backend session token (used to authorize
-   * writes and to scope agent ownership). Still email-only for the MVP; real
-   * identity verification is KYA, handled separately.
-   */
+  /** Guest preview: an email-only local session (no token → browse-only). */
   login: (email: string, name?: string) => Promise<void>
-  /** Real auth: Sign-In with Ethereum — prove wallet ownership by signing a nonce. */
-  loginWallet: () => Promise<void>
+  /** Real auth: Sign-In with Ethereum — prove wallet ownership by signing a nonce.
+   *  Pass the chosen EIP-1193 provider (an injected wallet or WalletConnect). */
+  loginWallet: (provider: Eip1193) => Promise<void>
+  /** Real email auth: send a one-time magic sign-in link (via Resend). */
+  requestMagicLink: (email: string) => Promise<void>
+  /** Finish magic-link sign-in with the token carried by the emailed link. */
+  loginWithMagicToken: (token: string) => Promise<void>
   logout: () => void
 }
 
@@ -45,9 +47,8 @@ export const useAuth = create<AuthState>()(
         }
         set({ user: { email, name: name?.trim() || email.split('@')[0] }, token: null })
       },
-      loginWallet: async () => {
-        const eth = pickWallet()
-        if (!eth) throw new Error('No browser wallet found — install MetaMask, or continue as guest below.')
+      loginWallet: async (provider) => {
+        const eth = provider
         let address: string | undefined
         try {
           const accounts = (await eth.request({ method: 'eth_requestAccounts' })) as string[]
@@ -81,6 +82,28 @@ export const useAuth = create<AuthState>()(
         const data = (await vres.json()) as { token: string; user: User }
         set({ user: data.user, token: data.token })
       },
+      requestMagicLink: async (email) => {
+        const res = await fetch(`${MCP_BASE}/api/auth/magic/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        }).catch(() => null)
+        const data = (res ? await res.json().catch(() => ({})) : {}) as { sent?: boolean; error?: string }
+        if (!res || !res.ok || !data.sent) throw new Error(data.error ?? 'Could not send the sign-in link.')
+      },
+      loginWithMagicToken: async (token) => {
+        const res = await fetch(`${MCP_BASE}/api/auth/magic/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+        if (!res.ok) {
+          const e = (await res.json().catch(() => ({}))) as { error?: string }
+          throw new Error(e.error ?? 'This sign-in link is invalid or expired.')
+        }
+        const data = (await res.json()) as { token: string; user: User }
+        set({ user: data.user, token: data.token })
+      },
       logout: () => set({ user: null, token: null }),
     }),
     { name: 'a-identity-auth' },
@@ -91,23 +114,6 @@ export const useAuth = create<AuthState>()(
 export function authHeaders(): Record<string, string> {
   const t = useAuth.getState().token
   return t ? { Authorization: `Bearer ${t}` } : {}
-}
-
-type Eip1193 = {
-  request: (a: { method: string; params?: unknown[] }) => Promise<unknown>
-  isMetaMask?: boolean
-}
-
-/**
- * Pick a usable injected wallet. With several extensions installed they clobber
- * each other on window.ethereum (the "Cannot redefine property: ethereum" noise);
- * when a `providers` array is exposed, prefer MetaMask, else the first one.
- */
-function pickWallet(): Eip1193 | null {
-  const injected = (window as unknown as { ethereum?: Eip1193 & { providers?: Eip1193[] } }).ethereum
-  if (!injected) return null
-  if (injected.providers?.length) return injected.providers.find((p) => p.isMetaMask) ?? injected.providers[0]
-  return injected
 }
 
 /** Turn a raw wallet/provider error into a friendly, human message. */

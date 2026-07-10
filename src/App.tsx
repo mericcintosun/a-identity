@@ -3,6 +3,7 @@ import ScrollToTop from './components/ScrollToTop'
 import Landing from './routes/Landing'
 import Login from './routes/Login'
 import Signup from './routes/Signup'
+import AuthCallback from './routes/AuthCallback'
 import Manifesto from './routes/Manifesto'
 import Brand from './routes/Brand'
 import Contact from './routes/Contact'
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/manifesto" element={<Manifesto />} />
         <Route path="/brand" element={<Brand />} />
         <Route path="/contact" element={<Contact />} />
