@@ -48,6 +48,8 @@ export type PlatformAgent = {
   chain: 'arc'
   chainId: number
   kya: 'verified'
+  /** Session email of the creator; agent-scoped mutations are restricted to them. */
+  owner?: string
   onchain: 'queued' | 'registered'
   /** Set once the ERC-8004 identity is broadcast on Arc (real tx). */
   onchainTx?: string
@@ -203,6 +205,7 @@ export function createAgent(input: {
   services?: Service[]
   permissions: Partial<Permissions>
   walletAddress?: string
+  owner?: string
 }): PlatformAgent {
   const permissions: Permissions = {
     dailyCapUsd: input.permissions.dailyCapUsd ?? 50,
@@ -232,6 +235,7 @@ export function createAgent(input: {
     chain: 'arc',
     chainId: ARC_TESTNET.id,
     kya: 'verified',
+    owner: input.owner,
     onchain: 'queued',
     passport: {
       standard: 'ERC-8004',
@@ -271,9 +275,10 @@ export function listPlatformAgents(): PlatformAgent[] {
  * Deliberate + human-triggered from the UI, so it stays human-on-the-loop. Without a
  * signer key it returns the exact prepared call and leaves the agent queued.
  */
-export async function anchorAgentOnchain(agentId: string) {
+export async function anchorAgentOnchain(agentId: string, caller?: string) {
   const agent = state.agents.find((a) => a.id === agentId)
   if (!agent) return { error: 'Unknown agent' }
+  if (!ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
 
   const metadataUri =
     'data:application/json,' +
@@ -332,12 +337,19 @@ function nextUtcMidnight(): string {
   ).toISOString()
 }
 
+/** True if the caller may act on this agent: owner match, or the agent has no owner. */
+function ownsAgent(agent: PlatformAgent, caller?: string): boolean {
+  return !agent.owner || agent.owner === caller
+}
+
 export function updateAgentPermissions(
   agentId: string,
   partial: Partial<Permissions>,
+  caller?: string,
 ): PlatformAgent | { error: string } {
   const agent = state.agents.find((a) => a.id === agentId)
   if (!agent) return { error: 'Unknown agent' }
+  if (!ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
   agent.permissions = { ...agent.permissions, ...partial }
   pushActivity(agent, 'Permissions updated by a human')
   save(state)
@@ -368,9 +380,11 @@ export function createInstruction(input: {
   count?: number
   payee: string
   memo?: string
+  caller?: string
 }): Instruction | { error: string } {
   const agent = state.agents.find((a) => a.id === input.agentId)
   if (!agent) return { error: 'Unknown agent' }
+  if (!ownsAgent(agent, input.caller)) return { error: 'Forbidden: not the agent owner' }
 
   const count = Math.max(1, Math.floor(input.count ?? 1))
   const total = input.amountUsd * count
@@ -425,9 +439,11 @@ export function createInstruction(input: {
   return instruction
 }
 
-export function approveInstruction(ixId: string): Instruction | { error: string } {
+export function approveInstruction(ixId: string, caller?: string): Instruction | { error: string } {
   const ix = state.instructions.find((i) => i.id === ixId)
   if (!ix) return { error: 'Unknown instruction' }
+  const ag = state.agents.find((a) => a.id === ix.agentId)
+  if (ag && !ownsAgent(ag, caller)) return { error: 'Forbidden: not the agent owner' }
   if (ix.status !== 'pending_approval') return { error: `Cannot approve from status ${ix.status}` }
   ix.status = 'approved'
   ix.policyNote = 'Approved by a human.'
@@ -444,12 +460,13 @@ export function approveInstruction(ixId: string): Instruction | { error: string 
  * Execute an approved or auto-approved instruction. On testnet, without holding
  * any key, execution is SIMULATED and labeled as such; the trail stays honest.
  */
-export async function executeInstruction(ixId: string): Promise<Instruction | { error: string }> {
+export async function executeInstruction(ixId: string, caller?: string): Promise<Instruction | { error: string }> {
   const ix = state.instructions.find((i) => i.id === ixId)
   if (!ix) return { error: 'Unknown instruction' }
   if (ix.status !== 'approved' && ix.status !== 'auto_approved')
     return { error: `Cannot execute from status ${ix.status}` }
   const agent = state.agents.find((a) => a.id === ix.agentId)
+  if (agent && !ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
   const total = ix.amountUsd * ix.count
   const isAddr = /^0x[0-9a-fA-F]{40}$/.test(ix.payee)
 

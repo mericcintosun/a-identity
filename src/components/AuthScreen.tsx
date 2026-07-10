@@ -43,9 +43,9 @@ export default function AuthScreen({ mode }: AuthScreenProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    login(email || 'demo@a-identity.dev', mode === 'signup' ? name : undefined)
+    await login(email || 'demo@a-identity.dev', mode === 'signup' ? name : undefined)
     navigate('/app')
   }
 

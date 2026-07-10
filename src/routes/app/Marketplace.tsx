@@ -9,6 +9,7 @@ import {
   Plus,
   Store,
 } from 'lucide-react'
+import { authHeaders } from '../../store/auth'
 
 const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
 /** The signed-in demo user is the viewer/follower identity for the MVP. */
@@ -76,7 +77,7 @@ export default function Marketplace() {
     try {
       await fetch(`${MCP_BASE}/api/follow`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ agentId, follower: VIEWER }),
       })
     } catch {
@@ -92,7 +93,7 @@ export default function Marketplace() {
     try {
       const res = await fetch(`${MCP_BASE}/api/agents/anchor`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ agentId }),
       })
       const data = (await res.json()) as {

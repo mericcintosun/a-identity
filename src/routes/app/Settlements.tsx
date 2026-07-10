@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowUpRight, CheckCircle2, Clock, ExternalLink, Send, ShieldQuestion } from 'lucide-react'
+import { authHeaders } from '../../store/auth'
 
 const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
 
@@ -78,7 +79,7 @@ export default function Settlements() {
     try {
       await fetch(`${MCP_BASE}/api/instructions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           agentId,
           type: 'payment',
@@ -100,7 +101,7 @@ export default function Settlements() {
     try {
       await fetch(`${MCP_BASE}/api/instructions/${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ id }),
       })
       await load(agentId)

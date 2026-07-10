@@ -10,7 +10,7 @@ import {
   Shield,
   Snowflake,
 } from 'lucide-react'
-import { useAuth } from '../../store/auth'
+import { useAuth, authHeaders } from '../../store/auth'
 
 const MCP_BASE = (import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399'
 
@@ -95,7 +95,7 @@ export default function Permissions() {
     try {
       await fetch(`${MCP_BASE}/api/agents/permissions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ agentId, permissions: draft }),
       })
       await loadPolicy(agentId)
@@ -369,7 +369,7 @@ function PolicyTester({ agentId, onSpent }: { agentId: string; onSpent: () => vo
     try {
       const res = await fetch(`${MCP_BASE}/api/instructions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ agentId, type: 'payment', amountUsd: Number(amount) || 0, payee, memo: 'policy test' }),
       })
       const ix = (await res.json()) as { status?: string; policyNote?: string; error?: string }

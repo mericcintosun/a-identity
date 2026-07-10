@@ -35,6 +35,7 @@ import {
   updateAgentPermissions,
   type InstructionType,
 } from './platform.js'
+import { issueToken, verifyToken } from './auth.js'
 
 // Render/most hosts inject PORT; fall back to our own var, then the local default.
 const PORT = Number(process.env.PORT ?? process.env.A_IDENTITY_HTTP_PORT ?? 3399)
@@ -58,15 +59,44 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
   res.end(payload)
 }
 
+/** Map a platform error message to an HTTP status. */
+function errStatus(msg: string): number {
+  return msg.startsWith('Forbidden') ? 403 : msg.startsWith('Unknown') ? 404 : 400
+}
+
 const server = http.createServer(async (req, res) => {
   // Permissive CORS - Vite dev frontend calls this directly.
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, mcp-protocol-version')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id, mcp-protocol-version')
 
   if (req.method === 'OPTIONS') { res.writeHead(204).end(); return }
 
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`)
+
+  // Session identity from the bearer token (null if none / invalid).
+  const authHeader = req.headers.authorization
+  const caller = verifyToken(
+    typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null,
+  )
+
+  // ── auth: login (public) ──────────────────────────────────────────────────────
+  if (req.method === 'POST' && url.pathname === '/api/auth/login') {
+    const body = (await readBody(req).catch(() => null)) as { email?: string; name?: string } | null
+    if (!body?.email) { sendJson(res, 400, { error: 'email required' }); return }
+    const email = String(body.email).trim().toLowerCase()
+    sendJson(res, 200, {
+      token: issueToken(email),
+      user: { email, name: body.name?.trim() || email.split('@')[0] },
+    })
+    return
+  }
+
+  // Guard: every other mutating /api endpoint requires a valid session token.
+  if (req.method === 'POST' && url.pathname.startsWith('/api/') && !caller) {
+    sendJson(res, 401, { error: 'Authentication required. Log in first.' })
+    return
+  }
 
   // ── /health ──────────────────────────────────────────────────────────────────
   if (req.method === 'GET' && url.pathname === '/health') {
@@ -199,6 +229,7 @@ const server = http.createServer(async (req, res) => {
       capabilities: Array.isArray(body.capabilities) ? body.capabilities : [],
       permissions: (body.permissions ?? {}) as never,
       walletAddress: body.walletAddress,
+      owner: caller ?? undefined,
     })
     sendJson(res, 201, { agent })
     return
@@ -211,8 +242,9 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/anchor') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string } | null
     if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
-    const r = await anchorAgentOnchain(body.agentId)
-    sendJson(res, 'error' in r ? 404 : 200, r)
+    const r = await anchorAgentOnchain(body.agentId, caller ?? undefined)
+    if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
+    sendJson(res, 200, r)
     return
   }
   // Live policy for one agent (limits + today's spend + reset time)
@@ -227,8 +259,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/permissions') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string; permissions?: Record<string, unknown> } | null
     if (!body?.agentId || !body?.permissions) { sendJson(res, 400, { error: 'agentId and permissions required' }); return }
-    const a = updateAgentPermissions(body.agentId, body.permissions as never)
-    sendJson(res, 'error' in a ? 404 : 200, { agent: a })
+    const a = updateAgentPermissions(body.agentId, body.permissions as never, caller ?? undefined)
+    sendJson(res, 'error' in a ? errStatus(a.error) : 200, { agent: a })
     return
   }
 
@@ -241,8 +273,8 @@ const server = http.createServer(async (req, res) => {
     if (!body?.agentId || !body?.type || typeof body.amountUsd !== 'number' || !body?.payee) {
       sendJson(res, 400, { error: 'agentId, type, amountUsd, payee required' }); return
     }
-    const ix = createInstruction(body as never)
-    sendJson(res, 'error' in ix ? 404 : 201, ix)
+    const ix = createInstruction({ ...body, caller: caller ?? undefined } as never)
+    sendJson(res, 'error' in ix ? errStatus(ix.error) : 201, ix)
     return
   }
   if (req.method === 'GET' && url.pathname === '/api/instructions') {
@@ -252,15 +284,15 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/instructions/approve') {
     const body = (await readBody(req).catch(() => null)) as { id?: string } | null
     if (!body?.id) { sendJson(res, 400, { error: 'id required' }); return }
-    const ix = approveInstruction(body.id)
-    sendJson(res, 'error' in ix ? 400 : 200, ix)
+    const ix = approveInstruction(body.id, caller ?? undefined)
+    sendJson(res, 'error' in ix ? errStatus(ix.error) : 200, ix)
     return
   }
   if (req.method === 'POST' && url.pathname === '/api/instructions/execute') {
     const body = (await readBody(req).catch(() => null)) as { id?: string } | null
     if (!body?.id) { sendJson(res, 400, { error: 'id required' }); return }
-    const ix = await executeInstruction(body.id)
-    sendJson(res, 'error' in ix ? 400 : 200, ix)
+    const ix = await executeInstruction(body.id, caller ?? undefined)
+    sendJson(res, 'error' in ix ? errStatus(ix.error) : 200, ix)
     return
   }
 

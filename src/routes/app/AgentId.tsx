@@ -10,7 +10,7 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react'
-import { useAuth } from '../../store/auth'
+import { useAuth, authHeaders } from '../../store/auth'
 import { useAgentReputation, useMcpHealth, useResolveAgent } from '../../hooks/useMcp'
 
 type Stage = 'register' | 'verify' | 'live'
@@ -341,7 +341,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
     setWalletBusy(true)
     setError(null)
     try {
-      const res = await fetch(`${MCP_BASE}/api/wallets`, { method: 'POST' })
+      const res = await fetch(`${MCP_BASE}/api/wallets`, { method: 'POST', headers: { ...authHeaders() } })
       const data = (await res.json()) as { wallet: { address: string }; privateKey: string }
       setWallet({ address: data.wallet.address, privateKey: data.privateKey })
     } catch {
@@ -358,7 +358,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
     try {
       const res = await fetch(`${MCP_BASE}/api/agents`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           name: name.trim(),
           description: desc.trim(),
@@ -392,7 +392,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
     try {
       const res = await fetch(`${MCP_BASE}/api/agents/anchor`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ agentId: done }),
       })
       const data = (await res.json()) as {
