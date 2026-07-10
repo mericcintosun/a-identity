@@ -44,6 +44,11 @@ Beyond the original gaps, this build also added: an **on-chain spend-policy vaul
 
 ---
 
+> **⚠️ Historical — the detailed sections below are the ORIGINAL review (2026-07-09),**
+> **written in the present tense as findings at that time. Every gap they describe is now**
+> **RESOLVED — see the progress table above (all 10 closed). They are kept verbatim as a**
+> **record of what was fixed; do NOT read them as the current state.**
+
 ## 🔴 Critical gaps
 
 ### 1. The security model is not implemented (the biggest issue)
@@ -122,11 +127,12 @@ For AI agents (software assistants that act for you) to pay each other and buy s
 
 The app offers this: register the agent, give it a wallet, set spending limits, say "buy this," and have it ask you for large expenses.
 
-**What's the actual state right now?** Think of it as **a model apartment you can walk through**:
-- **The walls and doors are real:** the app really connects to a live blockchain (Arc testnet) and can say "the identity system is live." ✅
-- **No water comes from the taps:** the money in the wallet ($142), the transaction history, the reputation score (742) — all decor, fake numbers. ❌
-- **The security locks look installed but aren't wired:** you flip the switches on the limits screen, but nothing behind them is connected; the agent doesn't even see these settings. ❌
-- **The pay button doesn't send real money:** when you hit "pay," the system says "I pretended to pay"; not a cent moves. ❌
-- **Anyone can open the door:** it says "only you can approve," but technically anyone on the internet can give that approval; the login is fake too. ❌
+**What's the actual state now (updated 2026-07-10)?** The model apartment is now a **working home** — every gap above has been closed:
+- **The walls and doors are real:** the app connects to a live blockchain (Arc testnet) — and always did. ✅
+- **The taps run:** payments move **real USDC** on Arc; reputation is computed from real on-chain activity — no more decorative numbers. ✅
+- **The security locks are wired three ways:** the limits you set are enforced by the server, by a real **on-chain policy vault** (an over-limit payment *reverts on Arc*), and screened by a **Circle Agent Wallet**. ✅
+- **The pay button sends real money:** hitting "pay" settles real USDC on Arc with a verifiable transaction. ✅
+- **Only you can open the door:** login is a real wallet signature; only the agent's owner can approve or act. ✅
+- **The agent has a real passport:** an ERC-8004 identity anchored on-chain, and **KYA is a real wallet-control proof** recorded on the ERC-8004 ValidationRegistry — no free "verified" stamp. ✅
 
-**In one sentence:** the idea and design are strong, and the live blockchain connection is real; but the three things that do the product's actual job — **real payments, real security locks, and real user control** — aren't wired up yet. Right now it's closer to a polished demo model than a working product.
+**In one sentence:** the idea and design were always strong and the blockchain connection was always real — and now the three things that do the product's actual job (**real payments, real enforced limits, real user control + identity**) are all wired up and verified on Arc.

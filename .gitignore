@@ -36,3 +36,6 @@ scratchpad/
 # Claude Code machine-local settings
 .claude/settings.local.json
 .vercel
+
+# Internal partner brief (not for the repo — hand to Aybars directly)
+AYBARS-BRIEF.md
