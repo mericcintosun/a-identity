@@ -30,8 +30,20 @@ const CATEGORIES = [
   'Other',
 ]
 
-/** The mock agent ID for this demo account. */
+/** The mock agent ID used only as a fallback when the account has no real agent yet. */
 const DEMO_AGENT_ID = 'eip155:1:8004/1'
+
+/** The subset of a real platform agent the identity card renders. */
+type RealAgent = {
+  id: string
+  name: string
+  category: string
+  kya: 'unverified' | 'verified'
+  onchain: 'queued' | 'registered'
+  onchainAgentId?: string
+  walletAddress: string | null
+  createdAt: string
+}
 
 export default function AgentId() {
   const user = useAuth((s) => s.user)
@@ -43,8 +55,9 @@ export default function AgentId() {
   const { agent: liveAgent, source, loading: agentLoading } = useResolveAgent(DEMO_AGENT_ID)
   const { reputation: liveRep, loading: repLoading } = useAgentReputation(DEMO_AGENT_ID)
 
-  // Real reputation of the first registered agent (from real settlements + on-chain
-  // identity + tenure), when available. Falls back to the mock only when there are no agents.
+  // The user's first real agent (from the platform), when available. Drives the
+  // identity card below; falls back to the mock resolve only when there are no agents.
+  const [realAgent, setRealAgent] = useState<RealAgent | null>(null)
   const [realRep, setRealRep] = useState<{
     score: number
     breakdown: { settlement: number; validation: number; tenure: number }
@@ -54,12 +67,13 @@ export default function AgentId() {
     ;(async () => {
       try {
         const list = await fetch(`${MCP_BASE}/api/platform-agents`).then((r) => r.json())
-        const first = list.agents?.[0]
-        if (!first) return
+        const first: RealAgent | undefined = list.agents?.[0]
+        if (!first || cancelled) return
+        setRealAgent(first)
         const rep = await fetch(`${MCP_BASE}/api/agents/reputation?agentId=${first.id}`).then((r) => r.json())
         if (!cancelled && rep && !('error' in rep)) setRealRep({ score: rep.score, breakdown: rep.breakdown })
       } catch {
-        /* keep the fallback */
+        /* keep the fallbacks */
       }
     })()
     return () => {
@@ -71,7 +85,24 @@ export default function AgentId() {
   const score = realRep?.score ?? liveRep?.score ?? null
   const breakdown = realRep?.breakdown ?? liveRep?.breakdown ?? { settlement: 0, validation: 0, tenure: 0 }
 
-  const stageIndex = 2 // "live": demo is fully registered
+  // Identity-card fields: prefer the real agent, else the mock resolve / placeholders.
+  const agentName = realAgent?.name ?? `${liveAgent?.domain?.split('.')[0] ?? user?.name ?? 'My Agent'} Agent`
+  const agentIdLabel = realAgent?.onchainAgentId
+    ? `ERC-8004 #${realAgent.onchainAgentId}`
+    : realAgent?.id ?? liveAgent?.agentId ?? '—'
+  const category = realAgent?.category ?? 'Trading / Finance'
+  const kyaVerified = realAgent ? realAgent.kya === 'verified' : false
+  const registeredLabel = realAgent?.createdAt
+    ? new Date(realAgent.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    : liveAgent?.registeredAt ?? '—'
+  const networkLabel = realAgent ? 'Arc testnet' : '5 chains'
+  const stageIndex = !realAgent
+    ? 2 // no real agent yet → show the demo card fully "live"
+    : realAgent.onchain === 'registered' && realAgent.kya === 'verified'
+      ? 2
+      : realAgent.kya === 'verified' || realAgent.onchain === 'registered'
+        ? 1
+        : 0
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -92,7 +123,7 @@ export default function AgentId() {
           }`}
         >
           {mcpOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-          {mcpOnline ? `Live (${source ?? 'mock'})` : 'Offline'}
+          {mcpOnline ? (realAgent ? 'Live' : `Live (${source ?? 'mock'})`) : 'Offline'}
         </div>
       </div>
 
@@ -115,13 +146,13 @@ export default function AgentId() {
               <span className="text-sm font-semibold opacity-75">A-Identity</span>
             </div>
             <div className="text-xl font-bold tracking-tight">
-              {liveAgent?.domain?.split('.')[0] ?? user?.name ?? 'My Agent'} Agent
+              {agentName}
             </div>
             <div className="mt-1 font-mono text-sm opacity-60">
-              {liveAgent?.agentId ?? '0x7342...e2f1'}
+              {agentIdLabel}
             </div>
             <div className="mt-3 text-xs opacity-60">Category</div>
-            <div className="text-sm font-semibold">Trading / Finance</div>
+            <div className="text-sm font-semibold">{category}</div>
           </div>
           <div className="text-right">
             <div className="text-xs opacity-60">ERC-8004</div>
@@ -131,8 +162,8 @@ export default function AgentId() {
             </div>
             <div className="mt-0.5 text-xs opacity-60">Reputation</div>
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-              <BadgeCheck size={13} />
-              KYA Verified
+              {kyaVerified ? <BadgeCheck size={13} /> : <ShieldQuestion size={13} />}
+              {kyaVerified ? 'KYA Verified' : 'KYA Pending'}
             </div>
           </div>
         </div>
@@ -140,12 +171,12 @@ export default function AgentId() {
           <div>
             <div className="text-xs opacity-60">Registered</div>
             <div className="text-sm font-semibold">
-              {liveAgent?.registeredAt ?? 'Jan 29, 2026'}
+              {registeredLabel}
             </div>
           </div>
           <div>
             <div className="text-xs opacity-60">Network</div>
-            <div className="text-sm font-semibold">5 chains</div>
+            <div className="text-sm font-semibold">{networkLabel}</div>
           </div>
           <div>
             <div className="text-xs opacity-60">Standard</div>
