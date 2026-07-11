@@ -11,6 +11,10 @@ Everything below is real code broadcasting real transactions on Arc — no mocks
 
 ## The flow
 
+![A-Identity architecture — identity (ERC-8004), three enforcement layers, payment rails (x402, Nanopayments, ERC-8183 escrow, direct), and cross-chain USDC (Gateway, CCTP), all settling on Circle Arc.](docs/images/architecture.png)
+
+*Live PNG: [a-identity.xyz/architecture.png](https://a-identity.xyz/architecture.png). Source (rendered by GitHub) below.*
+
 ```mermaid
 flowchart LR
   H[Human in the tower] -->|sets limits, approves| P
