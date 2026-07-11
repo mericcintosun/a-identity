@@ -28,7 +28,7 @@ import { AIdentity } from "@a-identity/sdk"
 
 const ai = new AIdentity()
 
-const passport = await ai.resolve("research.a-identity.xyz")
+const passport = await ai.resolve("eip155:5042002:8004/849980")
 if (passport.found && passport.agent.valid) {
   const rep = await ai.reputation(passport.agent.agentId)
   // gate on rep.score before you transact

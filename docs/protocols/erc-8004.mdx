@@ -26,20 +26,21 @@ exists.
 
 ```json Registration file (shape)
 {
-  "agentId": "eip155:1:8004/1",
-  "owner": "0xA11CE...",
-  "domain": "research.a-identity.xyz",
-  "registrationUri": "https://agents.a-identity.xyz/1/registration.json"
+  "name": "Meridian",
+  "category": "Research / Data",
+  "standard": "ERC-8004",
+  "app": "A-Identity"
 }
 ```
 
 ## Resolve One Now
 
-Use the MCP server or the SDK to resolve an identity.
+Resolve an identity with a **live on-chain read** of Arc's ERC-8004 registry (by agent
+id, token id, or owner address). No mocks — it calls `ownerOf` + `tokenURI` for real.
 
 ```ts
-const passport = await identity.resolve("research.a-identity.xyz")
-// { found: true, agent: { agentId, owner, valid, ... } }
+const passport = await identity.resolve("eip155:5042002:8004/849980")
+// { found: true, source: "rpc", agent: { agentId, owner, chain: "arc", ... } }
 ```
 
 <Card title="Reputation Scoring" icon="star" href="/developers/mcp-server">

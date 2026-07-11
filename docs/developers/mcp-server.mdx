@@ -5,13 +5,15 @@ description: "The read-only A-Identity MCP server, tool by tool."
 
 The server lives in the `mcp` package. It speaks MCP over stdio and over Streamable
 HTTP, and it is read only: no keys, no funds, no chain writes. The `resolve_agent`
-identity tool goes through a swappable provider that defaults to sample data and
-switches to on-chain reads once an RPC endpoint is set (`source: "mock"` vs `"rpc"`).
+tool reads **live from Circle Arc's deployed ERC-8004 IdentityRegistry** by default
+(`source: "rpc"`) — a real `ownerOf` + `tokenURI` read, no mocks. Extra EVM chains
+switch on when their RPC env vars are set.
 
 <Note>
-The identity **provider** defaults to sample data, but the platform's REST API already
-reads the **live ERC-8004 + ERC-8183 contracts on Arc testnet** (`GET
-/api/arc/contracts`) with no mocks — see [Build on Arc](/chains/arc).
+Identity resolution and the platform REST API both read the **live ERC-8004 + ERC-8183
+contracts on Arc testnet** (`GET /api/arc/contracts`) — no mocks. `list_agents` returns
+the real agents a running platform instance knows (the Arc registry isn't enumerable,
+so it can't list every token ever minted). See [Build on Arc](/chains/arc).
 </Note>
 
 ## Run It
@@ -34,7 +36,7 @@ Resolve an ERC-8004 identity.
 | `query` | string | agent id, token id, owner address, or domain |
 
 ```json Returns
-{ "found": true, "source": "mock", "agent": { "agentId": "eip155:1:8004/1", "owner": "0x...", "valid": true } }
+{ "found": true, "source": "rpc", "agent": { "agentId": "eip155:5042002:8004/849980", "owner": "0x...", "valid": true, "chain": "arc" } }
 ```
 
 ### get_reputation
@@ -50,7 +52,7 @@ always produces the same score, so it can be anchored on-chain and recomputed by
 anyone.
 
 ```json Returns
-{ "found": true, "reputation": { "score": 851, "breakdown": { "settlement": 544, "validation": 240, "tenure": 67 } } }
+{ "found": true, "reputation": { "score": 536, "breakdown": { "settlement": 296, "validation": 240, "tenure": 0 }, "settledOnchain": 3 } }
 ```
 
 ### list_capabilities

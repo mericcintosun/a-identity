@@ -1,32 +1,23 @@
 /**
- * ERC-8004 identity resolution, behind a swappable provider.
+ * ERC-8004 identity resolution — REAL on-chain reads via viem, no mocks.
  *
- * Phase 4: MockIdentityProvider (in-memory fixtures, 3 chains).
- * Phase 5: RpcIdentityProvider - real on-chain reads via viem.
- *           Activates when A_IDENTITY_RPC_URL + ERC8004_IDENTITY_REGISTRY are set.
- *           Multi-chain: set per-chain env vars to enable each (see below).
- *           Read-only - no keys, no funds, no writes.
+ * The default provider reads Circle Arc's deployed ERC-8004 IdentityRegistry
+ * (0x8004A818…, the same contract the rest of the app writes to). Resolving an
+ * agent id or token id does a live `ownerOf` + `tokenURI` read. Extra EVM chains
+ * (Ethereum / Base / Arbitrum) are added when their RPC + registry env vars are set.
+ * Read-only — no keys, no funds, no writes.
  *
- * Env vars for on-chain mode:
- *   A_IDENTITY_RPC_URL          (Ethereum mainnet RPC, e.g. Alchemy/Infura)
- *   ERC8004_IDENTITY_REGISTRY   (Identity Registry contract address on mainnet)
- *   BASE_RPC_URL                (Base mainnet RPC, optional)
- *   BASE_ERC8004_REGISTRY       (Identity Registry on Base, optional)
- *   ARB_RPC_URL                 (Arbitrum One RPC, optional)
- *   ARB_ERC8004_REGISTRY        (Identity Registry on Arbitrum, optional)
+ * Optional env vars to add more chains:
+ *   A_IDENTITY_RPC_URL / ERC8004_IDENTITY_REGISTRY   (Ethereum mainnet)
+ *   BASE_RPC_URL / BASE_ERC8004_REGISTRY             (Base)
+ *   ARB_RPC_URL / ARB_ERC8004_REGISTRY               (Arbitrum One)
  */
-import { resolveAgent, type AgentIdentity } from './data.js'
+import type { AgentIdentity } from './data.js'
+import { ARC_RPC, CONTRACTS } from './arc-contracts.js'
 
 export interface IdentityProvider {
   resolve(query: string): Promise<AgentIdentity | null>
-  readonly kind: 'mock' | 'rpc'
-}
-
-export class MockIdentityProvider implements IdentityProvider {
-  readonly kind = 'mock' as const
-  async resolve(query: string): Promise<AgentIdentity | null> {
-    return resolveAgent(query)
-  }
+  readonly kind: 'rpc'
 }
 
 // ── Minimal ERC-721 ABI for on-chain reads ────────────────────────────────────
@@ -119,8 +110,9 @@ export class RpcIdentityProvider implements IdentityProvider {
       return null
     }
 
-    // Domain: fall back to mock (domains aren't on-chain in ERC-8004 v0.1)
-    return resolveAgent(q)
+    // Domain lookups aren't resolvable on-chain in ERC-8004 v0.1 (no reverse index),
+    // so we don't fabricate one — resolve by agent id, token id, or owner address.
+    return null
   }
 
   private async _readToken(
@@ -228,7 +220,17 @@ function toAddress(val: string): `0x${string}` {
 }
 
 export function createIdentityProvider(env: NodeJS.ProcessEnv = process.env): IdentityProvider {
-  const clients: ChainClient[] = []
+  // Circle Arc is always on: its ERC-8004 IdentityRegistry is deployed and known,
+  // so identity resolution is real out of the box — no env vars required.
+  const clients: ChainClient[] = [
+    {
+      chainId: 5042002,
+      chainName: 'arc',
+      rpcUrl: ARC_RPC,
+      registry: CONTRACTS.identityRegistry as `0x${string}`,
+      caipPrefix: 'eip155:5042002',
+    },
+  ]
 
   if (env.A_IDENTITY_RPC_URL && env.ERC8004_IDENTITY_REGISTRY) {
     clients.push({
@@ -260,6 +262,5 @@ export function createIdentityProvider(env: NodeJS.ProcessEnv = process.env): Id
     })
   }
 
-  if (clients.length > 0) return new RpcIdentityProvider(clients)
-  return new MockIdentityProvider()
+  return new RpcIdentityProvider(clients)
 }

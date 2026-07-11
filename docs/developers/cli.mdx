@@ -24,11 +24,11 @@ npm install -g @a-identity/cli
 
 ```bash
 # Resolve an identity by id, address, or domain
-a-identity resolve eip155:1:8004/1
-a-identity resolve research.a-identity.xyz
+a-identity resolve eip155:5042002:8004/849980
+a-identity resolve 0xd305607510E0Db2c95807173c7A05BEA53c1ed36   # by owner address
 
 # Score an agent
-a-identity reputation eip155:1:8004/1
+a-identity reputation eip155:5042002:8004/849980
 
 # List agents on a chain
 a-identity agents --chain base
@@ -42,7 +42,7 @@ a-identity chains
 Every command prints JSON by default, so it pipes cleanly into `jq` or a script:
 
 ```bash
-a-identity reputation eip155:1:8004/1 | jq '.reputation.score'
+a-identity reputation eip155:5042002:8004/849980 | jq '.reputation.score'
 ```
 
 Point the CLI at a different server with `A_IDENTITY_MCP_URL`:

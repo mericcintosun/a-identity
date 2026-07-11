@@ -33,8 +33,9 @@ const CATEGORIES = [
   'Other',
 ]
 
-/** The mock agent ID used only as a fallback when the account has no real agent yet. */
-const DEMO_AGENT_ID = 'eip155:1:8004/1'
+/** A REAL agent registered on Arc (ERC-8004 token #849980), shown as an example only
+ *  when the signed-in account has no agent of its own yet. Resolved live on-chain. */
+const DEMO_AGENT_ID = 'eip155:5042002:8004/849980'
 
 /** The subset of a real platform agent the identity card renders. */
 type RealAgent = {
@@ -88,9 +89,9 @@ export default function AgentId() {
   // Only resolve the MOCK demo agent as a fallback — and only once we've confirmed the
   // account has no real agent. Avoids two throwaway requests on every mount when a real
   // agent already exists.
-  const useMockFallback = realChecked && !realAgent
-  const { agent: liveAgent, source, loading: agentLoading } = useResolveAgent(DEMO_AGENT_ID, useMockFallback)
-  const { reputation: liveRep, loading: repLoading } = useAgentReputation(DEMO_AGENT_ID, useMockFallback)
+  const useExampleFallback = realChecked && !realAgent
+  const { agent: liveAgent, source, loading: agentLoading } = useResolveAgent(DEMO_AGENT_ID, useExampleFallback)
+  const { reputation: liveRep, loading: repLoading } = useAgentReputation(DEMO_AGENT_ID, useExampleFallback)
 
   // Real reputation when available; no fabricated fallback (show '—' if we have none).
   const score = realRep?.score ?? liveRep?.score ?? null
@@ -117,8 +118,8 @@ export default function AgentId() {
       : realAgent.kya === 'verified' || realAgent.onchain === 'registered'
         ? 1
         : 0
-  // The card is a real agent only when we actually found one; otherwise it renders an
-  // illustrative sample (from the mock identity provider) so the layout isn't empty.
+  // The card is the user's own agent when we found one; otherwise it renders a REAL
+  // example agent (resolved live from Arc's ERC-8004 registry) so the layout isn't empty.
   const isSample = realChecked && !realAgent
 
   return (
@@ -151,9 +152,9 @@ export default function AgentId() {
         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
           <ShieldQuestion size={18} className="mt-0.5 shrink-0" />
           <p>
-            <span className="font-semibold">This is a sample identity.</span> You haven't created
-            an agent yet — register one below to get your own on-chain ERC-8004 passport. The card
-            below just previews what it will look like.
+            <span className="font-semibold">This is a real example agent</span> (ERC-8004 #849980 on
+            Arc), resolved live on-chain. You haven't created an agent yet — register one below to get
+            your own on-chain passport.
           </p>
         </div>
       )}
@@ -285,8 +286,8 @@ export default function AgentId() {
       {(agentLoading || !mcpOnline) ? null : (
         <p className="mt-2 text-xs text-ink/40">
           {mcpOnline
-            ? `Score computed live from MCP server (source: ${source ?? 'mock'}). Formula: settlement + validation + tenure, max 1000.`
-            : 'Score is mock data. Start the MCP server to see live on-chain data.'}
+            ? `Identity resolved live on-chain (source: ${source ?? 'rpc'}). Reputation: settlement + validation + tenure, max 1000.`
+            : 'Start the MCP server to read live on-chain data.'}
         </p>
       )}
 
@@ -296,8 +297,8 @@ export default function AgentId() {
         <div>
           <p className="text-sm font-semibold text-ink">Human approval required for deployment</p>
           <p className="mt-1 text-sm text-ink/65">
-            Registering on any chain (Ethereum, Base, Arbitrum, Stellar, or Algorand) requires
-            your explicit approval. This preview runs against a mock identity provider.
+            Registering an ERC-8004 identity on-chain (Arc) requires your explicit approval. This
+            card reads live from Arc's ERC-8004 registry — no mock data.
           </p>
         </div>
       </div>

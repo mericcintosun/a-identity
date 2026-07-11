@@ -5,7 +5,7 @@
  * Phases:
  *   A. Liveness & discovery       health, chains, live Arc status, live contract reads, Circle
  *   B. MCP tools (JSON-RPC)        the agent-facing read entry point (/mcp tools/call)
- *   C. Mock read REST             resolve agent, list agents, reputation lookup
+ *   C. Real discovery REST        resolve agent live on-chain (Arc ERC-8004), list real platform agents
  *   D. Auth                       guard (401), email login, wallet Sign-In with Ethereum (+ bad sig)
  *   E. Wallets                    client-generated address recorded, live balance read
  *   F. Agents                     create (owned), list, marketplace feed
@@ -129,19 +129,19 @@ async function main() {
   const mChains = await mcp('get_chain_status')
   check('MCP get_chain_status returns chains', Array.isArray(mChains.data?.chains) && mChains.data.chains.length > 0)
 
-  // ── C. Mock read REST (discovery) ─────────────────────────────────────────────
-  phase('C. Mock read REST')
+  // ── C. Real discovery REST (live on-chain, no mocks) ──────────────────────────
+  phase('C. Real discovery (on-chain)')
   const agentsList = await api('GET', '/api/agents')
-  check('list agents (mock chains)', agentsList.status === 200 && Array.isArray(agentsList.json?.agents))
-  const someAgent = agentsList.json?.agents?.[0]?.agentId
-  if (someAgent) {
-    const resolved = await api('GET', `/api/agent?q=${encodeURIComponent(someAgent)}`)
-    check('resolve a known agent', resolved.status === 200 && resolved.json?.found === true, `HTTP ${resolved.status}`)
-    const repLookup = await api('GET', `/api/reputation?id=${encodeURIComponent(someAgent)}`)
-    check('reputation lookup responds', repLookup.status === 200 || repLookup.status === 404, `HTTP ${repLookup.status}`)
+  check('list agents = real platform source', agentsList.status === 200 && Array.isArray(agentsList.json?.agents) && agentsList.json?.source === 'platform')
+  // Resolve a REAL agent on Arc's ERC-8004 registry (token #849980, permanently minted).
+  const resolved = await api('GET', '/api/agent?q=eip155:5042002:8004/849980')
+  if (resolved.json?.found) {
+    check('resolve reads live on-chain (source: rpc)', resolved.json?.source === 'rpc' && /^0x[0-9a-fA-F]{40}$/.test(resolved.json?.agent?.owner || ''), `owner ${resolved.json?.agent?.owner}`)
   } else {
-    check('resolve a known agent', true, 'no mock agents to resolve (skipped)')
+    check('resolve reads live on-chain', resolved.status === 404, 'Arc RPC unreachable for the example token (network)')
   }
+  const bogus = await api('GET', '/api/agent?q=999999999999')
+  check('non-existent token is an honest not-found (no mock)', bogus.status === 404 && bogus.json?.found === false, `HTTP ${bogus.status}`)
 
   // ── D. Auth ───────────────────────────────────────────────────────────────────
   phase('D. Auth')

@@ -3,9 +3,10 @@ title: "Reputation"
 description: "How A-Identity scores an agent's track record, deterministically."
 ---
 
-Reputation turns an agent's history into one number from 0 to 1000. Same history in,
-same score out. The engine is a pure function, so the result can be recomputed by
-anyone and later anchored on-chain.
+Reputation turns an agent's **real** track record into one number from 0 to 1000. Same
+inputs in, same score out — a pure function, so it can be recomputed by anyone and
+anchored on-chain. Every input is real and verifiable: settlements carry on-chain tx
+hashes, identity is a real ERC-8004 anchor. No mock history.
 
 ## The Formula
 
@@ -13,13 +14,14 @@ Score = settlement + validation + tenure.
 
 | Component | Range | What it measures |
 | --- | --- | --- |
-| Settlement | 0 to 600 | Volume of cleanly settled x402 actions |
-| Validation | 0 to 240 | Ratio of clean actions to total (disputes hurt) |
-| Tenure | 0 to 160 | How long the agent has been registered |
+| Settlement | 0 to 600 | Real on-chain USDC settlements (diminishing returns), plus a credit for holding a verified on-chain ERC-8004 identity |
+| Validation | 0 to 240 | Share of clean (settled vs rejected) actions |
+| Tenure | 0 to 160 | Days registered on the platform |
 
 ```ts
-settlement = round(600 * (1 - exp(-settledActions / 800)))
-validation = round(240 * (settledActions / total))
+const idBonus = onchainRegistered ? 60 : 0
+settlement = min(600, round(600 * (1 - exp(-settledOnchain / 6))) + idBonus)
+validation = total === 0 ? 0 : round(240 * (settledOnchain / total)) // total = settled + rejected
 tenure     = min(160, round(daysRegistered / 2))
 score      = clamp(settlement + validation + tenure, 0, 1000)
 ```
@@ -36,7 +38,7 @@ trusted scorer in the middle.
 Query the score through the MCP server's `get_reputation` tool or the REST endpoint:
 
 ```bash
-curl "http://localhost:3399/api/reputation?id=eip155:1:8004/1"
+curl "http://localhost:3399/api/reputation?id=eip155:5042002:8004/849980"
 ```
 
 Reputation gates are how agents stay safe in the open: a payer can require, say, a

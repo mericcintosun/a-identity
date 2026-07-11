@@ -13,8 +13,8 @@ import http from 'node:http'
 import { URL } from 'node:url'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { buildServer } from './server.js'
-import { resolveAgent, getHistory, listAgents, CHAIN_CONFIG } from './data.js'
-import { computeReputation } from './reputation.js'
+import { CHAIN_CONFIG } from './data.js'
+import { createIdentityProvider } from './erc8004.js'
 import { getArcStatus } from './arc.js'
 import { getCircleStatus } from './circle.js'
 import { readArcContracts, registerAgentOnchain, createJobOnchain, runEscrowJobDemo } from './arc-contracts.js'
@@ -107,6 +107,20 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
 /** Map a platform error message to an HTTP status. */
 function errStatus(msg: string): number {
   return msg.startsWith('Forbidden') ? 403 : msg.startsWith('Unknown') ? 404 : 400
+}
+
+/** The real agents this platform knows, in a public discovery shape. Shared by the
+ *  REST /api/agents endpoint and the MCP `list_agents` tool. No mocks. */
+function publicAgents() {
+  return listPlatformAgents().map((a) => ({
+    agentId: a.onchainAgentId ? `eip155:${a.chainId}:8004/${a.onchainAgentId}` : a.id,
+    name: a.name,
+    chain: a.chain,
+    kya: a.kya,
+    onchain: a.onchain,
+    walletAddress: a.walletAddress,
+    onchainExplorer: a.onchainExplorer,
+  }))
 }
 
 const server = http.createServer(async (req, res) => {
@@ -244,23 +258,31 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
-  // ── REST /api/agent ──────────────────────────────────────────────────────────
+  // ── REST /api/agent — LIVE on-chain ERC-8004 resolve (Arc), no mocks ──────────
   if (req.method === 'GET' && url.pathname === '/api/agent') {
     const q = url.searchParams.get('q') ?? ''
     if (!q) { sendJson(res, 400, { error: 'Missing ?q= parameter' }); return }
-    const agent = resolveAgent(q)
-    if (!agent) { sendJson(res, 404, { found: false, query: q, reason: 'No matching ERC-8004 registration' }); return }
-    sendJson(res, 200, { found: true, source: 'mock', agent })
+    const provider = createIdentityProvider()
+    const agent = await provider.resolve(q)
+    if (!agent) { sendJson(res, 404, { found: false, query: q, reason: 'No matching ERC-8004 registration on-chain' }); return }
+    sendJson(res, 200, { found: true, source: provider.kind, agent })
     return
   }
 
-  // ── REST /api/reputation ─────────────────────────────────────────────────────
+  // ── REST /api/reputation — real, from platform settlements + on-chain identity ──
   if (req.method === 'GET' && url.pathname === '/api/reputation') {
     const id = url.searchParams.get('id') ?? ''
     if (!id) { sendJson(res, 400, { error: 'Missing ?id= parameter' }); return }
-    const history = getHistory(id)
-    if (!history) { sendJson(res, 404, { found: false, agentId: id, reason: 'Unknown agent' }); return }
-    sendJson(res, 200, { found: true, reputation: computeReputation(history) })
+    let rep = agentReputation(id)
+    // Accept an on-chain id too (e.g. "eip155:5042002:8004/849980" or a bare token id):
+    // map it to the platform agent anchored at that ERC-8004 token, then score it for real.
+    if ('error' in rep) {
+      const tokenId = id.match(/(\d+)\s*$/)?.[1]
+      const anchored = tokenId ? listPlatformAgents().find((a) => a.onchainAgentId === tokenId) : undefined
+      if (anchored) rep = agentReputation(anchored.id)
+    }
+    if ('error' in rep) { sendJson(res, 404, { found: false, agentId: id, reason: 'Unknown agent or no activity yet' }); return }
+    sendJson(res, 200, { found: true, reputation: rep })
     return
   }
 
@@ -405,21 +427,10 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
-  // ── REST /api/agents ──────────────────────────────────────────────────────────
+  // ── REST /api/agents — real agents this platform knows (no mocks) ─────────────
   if (req.method === 'GET' && url.pathname === '/api/agents') {
-    const chain = url.searchParams.get('chain') ?? undefined
-    const agents = listAgents(chain)
-    sendJson(res, 200, {
-      total: agents.length,
-      chain: chain ?? 'all',
-      agents: agents.map((a) => ({
-        agentId: a.agentId,
-        domain: a.domain,
-        valid: a.valid,
-        chain: a.chain,
-        registeredAt: a.registeredAt,
-      })),
-    })
+    const agents = publicAgents()
+    sendJson(res, 200, { total: agents.length, source: 'platform', agents })
     return
   }
 
@@ -621,7 +632,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/mcp') {
     try {
       const body = await readBody(req)
-      const mcp = buildServer()
+      const mcp = buildServer({ listAgents: publicAgents, getReputation: (id) => agentReputation(id) })
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
         enableJsonResponse: true,

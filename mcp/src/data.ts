@@ -1,9 +1,10 @@
 /**
- * Mock, read-only data for the A-Identity MCP server.
+ * Static, read-only reference data for the A-Identity MCP server.
  *
- * Multi-chain: Ethereum mainnet, Base, Arbitrum One (EVM, ERC-8004 native),
- * plus Stellar and Algorand (non-EVM, identity bridged via native standards).
- * Real chain adapters drop in via RpcIdentityProvider (see erc8004.ts).
+ * No fabricated agents: identity resolution is REAL on-chain (see erc8004.ts, which
+ * reads Circle Arc's deployed ERC-8004 registry), and the agent list / reputation
+ * come from real platform state (see http.ts / platform.ts). What remains here is
+ * chain metadata (CHAIN_CONFIG) and the capability manifest (listCapabilities).
  */
 
 export type ChainName = 'arc' | 'ethereum' | 'base' | 'arbitrum' | 'stellar' | 'algorand'
@@ -26,37 +27,13 @@ export type AgentActionHistory = {
   registeredAt: string
 }
 
-export const AGENTS: AgentIdentity[] = [
-  // Arc Testnet (eip155:5042002) - ERC-8004 native, gas in USDC, App Kit unified balance
-  { agentId: 'eip155:5042002:8004/10', tokenId: 10, owner: '0xARC0000000000000000000000000000000000010', registrationUri: 'https://agents.a-identity.xyz/10/registration.json', domain: 'treasury.arc.a-identity.xyz', valid: true, registeredAt: '2026-06-10', chain: 'arc' },
-  // Ethereum mainnet (eip155:1) - ERC-8004 native
-  { agentId: 'eip155:1:8004/1', tokenId: 1, owner: '0xA11CE00000000000000000000000000000000001', registrationUri: 'https://agents.a-identity.xyz/1/registration.json', domain: 'research.a-identity.xyz', valid: true, registeredAt: '2026-02-03', chain: 'ethereum' },
-  { agentId: 'eip155:1:8004/2', tokenId: 2, owner: '0xB0B0000000000000000000000000000000000002', registrationUri: 'https://agents.a-identity.xyz/2/registration.json', domain: 'payments.a-identity.xyz', valid: true, registeredAt: '2026-03-19', chain: 'ethereum' },
-  { agentId: 'eip155:1:8004/3', tokenId: 3, owner: '0xCA1F000000000000000000000000000000000003', registrationUri: 'https://agents.a-identity.xyz/3/registration.json', domain: 'scraper.example.com', valid: false, registeredAt: '2026-05-28', chain: 'ethereum' },
-  // Base (eip155:8453) - ERC-8004 native
-  { agentId: 'eip155:8453:8004/4', tokenId: 4, owner: '0xBASE0000000000000000000000000000000004', registrationUri: 'https://agents.a-identity.xyz/4/registration.json', domain: 'defi.base.a-identity.xyz', valid: true, registeredAt: '2026-04-10', chain: 'base' },
-  { agentId: 'eip155:8453:8004/5', tokenId: 5, owner: '0xBASE0000000000000000000000000000000005', registrationUri: 'https://agents.a-identity.xyz/5/registration.json', domain: 'yield.base.a-identity.xyz', valid: true, registeredAt: '2026-05-01', chain: 'base' },
-  // Arbitrum One (eip155:42161) - ERC-8004 native
-  { agentId: 'eip155:42161:8004/6', tokenId: 6, owner: '0xARB10000000000000000000000000000000006', registrationUri: 'https://agents.a-identity.xyz/6/registration.json', domain: 'arb-trading.a-identity.xyz', valid: true, registeredAt: '2026-05-15', chain: 'arbitrum' },
-  { agentId: 'eip155:42161:8004/7', tokenId: 7, owner: '0xARB10000000000000000000000000000000007', registrationUri: 'https://agents.a-identity.xyz/7/registration.json', domain: 'gm.a-identity.xyz', valid: true, registeredAt: '2026-06-01', chain: 'arbitrum' },
-  // Stellar (stellar:pubnet) - identity bridged (Soroban registry + SEP-10)
-  { agentId: 'stellar:pubnet:aid/8', tokenId: 8, owner: 'GADERESEARCHAGENTSTELLARPUBLICKEY00000000000000000008', registrationUri: 'https://agents.a-identity.xyz/8/registration.json', domain: 'fx.stellar.a-identity.xyz', valid: true, registeredAt: '2026-05-22', chain: 'stellar' },
-  // Algorand (algorand:mainnet) - identity bridged (did:algo + ARC registry)
-  { agentId: 'algorand:mainnet:aid/9', tokenId: 9, owner: 'ALGOAGENT7XV4ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ALGORAND9', registrationUri: 'https://agents.a-identity.xyz/9/registration.json', domain: 'pay.algo.a-identity.xyz', valid: true, registeredAt: '2026-06-05', chain: 'algorand' },
-]
+/** No fabricated agents. Real agents are resolved on-chain (erc8004.ts) and listed
+ *  from live platform state (http.ts). Kept as an empty typed export for consumers. */
+export const AGENTS: AgentIdentity[] = []
 
-const HISTORY: Record<string, AgentActionHistory> = {
-  'eip155:5042002:8004/10': { agentId: 'eip155:5042002:8004/10', settledActions: 320, disputes: 0, registeredAt: '2026-06-10' },
-  'eip155:1:8004/1':      { agentId: 'eip155:1:8004/1',      settledActions: 1894, disputes: 2, registeredAt: '2026-02-03' },
-  'eip155:1:8004/2':      { agentId: 'eip155:1:8004/2',      settledActions: 980,  disputes: 5, registeredAt: '2026-03-19' },
-  'eip155:1:8004/3':      { agentId: 'eip155:1:8004/3',      settledActions: 12,   disputes: 4, registeredAt: '2026-05-28' },
-  'eip155:8453:8004/4':   { agentId: 'eip155:8453:8004/4',   settledActions: 541,  disputes: 1, registeredAt: '2026-04-10' },
-  'eip155:8453:8004/5':   { agentId: 'eip155:8453:8004/5',   settledActions: 287,  disputes: 0, registeredAt: '2026-05-01' },
-  'eip155:42161:8004/6':  { agentId: 'eip155:42161:8004/6',  settledActions: 198,  disputes: 1, registeredAt: '2026-05-15' },
-  'eip155:42161:8004/7':  { agentId: 'eip155:42161:8004/7',  settledActions: 74,   disputes: 0, registeredAt: '2026-06-01' },
-  'stellar:pubnet:aid/8':  { agentId: 'stellar:pubnet:aid/8',  settledActions: 412, disputes: 1, registeredAt: '2026-05-22' },
-  'algorand:mainnet:aid/9': { agentId: 'algorand:mainnet:aid/9', settledActions: 156, disputes: 0, registeredAt: '2026-06-05' },
-}
+/** No fabricated history. Reputation is computed from real platform settlements
+ *  (platform.ts repOf) and real on-chain identity/validation. */
+const HISTORY: Record<string, AgentActionHistory> = {}
 
 export function resolveAgent(query: string): AgentIdentity | null {
   const q = query.trim().toLowerCase()
@@ -90,35 +67,35 @@ export const CHAIN_CONFIG = [
     evmCompatible: true, color: '#2775CA',
     identity: 'ERC-8004', erc8004Native: true, x402: true,
     role: 'Primary payment rail: gas in USDC, sub-second finality, App Kit unified balance.',
-    status: 'preview', agentCount: AGENTS.filter((a) => a.chain === 'arc').length,
+    status: 'preview',
   },
   {
     id: 'base', name: 'Base', shortName: 'Base', chainId: 8453,
     evmCompatible: true, color: '#0052FF',
     identity: 'ERC-8004', erc8004Native: true, x402: true,
     role: 'EVM fallback: ERC-8004 compatible, Coinbase ecosystem, low fees.',
-    status: 'preview', agentCount: AGENTS.filter((a) => a.chain === 'base').length,
+    status: 'preview',
   },
   {
     id: 'arbitrum', name: 'Arbitrum One', shortName: 'Arbitrum', chainId: 42161,
     evmCompatible: true, color: '#28A0F0',
     identity: 'ERC-8004', erc8004Native: true, x402: true,
     role: 'DeFi gateway: large protocol ecosystem, USDC via Circle, ERC-8004 compatible.',
-    status: 'preview', agentCount: AGENTS.filter((a) => a.chain === 'arbitrum').length,
+    status: 'preview',
   },
   {
     id: 'stellar', name: 'Stellar', shortName: 'Stellar', chainId: null,
     evmCompatible: false, color: '#C79A1E',
     identity: 'Soroban registry + SEP-10', erc8004Native: false, x402: true,
     role: 'Fast, low-cost settlement: USDC + EURC native (Circle), Soroban contracts.',
-    status: 'planned', agentCount: AGENTS.filter((a) => a.chain === 'stellar').length,
+    status: 'planned',
   },
   {
     id: 'algorand', name: 'Algorand', shortName: 'Algorand', chainId: null,
     evmCompatible: false, color: '#1A1A1A',
     identity: 'did:algo + ARC registry', erc8004Native: false, x402: true,
     role: 'Instant finality: USDC native (Circle), W3C did:algo, ARC smart contracts.',
-    status: 'planned', agentCount: AGENTS.filter((a) => a.chain === 'algorand').length,
+    status: 'planned',
   },
 ]
 

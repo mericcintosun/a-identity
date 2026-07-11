@@ -4,9 +4,8 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getHistory, listAgents, listCapabilities, CHAIN_CONFIG } from './data.js'
+import { listCapabilities, CHAIN_CONFIG } from './data.js'
 import { createIdentityProvider } from './erc8004.js'
-import { computeReputation } from './reputation.js'
 import { getArcStatus } from './arc.js'
 import { getCircleStatus } from './circle.js'
 
@@ -14,7 +13,18 @@ const json = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
 })
 
-export function buildServer(): McpServer {
+/**
+ * Real-data hooks the HTTP entry (http.ts) injects so the discovery tools return
+ * live platform state instead of nothing. The stdio entry passes none — there,
+ * `list_agents` is empty (the Arc registry isn't enumerable) and `get_reputation`
+ * says reputation lives on the platform. No mocks in either path.
+ */
+export type ServerData = {
+  listAgents?: () => Array<{ agentId: string; name?: string; chain: string; kya?: string; onchain?: string; walletAddress?: string | null }>
+  getReputation?: (agentId: string) => unknown | null
+}
+
+export function buildServer(data: ServerData = {}): McpServer {
   const server = new McpServer({ name: 'a-identity-mcp', version: '0.2.0' })
   const identity = createIdentityProvider()
 
@@ -23,17 +33,17 @@ export function buildServer(): McpServer {
     {
       title: 'Resolve agent identity',
       description:
-        "Resolve an agent's identity by agent id (CAIP-10), token id, owner address, or domain. Supports Ethereum, Base, Arbitrum (ERC-8004 native), plus Stellar and Algorand (identity bridged). Read-only.",
+        "Resolve an agent's identity with a LIVE on-chain read of Circle Arc's ERC-8004 IdentityRegistry (ownerOf + tokenURI). Query by agent id (CAIP-10), token id, or owner address. Extra EVM chains are read when configured. Read-only, no mocks.",
       inputSchema: {
         query: z
           .string()
           .describe(
-            'Agent id (e.g. "eip155:1:8004/1", "stellar:pubnet:aid/8", "algorand:mainnet:aid/9"), token id ("#2"), owner address, or domain',
+            'Agent id (e.g. "eip155:5042002:8004/849980"), token id ("#849980"), or owner address (0x…)',
           ),
         chain: z
-          .enum(['ethereum', 'base', 'arbitrum', 'stellar', 'algorand'])
+          .enum(['arc', 'ethereum', 'base', 'arbitrum'])
           .optional()
-          .describe('Optional chain filter. Omit to search all chains.'),
+          .describe('Optional chain filter. Omit to search all configured chains (Arc by default).'),
       },
     },
     async ({ query, chain }) => {
@@ -55,19 +65,26 @@ export function buildServer(): McpServer {
     {
       title: 'Get agent reputation',
       description:
-        "Compute an agent's deterministic reputation score (0-1000) and breakdown by agent id. Works across all supported chains (Arc, Base, Arbitrum, Stellar, Algorand). Read-only.",
+        "An agent's deterministic reputation (0-1000) computed from REAL activity: on-chain USDC settlements, verified ERC-8004 identity, clean ratio, and tenure. Read-only.",
       inputSchema: {
         agentId: z
           .string()
-          .describe(
-            'The agent id (CAIP-10, e.g. "eip155:1:8004/1", "eip155:8453:8004/4") or token id ("#1")',
-          ),
+          .describe('The platform agent id (e.g. "agent_…") or an on-chain agent id'),
       },
     },
     async ({ agentId }) => {
-      const history = getHistory(agentId)
-      if (!history) return json({ found: false, agentId, reason: 'Unknown agent or no history yet' })
-      return json({ found: true, reputation: computeReputation(history) })
+      if (!data.getReputation) {
+        return json({
+          found: false,
+          agentId,
+          reason:
+            'Reputation is computed from real platform settlements; query it against a running A-Identity platform instance (REST /api/agents/reputation) or the app.',
+        })
+      }
+      const rep = data.getReputation(agentId)
+      if (!rep || (typeof rep === 'object' && 'error' in (rep as object)))
+        return json({ found: false, agentId, reason: 'Unknown agent or no activity yet' })
+      return json({ found: true, reputation: rep })
     },
   )
 
@@ -76,26 +93,15 @@ export function buildServer(): McpServer {
     {
       title: 'List registered agents',
       description:
-        'List all registered agents, optionally filtered by chain. Returns agentId, domain, valid status, and chain.',
-      inputSchema: {
-        chain: z
-          .enum(['ethereum', 'base', 'arbitrum', 'stellar', 'algorand'])
-          .optional()
-          .describe('Filter by chain. Omit to list all chains.'),
-      },
+        'List the real agents registered on this A-Identity platform (name, chain, KYA + on-chain status). The Arc ERC-8004 registry is not enumerable, so this lists agents this instance knows — not every token ever minted.',
+      inputSchema: {},
     },
-    async ({ chain }) => {
-      const agents = listAgents(chain)
+    async () => {
+      const agents = data.listAgents ? data.listAgents() : []
       return json({
         total: agents.length,
-        chain: chain ?? 'all',
-        agents: agents.map((a) => ({
-          agentId: a.agentId,
-          domain: a.domain,
-          valid: a.valid,
-          chain: a.chain,
-          registeredAt: a.registeredAt,
-        })),
+        source: data.listAgents ? 'platform' : 'none (registry not enumerable; connect to a platform instance)',
+        agents,
       })
     },
   )
