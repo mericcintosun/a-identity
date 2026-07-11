@@ -27,6 +27,18 @@ const ARC_NETWORK = 'eip155:5042002'
 /** Price per call: 0.001 USDC (6-decimal units). A true sub-cent nanopayment. */
 const PRICE_UNITS = '1000'
 
+/** The resource a payment buys — required by Gateway's settle endpoint. */
+const RESOURCE = {
+  url: 'https://a-identity.xyz/api/x402/nano/data',
+  description: 'A-Identity — live Arc chain data (nanopayment)',
+  mimeType: 'application/json',
+}
+
+/** A distinct demo merchant for the one-click demo (Gateway rejects a self-transfer,
+ *  so the buyer/server-signer must pay a DIFFERENT address). Real payments to our
+ *  seller endpoint come from other wallets, so this only affects the demo. */
+const DEMO_SELLER = '0x000000000000000000000000000000000000bEEF'
+
 const usdcUnits = (usd: number) => BigInt(Math.round(usd * 1e6)).toString()
 
 /** The Arc-testnet `exact`/GatewayWalletBatched kind, discovered live + cached. */
@@ -101,8 +113,12 @@ export async function settleNano(
     if (!req) return { ok: false, reason: 'Gateway batched rail unavailable for Arc testnet' }
     const payload = JSON.parse(Buffer.from(paymentSignatureB64, 'base64').toString())
     const f = await facilitator()
-    const settle = (await f.settle(payload, req as never)) as { success: boolean; errorReason?: string }
-    if (!settle.success) return { ok: false, reason: settle.errorReason ?? 'settlement failed' }
+    const settle = (await f.settle({ resource: RESOURCE, ...payload }, req as never)) as {
+      success: boolean
+      errorReason?: string
+      message?: string
+    }
+    if (!settle.success) return { ok: false, reason: settle.errorReason ?? settle.message ?? 'settlement failed' }
     return { ok: true, settle }
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) }
@@ -151,7 +167,7 @@ export async function runNanopayDemo(
       gatewayBalanceAfter: number
       deposit: { amountUsd: number; depositTx?: string; explorerUrl?: string } | null
       authorization: { from: string; to: string; value: string; nonce: string }
-      settle: { success: boolean; transaction?: string; network?: string; payer?: string; explorerUrl?: string }
+      settle: { success: boolean; errorReason?: string; transaction?: string; network?: string; payer?: string; explorerUrl?: string }
     }
 > {
   const account = await buyerSigner(env)
@@ -166,7 +182,10 @@ export async function runNanopayDemo(
   if (!kind) return { executed: false, reason: 'Circle Gateway batched rail is not advertising Arc testnet right now.' }
 
   const amountUsd = input.amountUsd ?? 0.001
-  const payTo = (await x402PayTo(env)) ?? account.address
+  // Gateway rejects a self-transfer, so the buyer (server signer) pays a DISTINCT
+  // seller: the configured payTo when it differs from the buyer, else a demo merchant.
+  const configured = await x402PayTo(env)
+  const payTo = configured && configured.toLowerCase() !== account.address.toLowerCase() ? configured : DEMO_SELLER
   const req = await arcRequirements(payTo, usdcUnits(amountUsd))
   if (!req) return { executed: false, reason: 'Could not build Arc payment requirements.' }
 
@@ -192,11 +211,15 @@ export async function runNanopayDemo(
     payload: { authorization: { from: string; to: string; value: string; nonce: string } }
   }
 
-  // 3) settle through Circle Gateway (verify + credit + batch on-chain)
+  // 3) settle through Circle Gateway (verify + credit + batch on-chain). The `resource`
+  // is required by Gateway's settle endpoint.
   const f = await facilitator()
-  const settle = (await f.settle({ ...created, accepted: req } as never, req as never)) as {
+  const settle = (await f
+    .settle({ resource: RESOURCE, ...created, accepted: req } as never, req as never)
+    .catch((e: unknown) => ({ success: false, errorReason: e instanceof Error ? e.message : String(e) }))) as {
     success: boolean
     errorReason?: string
+    message?: string
     transaction?: string
     network?: string
     payer?: string
@@ -219,6 +242,7 @@ export async function runNanopayDemo(
     },
     settle: {
       success: settle.success,
+      errorReason: settle.errorReason ?? settle.message,
       transaction: settle.transaction,
       network: settle.network,
       payer: settle.payer,

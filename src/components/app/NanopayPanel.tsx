@@ -15,7 +15,7 @@ type Result =
       gatewayBalanceAfter: number
       deposit: { amountUsd: number; depositTx?: string; explorerUrl?: string } | null
       authorization: { from: string; to: string; value: string; nonce: string }
-      settle: { success: boolean; transaction?: string; network?: string; payer?: string; explorerUrl?: string }
+      settle: { success: boolean; errorReason?: string; transaction?: string; network?: string; payer?: string; explorerUrl?: string }
     }
 
 /**
@@ -129,9 +129,12 @@ export default function NanopayPanel() {
               {settled ? (
                 <>Settled through Circle Gateway — <b>batched on-chain</b>, gasless for buyer &amp; seller</>
               ) : (
-                'Submitted to Gateway…'
+                <>Not settled{result.settle.errorReason ? `: ${result.settle.errorReason}` : ''}</>
               )}
             </span>
+            {settled && result.settle.transaction && (
+              <span className="ml-auto font-mono text-[10px] text-ink/40">batch {result.settle.transaction.slice(0, 8)}…</span>
+            )}
             {result.settle.explorerUrl && (
               <a
                 href={result.settle.explorerUrl}
