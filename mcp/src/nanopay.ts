@@ -144,6 +144,76 @@ async function buyerSigner(env: NodeJS.ProcessEnv) {
   return privateKeyToAccount(key as `0x${string}`)
 }
 
+/** The server signer's address (the demo buyer), or null without a key. */
+export async function buyerAddress(env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  return (await buyerSigner(env))?.address ?? null
+}
+
+/**
+ * Ensure the buyer has at least `minUsd` in its Gateway balance, topping up with a
+ * real deposit if low. Reused before an autonomous run so the loop never stalls.
+ */
+export async function ensureGatewayBalance(
+  minUsd: number,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<{ available: number; deposit?: { amountUsd: number; depositTx?: string; explorerUrl?: string } }> {
+  const account = await buyerSigner(env)
+  if (!account) return { available: 0 }
+  const bal = await gatewayBalance(account.address)
+  let available = 'error' in bal ? 0 : bal.available
+  let deposit: { amountUsd: number; depositTx?: string; explorerUrl?: string } | undefined
+  if (available < minUsd) {
+    const topUp = Math.max(1, Math.ceil(minUsd - available + 0.5))
+    const dep = await gatewayDeposit(topUp, env)
+    if (dep.executed) {
+      deposit = { amountUsd: topUp, depositTx: dep.depositTx, explorerUrl: dep.depositUrl }
+      const b2 = await gatewayBalance(account.address)
+      available = 'error' in b2 ? available : b2.available
+    }
+  }
+  return { available, deposit }
+}
+
+/**
+ * Sign + settle ONE gasless nanopayment to `payTo` (assumes a Gateway balance already
+ * exists — call ensureGatewayBalance first). The reusable unit an autonomous agent
+ * loops over: an EIP-3009 authorization signed off-chain, settled through Circle Gateway.
+ */
+export async function nanopayOnce(
+  amountUsd: number,
+  payTo: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<
+  | { ok: true; authorization: { from: string; to: string; value: string; nonce: string }; transaction?: string }
+  | { ok: false; reason: string }
+> {
+  const account = await buyerSigner(env)
+  if (!account) return { ok: false, reason: 'No ARC_SIGNER_KEY set.' }
+  const kind = await getArcKind()
+  if (!kind) return { ok: false, reason: 'Gateway batched rail unavailable for Arc testnet.' }
+  const req = await arcRequirements(payTo, usdcUnits(amountUsd))
+  if (!req) return { ok: false, reason: 'Could not build Arc payment requirements.' }
+  const { BatchEvmScheme } = await import('@circle-fin/x402-batching/client')
+  const scheme = new BatchEvmScheme({
+    address: account.address,
+    signTypedData: (p) => account.signTypedData(p as Parameters<typeof account.signTypedData>[0]),
+  })
+  const created = (await scheme.createPaymentPayload(2, req as never)) as {
+    payload: { authorization: { from: string; to: string; value: string; nonce: string } }
+  }
+  const f = await facilitator()
+  const settle = (await f
+    .settle({ resource: RESOURCE, ...created, accepted: req } as never, req as never)
+    .catch((e: unknown) => ({ success: false, errorReason: e instanceof Error ? e.message : String(e) }))) as {
+    success: boolean
+    errorReason?: string
+    message?: string
+    transaction?: string
+  }
+  if (!settle.success) return { ok: false, reason: settle.errorReason ?? settle.message ?? 'settlement failed' }
+  return { ok: true, authorization: created.payload.authorization, transaction: settle.transaction }
+}
+
 /**
  * One-click Nanopayment demo, fully server-side (the server signer plays the buyer):
  *  1) ensure a Gateway balance on Arc (top-up deposit if low — reuses gateway.ts),

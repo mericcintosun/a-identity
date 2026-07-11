@@ -79,8 +79,29 @@ fallback, so one layer failing never fabricates a success.
 | **Circle CCTP** | `mcp/src/cctp.ts` | Native USDC cross-chain by **burn-and-mint** (CCTPv2 via `@circle-fin/bridge-kit`): burn on Arc → attest → mint natively on Base Sepolia (never wrapped). Canonical bridge, distinct from Gateway's unified-balance forwarding. |
 
 > Circle products used: **USDC, Wallets, Gateway, Nanopayments, CCTP** — all live on Arc testnet.
-> **USYC / StableFX** are enterprise-gated (access by request); we integrate them at the
-> architecture level only, and say so — no penalty for conceptual integration per the rules.
+
+### Gated products — architecture-level (USYC, StableFX)
+
+USYC and StableFX are enterprise-gated (access by request). Per the hackathon rules,
+conceptual/architecture-level integration is accepted with no penalty. Where they fit:
+
+- **USYC — idle-treasury yield.** An agent treasury spends in bursts; between bursts USDC
+  sits idle. The policy layer parks the surplus above a liquidity floor in **USYC** (Circle's
+  tokenized money-market fund) and pulls it back when spending picks up — yield without losing
+  the ability to pay. Surfaced today in the *"idle USDC parks itself in USYC"* use case; the
+  `AgentSpendPolicy` vault is the natural on-chain home for the park/unpark rule once access is granted.
+- **StableFX — cross-currency settlement.** An agent paid in USDC that must settle a EURC
+  invoice (or vice-versa) uses **StableFX** to convert at settlement time, so the bounded-authority
+  policy and reputation travel across currencies for cross-border agent-to-agent commerce.
+
+### Autonomy — the agent runs itself, bounded
+
+`mcp/src/autopilot.ts` (`POST /api/arc/agent-run`) is the autonomous economic experience: a
+human sets a budget once, then the agent makes a **burst of real gasless nanopayments** to a
+service (pay-per-inference / streaming) on its own and **stops itself** the moment the next
+payment would breach the budget — bounded authority, demonstrated live, no human per payment.
+Each run routes a **protocol fee** (basis points of volume) to an A-Identity treasury as one
+real settlement — the on-chain proof of the "fee per settlement" model.
 
 ## Verifiable on-chain proof (Arc testnet)
 

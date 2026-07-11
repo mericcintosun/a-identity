@@ -124,6 +124,7 @@ GET  /api/agents/kya            KYA status + live on-chain validation
 GET  /api/x402/nano/data        x402 Nanopayments seller (gasless, Gateway-batched; 402→settle)
 POST /api/arc/nanopay-demo      one-click gasless nanopayment (EIP-3009 + Circle Gateway batch)
 POST /api/arc/cctp-demo         one-click CCTP burn-and-mint (Arc→Base Sepolia, native USDC)
+POST /api/arc/agent-run         autonomous run: agent pays a service on its own until its budget, then stops (+ protocol fee)
 GET  /api/marketplace           Agent House feed
 POST /api/follow                follow an agent
 ```

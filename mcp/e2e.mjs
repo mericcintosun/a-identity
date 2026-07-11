@@ -356,6 +356,17 @@ async function main() {
     check('cctp bridge produced burn/mint steps', Array.isArray(cctp.json?.steps) && cctp.json.steps.length > 0, `${cctp.json?.steps?.length} steps / ${cctp.json?.state}`)
   }
 
+  // ── S. Autonomous agent run (self-driven payments, bounded stop, protocol fee) ──
+  phase('S. Autonomous agent run (bounded, gasless)')
+  const run = await api('POST', '/api/arc/agent-run', { token: alice, body: { amountUsd: 0.005, budgetUsd: 0.02, maxCalls: 6 } })
+  if (run.json?.executed === false) {
+    skip('agent runs autonomously', 'no signer key (prepared only)')
+  } else {
+    check('agent made autonomous nanopayments', run.json?.settledCount > 0, `${run.json?.settledCount} settled / vol ${run.json?.volumeUsd}`)
+    check('agent stopped itself at the budget (bounded)', run.json?.stoppedReason === 'budget-reached' && run.json?.pausedForHuman === true, run.json?.stoppedReason)
+    check('protocol fee accrued to treasury', typeof run.json?.protocolFee?.accruedUsd === 'number', JSON.stringify(run.json?.protocolFee)?.slice(0, 80))
+  }
+
   // ── summary ─────────────────────────────────────────────────────────────────
   console.log(`\n${passed} passed, ${failed} failed`)
   if (failed) {

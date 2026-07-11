@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowUpRight, CheckCircle2, Clock, ExternalLink, Link2, Send, ShieldQuestion, Wallet } from 'lucide-react'
 import { authHeaders } from '../../store/auth'
+import AutopilotPanel from '../../components/app/AutopilotPanel'
 import X402Panel from '../../components/app/X402Panel'
 import NanopayPanel from '../../components/app/NanopayPanel'
 import EscrowPanel from '../../components/app/EscrowPanel'
@@ -281,6 +282,7 @@ export default function Settlements() {
         </>
       )}
 
+      <AutopilotPanel />
       <X402Panel />
       <NanopayPanel />
       <EscrowPanel />

@@ -54,6 +54,7 @@ import {
 import { nanoPaymentRequirements, settleNano, nanoResource, runNanopayDemo } from './nanopay.js'
 import { runGatewayDemo, gatewayBalance } from './gateway.js'
 import { runCctpDemo } from './cctp.js'
+import { runAgentRun } from './autopilot.js'
 import { randomBytes } from 'node:crypto'
 
 // Render/most hosts inject PORT; fall back to our own var, then the local default.
@@ -393,6 +394,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/arc/cctp-demo') {
     const body = (await readBody(req).catch(() => null)) as { amountUsd?: number } | null
     sendJson(res, 200, await runCctpDemo({ amountUsd: body?.amountUsd }))
+    return
+  }
+
+  // ── Autonomous agent run: the agent pays a service on its own until it hits the
+  //    human-set budget, then stops itself; a protocol fee is routed to the treasury.
+  if (req.method === 'POST' && url.pathname === '/api/arc/agent-run') {
+    const body = (await readBody(req).catch(() => null)) as { maxCalls?: number; amountUsd?: number; budgetUsd?: number } | null
+    sendJson(res, 200, await runAgentRun({ maxCalls: body?.maxCalls, amountUsd: body?.amountUsd, budgetUsd: body?.budgetUsd }))
     return
   }
 
