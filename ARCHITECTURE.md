@@ -25,17 +25,25 @@ flowchart LR
     C[Circle Agent Wallet<br/>hosted screening]
   end
   subgraph Payment rails
-    X[x402<br/>pay-per-call API]
+    X[x402<br/>on-chain pay-per-call]
+    N[Circle Nanopayments<br/>gasless, batched sub-cent]
     E[ERC-8183 escrow<br/>agent-to-agent jobs]
     S[Direct USDC settlement]
+  end
+  subgraph Cross-chain USDC
+    G[Circle Gateway<br/>unified balance]
+    CC[Circle CCTP<br/>burn-and-mint]
   end
   A --> ID --> KYA
   P --> V
   P --> C
-  P --> S & X & E
+  P --> S & X & N & E
   S -->|USDC on Arc| OUT[(Arc testnet)]
   V --> OUT
   E --> OUT
+  X --> OUT
+  N -->|batched settlement| OUT
+  OUT --> G & CC -->|native USDC| OTHER[(Base / other chains)]
 ```
 
 ## Three independent enforcement layers
