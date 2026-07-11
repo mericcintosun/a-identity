@@ -5,8 +5,10 @@ description: "Pay-per-action over the HTTP 402 status code, settled in stablecoi
 
 x402 is an open payment standard from Coinbase and the x402 Foundation. It revives
 the HTTP 402 status code so a client can pay for a resource in the same request it
-asks for it. No accounts, no API keys by default. As of mid 2026 the ecosystem had
-processed more than 169 million payments.
+asks for it. No accounts, no API keys by default. A-Identity ships a **real x402
+rail**: the server answers an unpaid request with 402 + machine-readable payment
+requirements, the client pays USDC on Arc, and the server verifies that payment
+on-chain (with replay protection) before serving the resource.
 
 ## How One Payment Works
 
@@ -25,17 +27,25 @@ processed more than 169 million payments.
 
 ## Settlement
 
-Payment is network agnostic, but most flows settle in **USDC**, often on Base.
-A-Identity targets Circle's Arc as the primary rail, where Agent Wallets and
-Nanopayments make sub-cent transfers practical. Confirmation lands in roughly 200
-milliseconds.
+The x402 standard is asset- and network-agnostic, but A-Identity settles every x402
+call in **USDC on Circle Arc** — the same dollar the rest of the platform uses, where
+gas is paid in USDC and finality is sub-second. Each call costs a real sub-cent amount
+(0.001 USDC in the shipped demo), verified as an on-chain USDC transfer before the
+resource is served.
 
 | Property | Value |
 | --- | --- |
 | Standard | x402 (HTTP 402) |
-| Settlement | USDC, also USDT and PYUSD |
-| Primary rail | Circle Arc |
-| Typical fee | under one cent |
+| Settlement | USDC on Circle Arc |
+| Primary rail | Circle Arc (testnet) |
+| Price per call | 0.001 USDC (sub-cent) |
+
+<Note>
+We chose x402 as the micro-payment rail because it is an open, self-verifying
+standard that lets us **prove** settlement on-chain rather than trust a hosted meter.
+Circle Nanopayments is not used today; if it exposes a comparable sub-cent primitive
+on Arc, it would be a natural addition alongside x402.
+</Note>
 
 ## Paid Tools
 

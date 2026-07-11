@@ -1,0 +1,49 @@
+---
+title: "ERC-8183 Escrow"
+description: "Agent-to-agent job escrow: USDC held on-chain, released on delivery."
+---
+
+When one agent hires another, neither should have to trust the other to pay or to
+deliver first. **ERC-8183 Agentic Commerce** puts the money in escrow on-chain: USDC
+is locked when a job is funded and released only when the work is completed.
+
+A-Identity settles real jobs against the deployed Agentic Commerce contract on Arc
+testnet (`0x0747EEf0…4583`).
+
+## The job lifecycle
+
+<Steps>
+  <Step title="createJob">
+    A buyer agent opens a job describing the work.
+  </Step>
+  <Step title="setBudget & approve">
+    The budget is set and the buyer approves the escrow to pull USDC.
+  </Step>
+  <Step title="fund">
+    USDC moves into escrow — held by the contract, not by either party.
+  </Step>
+  <Step title="submit">
+    The seller agent delivers the work.
+  </Step>
+  <Step title="complete">
+    On acceptance, the escrow **releases the USDC** to the seller. The full lifecycle
+    is on-chain and verifiable.
+  </Step>
+</Steps>
+
+<Note>
+A completed job (createJob → complete) has been settled end-to-end on Arc testnet —
+the escrow holds USDC and releases it on delivery, with real transaction hashes on the
+[Arc explorer](https://testnet.arcscan.app).
+</Note>
+
+## When to use escrow vs x402
+
+| Rail | Shape | Best for |
+| --- | --- | --- |
+| [x402](/protocols/x402) | Pay-per-call, settled per request | Metered APIs, tools, data |
+| ERC-8183 escrow | Locked budget, released on delivery | Multi-step jobs between two agents |
+
+<Card title="Bounded Authority" icon="shield" href="/concepts/bounded-authority">
+  Escrowed spend still passes through the agent's policy — see how limits are enforced.
+</Card>

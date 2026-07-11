@@ -1,10 +1,11 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
   Bot,
   CreditCard,
   Fingerprint,
   LayoutDashboard,
+  Lock,
   LogOut,
   SlidersHorizontal,
   Store,
@@ -36,8 +37,12 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuth((s) => s.user)
+  const token = useAuth((s) => s.token)
   const logout = useAuth((s) => s.logout)
   const mcp = useMcpHealth()
+  // A user with no token is a browse-only guest: reads work, but the backend rejects
+  // their writes. Surface that up front so an action never fails silently.
+  const isGuest = Boolean(user) && !token
 
   const current = [...NAV].reverse().find((n) => location.pathname.startsWith(n.to))
   const title = current?.label ?? 'Overview'
@@ -167,6 +172,17 @@ export default function AppLayout() {
             </div>
           </div>
         </header>
+
+        {/* Guest banner: browse-only session — writes won't persist until they sign in. */}
+        {isGuest && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-900 sm:px-8">
+            <Lock size={13} className="shrink-0" />
+            You're browsing read-only as a guest. Registering, approving, and paying won't save.
+            <Link to="/login" className="font-semibold underline underline-offset-2 hover:text-amber-950">
+              Sign in with your wallet to act
+            </Link>
+          </div>
+        )}
 
         {/* Cold-start banner: the backend (free tier) may nap and take ~30s to wake. */}
         {mcp === 'waking' && (

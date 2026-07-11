@@ -1,0 +1,43 @@
+import { Component, type ErrorInfo, type ReactNode } from 'react'
+
+type Props = { children: ReactNode }
+type State = { error: Error | null }
+
+/**
+ * App-root error boundary. Without it, an unexpected render throw anywhere in the tree
+ * blanks the whole page (React unmounts the root). This catches it and shows a calm,
+ * on-brand recovery card with a reload — a broken panel never takes the app down.
+ */
+export default class ErrorBoundary extends Component<Props, State> {
+  state: State = { error: null }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { error }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // Surface it in the console for debugging; no remote logging on testnet.
+    console.error('[A-Identity] render error:', error, info.componentStack)
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div className="grid min-h-screen place-items-center bg-cream px-6 text-ink">
+        <div className="w-full max-w-md rounded-2xl border border-ink/10 bg-white p-8 text-center shadow-sm">
+          <h1 className="text-lg font-bold">Something went wrong</h1>
+          <p className="mt-2 text-sm text-ink/60">
+            A panel hit an unexpected error. Your data is safe — reloading usually fixes it.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03]"
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    )
+  }
+}

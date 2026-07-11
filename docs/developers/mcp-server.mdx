@@ -4,8 +4,15 @@ description: "The read-only A-Identity MCP server, tool by tool."
 ---
 
 The server lives in the `mcp` package. It speaks MCP over stdio and over Streamable
-HTTP, and it is read only: no keys, no funds, no chain writes. Identity reads go
-through a swappable provider, mock today and on-chain once an RPC endpoint is set.
+HTTP, and it is read only: no keys, no funds, no chain writes. The `resolve_agent`
+identity tool goes through a swappable provider that defaults to sample data and
+switches to on-chain reads once an RPC endpoint is set (`source: "mock"` vs `"rpc"`).
+
+<Note>
+The identity **provider** defaults to sample data, but the platform's REST API already
+reads the **live ERC-8004 + ERC-8183 contracts on Arc testnet** (`GET
+/api/arc/contracts`) with no mocks — see [Build on Arc](/chains/arc).
+</Note>
 
 ## Run It
 

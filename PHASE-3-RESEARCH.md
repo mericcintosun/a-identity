@@ -19,7 +19,8 @@ of June 2026, and answers the open question from Phase 2: **ARC or 0G?**
   It is a modular AI L1 for decentralized storage / data-availability / compute,
   useful for persisting agent artifacts and reputation history. **Not needed for
   the MVP.**
-- **Identity** = ERC-8004 (live on Ethereum mainnet since 29 Jan 2026).
+- **Identity** = ERC-8004 (draft "Trustless Agents" standard; A-Identity reads live
+  ERC-8004 registries deployed on **Arc testnet**, not Ethereum mainnet).
 - **Connectivity** = MCP, with **x402-mcp** to gate paid tools.
 
 So the answer to "which is primary" is **Arc** - and the two are layered, not
@@ -43,7 +44,7 @@ ERC-721 whose tokenURI points to a JSON registration file), **Reputation**
 (standardized feedback), and **Validation** (cryptographic/economic verification).
 Permissionless - no central issuer. Authored across MetaMask, the Ethereum
 Foundation, Google, and Coinbase; an on-chain extension of Google's A2A protocol.
-**Live on Ethereum mainnet since 29 Jan 2026.**
+**Draft standard; A-Identity reads live ERC-8004 registries deployed on Arc testnet.**
 
 ### MCP + x402-mcp - connectivity & monetization
 Model Context Protocol is the agent and tool standard. **x402-mcp** (Vercel) adds
@@ -110,15 +111,15 @@ must be decentralized.
                 │               │               │
         Verify  ▼        Pay    ▼        Data    ▼ (later)
        ERC-8004 registries   x402 + Circle Arc      0G Storage/DA
-       (Ethereum mainnet)    (Agent Wallets,        (agent artifacts,
-       identity/reputation   Nanopayments, USDC)    reputation history)
+       (Arc testnet)         (USDC settlement,      (agent artifacts,
+       identity/reputation   on-chain verified)     reputation history)
 ```
 
 ### Layer mapping
 | A-Identity pillar | Protocol(s)                         | Network            |
 | ----------------- | ----------------------------------- | ------------------ |
 | Connect           | MCP + x402-mcp                      | HTTP / stdio       |
-| Verify (KYA)      | ERC-8004 (identity/reputation/validation) | Ethereum mainnet |
+| Verify (KYA)      | ERC-8004 (identity/reputation/validation) | Arc testnet |
 | Pay               | x402 settlement                     | **Arc** (USDC), Base fallback |
 | Wallet            | Circle Agent Wallets / Privy        | Arc / Circle Gateway |
 | Reputation        | deterministic engine + ERC-8004 feedback | off-chain compute, on-chain anchor |

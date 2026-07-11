@@ -107,13 +107,19 @@ export default function AgentId() {
     ? new Date(realAgent.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
     : liveAgent?.registeredAt ?? '—'
   const networkLabel = realAgent ? 'Arc testnet' : '5 chains'
+  // Honest progress: only a REAL agent advances the stepper. The illustrative sample
+  // (shown when the account has no agent yet) sits at stage 0 — the user hasn't
+  // registered anything, so nothing is "done".
   const stageIndex = !realAgent
-    ? 2 // no real agent yet → show the demo card fully "live"
+    ? 0
     : realAgent.onchain === 'registered' && realAgent.kya === 'verified'
       ? 2
       : realAgent.kya === 'verified' || realAgent.onchain === 'registered'
         ? 1
         : 0
+  // The card is a real agent only when we actually found one; otherwise it renders an
+  // illustrative sample (from the mock identity provider) so the layout isn't empty.
+  const isSample = realChecked && !realAgent
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -128,15 +134,29 @@ export default function AgentId() {
         {/* MCP source badge */}
         <div
           className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-            mcpOnline
-              ? 'bg-emerald-100 text-emerald-700'
-              : 'bg-ink/8 text-ink/40'
+            !mcpOnline
+              ? 'bg-ink/8 text-ink/40'
+              : realAgent
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-amber-100 text-amber-700'
           }`}
         >
           {mcpOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-          {mcpOnline ? (realAgent ? 'Live' : `Live (${source ?? 'mock'})`) : 'Offline'}
+          {!mcpOnline ? 'Offline' : realAgent ? 'Live' : 'Sample'}
         </div>
       </div>
+
+      {/* Sample notice: no real agent yet → the card below is illustrative, not yours. */}
+      {isSample && (
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+          <ShieldQuestion size={18} className="mt-0.5 shrink-0" />
+          <p>
+            <span className="font-semibold">This is a sample identity.</span> You haven't created
+            an agent yet — register one below to get your own on-chain ERC-8004 passport. The card
+            below just previews what it will look like.
+          </p>
+        </div>
+      )}
 
       {/* Identity card */}
       <div

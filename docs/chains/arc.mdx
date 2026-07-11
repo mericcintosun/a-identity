@@ -83,11 +83,16 @@ const block = await client.getBlockNumber()    // latest block
 ```
 </CodeGroup>
 
-A-Identity already does this read for you. The MCP server exposes it live:
+A-Identity already does this read for you. Hit the **live backend** (or a local server
+at `http://localhost:3399`):
 
 ```bash
-curl http://localhost:3399/api/arc
+# live deployment
+curl https://a-identity-backend.onrender.com/api/arc
 # { "online": true, "chainId": 5042002, "blockNumber": "...", "gasToken": "USDC", ... }
+
+# or read the deployed ERC-8004 + ERC-8183 + USDC contracts, live and unmocked
+curl https://a-identity-backend.onrender.com/api/arc/contracts
 ```
 
 ## Unified Balance With App Kit
@@ -159,6 +164,7 @@ deployer wallet from the faucet first.
 
 ## Where Arc Fits
 
-Arc is the **primary rail**: gas in USDC, unified balance, and nanopayments down to
-a millionth of a dollar. Base and the other chains are fallbacks. Identity stays on
-ERC-8004, which Arc speaks natively because it is EVM compatible.
+Arc is the **primary rail**: gas in USDC, a unified balance via Circle Gateway, and
+sub-cent x402 pay-per-call settlement verified on-chain. Base and the other chains are
+fallbacks. Identity stays on ERC-8004, which Arc speaks natively because it is EVM
+compatible.

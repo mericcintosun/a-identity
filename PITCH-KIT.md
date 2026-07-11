@@ -50,7 +50,7 @@ Both hackathons' Agentic Economy tracks look for the following. When you speak, 
 |---|---|
 | "Clear decision logic" | "Every agent payment runs through a policy engine: cap, allowlist, approval line." |
 | "Autonomous spending/settlement" | "Payments under the line settle without a human, in USDC on Arc." |
-| "Nanopayments" | "Service-to-service sub-cent payments use Circle Nanopayments." |
+| "Micro-payments" | "Service-to-service sub-cent payments use a **real x402 rail** — pay-per-call USDC on Arc, verified on-chain (0.001 USDC/call)." |
 | "Demonstrable autonomy" | "Every transaction is visible on arcscan — live, real testnet txs." |
 | "Bounded authority / zero-trust" | See section 3 — this is our core differentiator. |
 
@@ -66,7 +66,7 @@ Both hackathons' Agentic Economy tracks look for the following. When you speak, 
 | 0:20–0:40 | Product home | "A-Identity: a passport + a guarded wallet for agents." |
 | 0:40–1:10 | Register agent → identity on Arc | "We register the agent; a **real** ERC-8004 identity is minted on Arc." *(→ show the tx on arcscan)* |
 | 1:10–1:40 | Permissions screen | "Daily cap, auto-approve line, allowlist — a human sets the rules." |
-| 1:40–2:20 | Agent makes a payment | "The agent pays a service in USDC via **Nanopayments**: under the line it's automatic; **above it, a human is asked.**" *(show both)* |
+| 1:40–2:20 | Agent makes a payment | "The agent pays a service in USDC (x402 pay-per-call + on-chain policy vault): under the line it's automatic; **above it the vault reverts on Arc and a human is asked.**" *(show both — including the on-chain revert)* |
 | 2:20–2:40 | Agent House / reputation | "Reputation builds from real settlements; others can trust it." |
 | 2:40–3:00 | Close | "Live today on Arc + Circle. Vision: a safe financial identity for every agent." |
 
@@ -83,7 +83,7 @@ Both hackathons' Agentic Economy tracks look for the following. When you speak, 
 5. **How it works** — 3 steps: Register → Set rules → Pay autonomously (simple diagram)
 6. **Live proof** — real ERC-8004 registration on Arc, arcscan tx screenshot
 7. **The edge: bounded authority** — "an agent that can't run amok" (section 3)
-8. **Circle stack** — USDC · Wallets · Nanopayments · Gateway (which product used where)
+8. **Circle stack** — USDC · Arc · Circle Agent Wallets · Gateway (+ x402 micro-payment rail) — which product used where
 9. **Traction & roadmap** — Arc today; then Stellar/Solana/Avalanche (vision)
 10. **Team + ask** — a developer (protocol/backend) & a marketing/BD lead; "in the accelerator we turn this into a product"
 
@@ -109,7 +109,7 @@ Both hackathons' Agentic Economy tracks look for the following. When you speak, 
 | **USDC** | A dollar-pegged digital currency (1 USDC ≈ $1) |
 | **Arc** | Circle's blockchain; even the transaction fee is paid in USDC |
 | **Circle** | The company behind USDC + wallet/payment services |
-| **Nanopayments** | Circle's rail for very small (sub-cent) payments |
+| **x402** | Open HTTP-402 rail for very small (sub-cent) pay-per-call payments, settled + verified in USDC on-chain |
 | **Wallet** | The account where the agent holds its money |
 | **On-chain** | Written to the blockchain = verifiable by anyone, can't be erased |
 | **Testnet** | A test network; play money, no real value |
@@ -134,10 +134,10 @@ Both hackathons' Agentic Economy tracks look for the following. When you speak, 
 **Title:** A-Identity — The Passport & Wallet for the Agentic Economy
 
 **Short description (≈2 sentences):**
-"A-Identity gives every AI agent a verifiable on-chain identity (ERC-8004) and a policy-guarded USDC wallet on Arc. Agents pay autonomously within human-set limits via Circle Nanopayments — verified first, bounded always, human-approved above the line."
+"A-Identity gives every AI agent a verifiable on-chain identity (ERC-8004) and a policy-guarded USDC wallet on Arc. Agents pay autonomously within human-set limits — a real x402 pay-per-call rail plus an on-chain policy vault — verified first, bounded always, human-approved above the line."
 
 **"Circle Product Feedback" section (required by Ignyte) — skeleton:**
-- *Why we chose these products:* USDC (settlement), Circle Wallets (secure agent wallet), Nanopayments (agent-to-agent micro-payments), Arc (deterministic fees + fast finality).
+- *Why we chose these products:* USDC (settlement), Circle Agent Wallets (hosted wallet-layer screening), Circle Gateway (chain-abstracted USDC), Arc (deterministic fees + fast finality). Micro-payments use the open x402 rail (on-chain-verifiable), not Nanopayments — see README "Why x402 instead of Nanopayments."
 - *What worked well:* [dev to fill in — live contract reads, fast finality, familiar EVM tooling].
 - *What could improve:* [dev to fill in — e.g. docs / `.env` setup, testnet faucet limits].
 - *Recommendations:* [1-2 concrete dev-experience improvements].

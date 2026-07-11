@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowRightCircle, Coins, Fingerprint, Network } from 'lucide-react'
 import { EASE_OUT_EXPO, PROTOCOLS } from '../lib/brand'
 
+/*
+ * Note on styling: the rest of the app is Tailwind-first, but this hero deliberately
+ * uses inline `style` for its typography and CTAs. The values are fluid `clamp()`
+ * expressions and brand tokens (shadows, per-protocol accent colors) that aren't part
+ * of the Tailwind theme — keeping them inline here is intentional and self-contained,
+ * not an oversight. Structural/layout classes still use Tailwind.
+ */
+
 /**
  * Staggered entry animation. `custom` carries the index so each element
  * (heading=0, subtext=1, cta=2) is offset by 0.15s.

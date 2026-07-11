@@ -18,7 +18,7 @@ This document is the plan for preparing A-Identity for two hackathons: "what we 
 | Prize | Cash + top-8 → 8-week accelerator | 25k USDC pool |
 | Critical date | Launch Jul 13 · Final **Aug 9** · Demo Day Aug 20 | **Entry deadline Jul 13** (register this week!) |
 
-Both tracks want the same thing: **autonomous AI agents that pay/settle in USDC + clear decision logic + micro-payments via Nanopayments.**
+Both tracks want the same thing: **autonomous AI agents that pay/settle in USDC + clear decision logic + real sub-cent micro-payments (we ship this as an open, on-chain-verifiable x402 rail).**
 
 ---
 
@@ -33,7 +33,7 @@ Our story is precisely this: **ERC-8004 identity (passport) + policy engine (cap
 **Demo narrative (the "money shot" for the 3-min video):**
 1. Register an agent → a **real ERC-8004 identity** is minted on Arc *(already works — proven with tx `0xfedb67…811046`)*.
 2. Give it a Circle Wallet + set a policy (daily cap, auto-approve line, allowlist) — **actually enforced**.
-3. The agent pays a service via **Circle Nanopayments** (sub-cent, USDC): under the line it's automatic; above it, it goes to **human approval**.
+3. The agent pays a service via a **real x402 pay-per-call rail** (sub-cent, USDC, verified on-chain) settled through its **on-chain policy vault**: under the line it's automatic; above it the vault **reverts on Arc** and it goes to **human approval**.
 4. Watch it in Agent House; reputation grows from real settlements.
 5. All on Arc testnet, verifiable on arcscan.
 
@@ -48,7 +48,7 @@ Each item closes a **gap** and maps to a **judging criterion** / **Circle produc
 |---|---|---|
 | **Deploy: frontend→Vercel, backend→Render** + live URL | #10 | "Working MVP deployed on Arc" (submission requirement) |
 | **Wire `register-onchain` into the UI "create agent" flow** | #6 | Real on-chain identity (ERC-8004) — already works, just connect it |
-| **Real payment: USDC settlement via Circle Nanopayments** (move `executeInstruction` off "simulated") | #2, #5, #6 | "Autonomous spending/settlement flows" + **Nanopayments** |
+| **Real payment: USDC settlement via a real x402 rail + on-chain vault** (move `executeInstruction` off "simulated") | #2, #5, #6 | "Autonomous spending/settlement flows" + **x402 / USDC on Arc** |
 | **Wire Permissions UI → backend policy engine** | #3 | "Clear decision logic / bounded authority" |
 
 ### P1 — Strong differentiators
@@ -76,11 +76,11 @@ Each item closes a **gap** and maps to a **judging criterion** / **Circle produc
 - **ERC-8183 AgenticCommerce** (on Arc, real) — escrow/job. `createJobOnchain` coded; wire it (P2).
 
 **New backend integrations (Circle SDK):**
-- `@circle-fin/developer-controlled-wallets` → Circle Wallets (P1).
-- **Circle Nanopayments** API/SDK → the real micro-payment rail (P0). Replaces the fictional "x402" (#5).
-- **Circle Gateway** → unified balance (the AppKit path in [unified-balance.ts](src/lib/unified-balance.ts) already exists as scaffolding) (P2).
+- `@circle-fin/developer-controlled-wallets` → Circle Agent Wallets, hosted wallet-layer screening (SHIPPED).
+- **x402** → the real micro-payment rail (SHIPPED): HTTP-402 pay-per-call, USDC on Arc, verified on-chain with replay protection. (We deliberately chose the open x402 standard over Circle Nanopayments — see README "Why x402 instead of Nanopayments.")
+- **Circle Gateway** → chain-abstracted USDC: deposit on Arc → unified balance → mint on Base Sepolia gaslessly (SHIPPED, verified live).
 
-**Stretch contract (optional, strongest edge):** a small **`AgentPolicy` guard** contract on Arc that enforces the daily cap/allowlist **on-chain**, not in the backend. Proves the "if it can't run amok, it's safe" thesis in code.
+**On-chain policy vault (SHIPPED, the strongest edge):** the `AgentSpendPolicy` contract on Arc enforces the daily cap/allowlist/auto-approve/freeze **on-chain** — an over-limit payment **reverts on Arc**, not in the backend. Proves the "if it can't run amok, it's safe" thesis in code.
 
 ---
 

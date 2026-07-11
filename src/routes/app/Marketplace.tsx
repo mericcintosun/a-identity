@@ -9,11 +9,9 @@ import {
   Plus,
   Store,
 } from 'lucide-react'
-import { authHeaders } from '../../store/auth'
+import { authHeaders, useAuth } from '../../store/auth'
 
 import { MCP_BASE } from '../../lib/mcpBase'
-/** The signed-in demo user is the viewer/follower identity for the MVP. */
-const VIEWER = 'demo'
 
 type MarketAgent = {
   id: string
@@ -36,6 +34,12 @@ type MarketAgent = {
 }
 
 export default function Marketplace() {
+  const user = useAuth((s) => s.user)
+  // Follow/follower identity = the signed-in caller (their wallet address or email),
+  // so follows are per-user, not shared across everyone. Falls back to 'guest' only
+  // for a tokenless browse session (whose follow writes the server rejects anyway).
+  const viewer = user?.email || user?.name || 'guest'
+
   const [agents, setAgents] = useState<MarketAgent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +49,7 @@ export default function Marketplace() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${MCP_BASE}/api/marketplace?viewer=${VIEWER}`, {
+      const res = await fetch(`${MCP_BASE}/api/marketplace?viewer=${encodeURIComponent(viewer)}`, {
         signal: AbortSignal.timeout(6000),
       })
       const data = (await res.json()) as { agents: MarketAgent[] }
@@ -56,7 +60,7 @@ export default function Marketplace() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [viewer])
 
   useEffect(() => {
     load()
@@ -79,7 +83,7 @@ export default function Marketplace() {
       await fetch(`${MCP_BASE}/api/follow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ agentId, follower: VIEWER }),
+        body: JSON.stringify({ agentId, follower: viewer }),
       })
     } catch {
       load()

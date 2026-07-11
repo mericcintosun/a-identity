@@ -32,9 +32,11 @@ export const ARC_TESTNET = {
  * Lazily build a viem Chain object for Arc Testnet. Lazy so the chain config can
  * be imported without pulling viem into modules that do not need it.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- viem's Chain type isn't available without importing viem here (deliberately lazy).
 export async function getArcViemChain(): Promise<any> {
   // Variable specifier so typecheck does not require viem to be installed.
   const viemPkg = 'viem'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import, types intentionally not pulled in.
   const { defineChain } = (await import(/* @vite-ignore */ viemPkg)) as any
   return defineChain({
     id: ARC_TESTNET.id,

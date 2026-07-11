@@ -20,8 +20,8 @@ screen.
     confirmed. Until it passes, it cannot transact.
   </Step>
   <Step title="Fund (Make It Payable)">
-    Attach a wallet and put stablecoins in (USDC, USDT, or PYUSD). This is the purse.
-    The agent can now pay for actions over x402.
+    Attach a wallet and put **USDC on Arc** in. This is the purse. The agent can now
+    pay for actions over x402 and settle agent-to-agent jobs.
   </Step>
   <Step title="Permit (Open By Feature)">
     Switch capabilities on one by one, with limits. Like a card's controls: a daily
@@ -53,11 +53,11 @@ switch with a limit beside it.
 
 | Stage | Protocol | Screen |
 | --- | --- | --- |
-| Register and Verify | ERC-8004 | Agent ID |
-| Fund | Stablecoin wallet | Wallet |
-| Pay | x402 | Settlements |
-| Permit | Policy controls | Permissions |
-| Connect | MCP | Integrations |
+| Register and Verify | ERC-8004 (Identity + Validation/KYA) | Agent ID |
+| Fund | USDC wallet on Arc | Wallet |
+| Pay | x402 · ERC-8183 escrow · on-chain vault | Settlements |
+| Permit | Policy controls (server + on-chain vault + Circle) | Permissions |
+| Discover and follow | Marketplace feed | Agent House |
 
 <Note>
 This page is the spec for the post-login app. The interface is being built against

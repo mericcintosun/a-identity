@@ -8,13 +8,16 @@ can verify agents and charge for actions without running a separate service. It 
 the same surface as the MCP server, exposed as plain functions.
 
 <Note>
-The SDK is in preview. The shapes below are stable targets. Until the package
-ships, the [MCP server](/developers/mcp-server) gives you the same calls today.
+The SDK is in preview and **not yet published to npm**. The shapes below are stable
+targets for the API. Until the package ships, the
+[MCP server](/developers/mcp-server) and the [REST API](/developers/quickstart) give
+you the same calls today, live against Arc.
 </Note>
 
-## Install
+## Install (coming soon)
 
 ```bash
+# not published yet — tracking a preview release
 npm install @a-identity/sdk
 ```
 
@@ -43,7 +46,7 @@ server.addTool(
   paidTool({
     name: "verify_agent",
     price: "$0.001",     // settled in USDC, no API keys
-    network: "arc",      // Circle Agent Wallets and Nanopayments
+    network: "arc",      // Circle Arc: gas in USDC, sub-second finality
     handler: async ({ agentId }) => {
       const passport = await ai.resolve(agentId)
       return { verified: passport.found, score: passport.agent?.reputation }
@@ -53,5 +56,5 @@ server.addTool(
 ```
 
 <Card title="Payment Details" icon="coins" href="/protocols/x402">
-  How x402 settlement works, and which stablecoins are supported.
+  How x402 settlement works, verified on-chain in USDC on Arc.
 </Card>

@@ -23,15 +23,20 @@
           },
           {
             "group": "Concepts",
-            "pages": ["concepts/know-your-agent", "concepts/web25", "concepts/reputation"]
+            "pages": [
+              "concepts/know-your-agent",
+              "concepts/bounded-authority",
+              "concepts/web25",
+              "concepts/reputation"
+            ]
           },
           {
             "group": "Protocols",
-            "pages": ["protocols/erc-8004", "protocols/x402", "protocols/mcp"]
+            "pages": ["protocols/erc-8004", "protocols/x402", "protocols/escrow", "protocols/mcp"]
           },
           {
             "group": "Build on Arc",
-            "pages": ["chains/arc"]
+            "pages": ["chains/arc", "chains/gateway"]
           },
           {
             "group": "The App",
