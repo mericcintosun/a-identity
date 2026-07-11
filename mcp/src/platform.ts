@@ -21,6 +21,7 @@ import { randomBytes } from 'node:crypto'
 import {
   registerAgentOnchain, payUsdcOnchain, ARC_EXPLORER,
   deployPolicyVault, policyPay, policyOwnerPay, readPolicyVault,
+  policySetPolicy, policySetFrozen, policySetAllowed,
   recordValidationOnchain, readValidation,
 } from './arc-contracts.js'
 import { createAgentWallet, circlePay, readCircleWallet } from './circle-agent.js'
@@ -534,6 +535,96 @@ export async function getAgentVault(agentId: string) {
   return { vaultAddress: agent.vaultAddress, ...live }
 }
 
+export type VaultSyncResult = {
+  synced: boolean
+  reason?: string
+  /** True when the on-chain change is owner-signed and the server can't sign it. */
+  ownerGated?: boolean
+  txs?: { setPolicy?: string; setFrozen?: string }
+  /** The limits we wanted on-chain, so an owner can push them from their own wallet. */
+  want?: { dailyCapUsd: number; autoApproveUsd: number; allowlistEnabled: boolean; frozen: boolean }
+  note?: string
+}
+
+/** USDC micro-units, for exact (float-safe) on-chain vs off-chain comparisons. */
+const micro = (n: number) => Math.round(n * 1e6)
+
+/**
+ * Push an agent's off-chain permissions onto its on-chain AgentSpendPolicy vault, so a
+ * limit changed in the UI actually re-enforces on Arc — not only in the server pre-check.
+ * setPolicy / setFrozen / setAllowed are owner-only; the server signer can sign them ONLY
+ * when it is the vault owner (owner==operator). With the intended owner≠operator separation
+ * the human owner must sign the change from their own wallet, so we say that plainly (and
+ * return the target limits) instead of letting the chain-enforced policy silently drift from
+ * the UI. Diffs against the live on-chain state first, so a change to off-chain-only fields
+ * (e.g. agent-to-human) never spends gas. Best-effort: a failure never undoes the off-chain
+ * update that already happened.
+ */
+async function syncVaultPolicy(agent: PlatformAgent): Promise<VaultSyncResult> {
+  const vault = agent.vaultAddress
+  if (!vault) return { synced: false, reason: 'Agent has no on-chain vault' }
+  const p = agent.permissions
+  const want = {
+    dailyCapUsd: p.dailyCapUsd,
+    autoApproveUsd: p.autoApproveUnderUsd,
+    allowlistEnabled: p.payeeAllowlist.length > 0,
+    frozen: p.frozen,
+  }
+
+  // Only write what actually changed on-chain. A read never needs a key.
+  let live: Awaited<ReturnType<typeof readPolicyVault>> | null = null
+  try { live = await readPolicyVault(vault) } catch { live = null }
+  const policyDrift =
+    !live ||
+    micro(live.dailyCapUsd) !== micro(want.dailyCapUsd) ||
+    micro(live.autoApproveUsd) !== micro(want.autoApproveUsd) ||
+    live.allowlistEnabled !== want.allowlistEnabled
+  const frozenDrift = !live || live.frozen !== want.frozen
+  if (!policyDrift && !frozenDrift) return { synced: true, txs: {}, note: 'On-chain vault already matches these limits.' }
+
+  // Owner-gated on-chain: the server can sign owner calls only when owner==operator.
+  const serverIsOwner =
+    !agent.vaultOwner || !agent.vaultOperator ||
+    agent.vaultOwner.toLowerCase() === agent.vaultOperator.toLowerCase()
+  if (!serverIsOwner) {
+    return {
+      synced: false,
+      ownerGated: true,
+      want,
+      reason:
+        'On-chain vault limits are owner-signed and this vault is owned by your own wallet ' +
+        '(owner≠operator by design). Re-sign setPolicy from the owner wallet to push these limits ' +
+        'on-chain; the server holds only the operator key. Off-chain policy is updated meanwhile.',
+    }
+  }
+
+  try {
+    const txs: { setPolicy?: string; setFrozen?: string } = {}
+    if (policyDrift) {
+      const sp = await policySetPolicy(vault, {
+        dailyCapUsd: want.dailyCapUsd, autoApproveUsd: want.autoApproveUsd, allowlistEnabled: want.allowlistEnabled,
+      })
+      if (!sp.executed) return { synced: false, reason: `Vault setPolicy failed: ${sp.reason}` }
+      txs.setPolicy = sp.txHash
+    }
+    if (frozenDrift) {
+      const sf = await policySetFrozen(vault, want.frozen)
+      if (sf.executed) txs.setFrozen = sf.txHash
+    }
+    // Mirror raw-address allowlist entries onto the vault (adds only; best-effort).
+    for (const addr of p.payeeAllowlist.filter((x) => /^0x[0-9a-fA-F]{40}$/.test(x))) {
+      await policySetAllowed(vault, addr, true).catch(() => {})
+    }
+    pushActivity(
+      agent,
+      `On-chain vault policy synced (cap $${want.dailyCapUsd}, ceiling $${want.autoApproveUsd}${want.frozen ? ', frozen' : ''})`,
+    )
+    return { synced: true, txs }
+  } catch (e) {
+    return { synced: false, reason: e instanceof Error ? e.message : String(e) }
+  }
+}
+
 // ── Circle Agent Wallet (hosted, wallet-layer enforcement) ───────────────────────
 
 /**
@@ -615,18 +706,22 @@ function ownsAgent(agent: PlatformAgent, caller?: string): boolean {
   return !agent.owner || agent.owner === caller
 }
 
-export function updateAgentPermissions(
+export async function updateAgentPermissions(
   agentId: string,
   partial: Partial<Permissions>,
   caller?: string,
-): PlatformAgent | { error: string } {
+): Promise<(PlatformAgent & { vaultSync?: VaultSyncResult }) | { error: string }> {
   const agent = state.agents.find((a) => a.id === agentId)
   if (!agent) return { error: 'Unknown agent' }
   if (!ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
   agent.permissions = { ...agent.permissions, ...partial }
   pushActivity(agent, 'Permissions updated by a human')
+
+  // If the agent has an on-chain policy vault, push the new limits to it so the
+  // chain-enforced policy tracks the UI instead of staying frozen at deploy time.
+  const vaultSync = agent.vaultAddress ? await syncVaultPolicy(agent) : undefined
   save(state)
-  return agent
+  return vaultSync ? { ...agent, vaultSync } : agent
 }
 
 /** Live policy view for one agent: limits + today's spend + reset time. */

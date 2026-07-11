@@ -578,7 +578,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/agents/permissions') {
     const body = (await readBody(req).catch(() => null)) as { agentId?: string; permissions?: Record<string, unknown> } | null
     if (!body?.agentId || !body?.permissions) { sendJson(res, 400, { error: 'agentId and permissions required' }); return }
-    const a = updateAgentPermissions(body.agentId, body.permissions as never, callerId)
+    const a = await updateAgentPermissions(body.agentId, body.permissions as never, callerId)
     sendJson(res, 'error' in a ? errStatus(a.error) : 200, { agent: a })
     return
   }

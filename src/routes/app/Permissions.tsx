@@ -39,6 +39,17 @@ type Policy = {
 
 type Agent = { id: string; name: string }
 
+/** Result of pushing the saved limits onto the agent's on-chain policy vault. */
+type VaultSyncNote = {
+  synced: boolean
+  ownerGated?: boolean
+  reason?: string
+  note?: string
+  txs?: { setPolicy?: string; setFrozen?: string }
+}
+
+const ARCSCAN_TX = 'https://testnet.arcscan.app/tx/'
+
 export default function Permissions() {
   const user = useAuth((s) => s.user)
   const logout = useAuth((s) => s.logout)
@@ -52,6 +63,7 @@ export default function Permissions() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [vaultSync, setVaultSync] = useState<VaultSyncNote | null>(null)
 
   // Live "resets in" countdown, ticking each minute.
   const [now, setNow] = useState(() => new Date().getTime())
@@ -96,12 +108,17 @@ export default function Permissions() {
     if (!draft || !agentId) return
     setSaving(true)
     setSaved(false)
+    setVaultSync(null)
     try {
-      await fetch(`${MCP_BASE}/api/agents/permissions`, {
+      const res = await fetch(`${MCP_BASE}/api/agents/permissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ agentId, permissions: draft }),
       })
+      // When the agent has an on-chain vault, the backend reports whether it pushed
+      // the new limits on-chain (or that the owner must sign the change).
+      const j = (await res.json().catch(() => null)) as { agent?: { vaultSync?: VaultSyncNote } } | null
+      if (j?.agent?.vaultSync) setVaultSync(j.agent.vaultSync)
       await loadPolicy(agentId)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -286,6 +303,38 @@ export default function Permissions() {
             </button>
             <span className="text-xs text-ink/45">Applies to every new action immediately.</span>
           </div>
+
+          {/* On-chain vault sync outcome (only when the agent has a deployed vault) */}
+          {vaultSync && (
+            <div
+              className={`mt-3 rounded-xl border px-4 py-3 text-xs ${
+                vaultSync.synced
+                  ? 'border-[#7342E2]/25 bg-[#7342E2]/[0.05] text-ink/70'
+                  : 'border-amber-400/40 bg-amber-50 text-amber-800'
+              }`}
+            >
+              {vaultSync.synced ? (
+                <span>
+                  {vaultSync.note ?? 'New limits pushed to the on-chain policy vault.'}
+                  {vaultSync.txs?.setPolicy && (
+                    <>
+                      {' '}
+                      <a
+                        href={`${ARCSCAN_TX}${vaultSync.txs.setPolicy}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-[#7342E2] hover:underline"
+                      >
+                        View setPolicy tx →
+                      </a>
+                    </>
+                  )}
+                </span>
+              ) : (
+                <span>{vaultSync.reason ?? 'Could not sync the on-chain vault.'}</span>
+              )}
+            </div>
+          )}
 
           {/* On-chain policy vault — deploy this policy as a smart contract on Arc */}
           <VaultPanel agentId={agentId} />
