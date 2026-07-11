@@ -316,6 +316,18 @@ async function main() {
     check('each escrow step carries a real Arc tx', (job.json?.steps ?? []).every((s) => /^0x[0-9a-f]{64}$/i.test(s.txHash || '')))
   }
 
+  // ── P. Circle Gateway (unified balance + gasless Arc→Base transfer) ────────────
+  phase('P. Circle Gateway (Arc → Base Sepolia, gasless)')
+  const gw = await api('POST', '/api/arc/gateway-demo', { token: alice, body: { amountUsd: 0.1 } })
+  if (gw.json?.executed === false) {
+    skip('gateway transfer runs', 'no signer key (prepared only)')
+  } else if (gw.json?.transfer?.error) {
+    check('gateway transfer executes', false, gw.json.transfer.error)
+  } else {
+    check('gateway forwarded USDC Arc→Base (transferId)', typeof gw.json?.transfer?.transferId === 'string' && gw.json.transfer.transferId.length > 0, JSON.stringify(gw.json?.transfer)?.slice(0, 80))
+    check('gateway minted on Base Sepolia (gasless)', gw.json?.baseMint?.minted === true, JSON.stringify(gw.json?.baseMint)?.slice(0, 90))
+  }
+
   // ── summary ─────────────────────────────────────────────────────────────────
   console.log(`\n${passed} passed, ${failed} failed`)
   if (failed) {

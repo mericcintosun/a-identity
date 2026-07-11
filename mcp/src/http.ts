@@ -48,6 +48,7 @@ import {
 import { issueToken, verifyToken, isVerified } from './auth.js'
 import { magicEnabled, sendMagicLink, verifyMagicToken } from './magic.js'
 import { x402PayTo, paymentRequirements, verifyPayment, premiumResource } from './x402.js'
+import { runGatewayDemo, gatewayBalance } from './gateway.js'
 import { randomBytes } from 'node:crypto'
 
 // Render/most hosts inject PORT; fall back to our own var, then the local default.
@@ -301,6 +302,21 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/arc/job-demo') {
     const body = (await readBody(req).catch(() => null)) as { budgetUsd?: number; description?: string } | null
     sendJson(res, 200, await runEscrowJobDemo({ budgetUsd: body?.budgetUsd, description: body?.description }))
+    return
+  }
+
+  // ── Circle Gateway: live unified USDC balance (public read) ───────────────────
+  if (req.method === 'GET' && url.pathname === '/api/arc/gateway-balance') {
+    const address = url.searchParams.get('address') ?? ''
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) { sendJson(res, 400, { error: 'valid ?address= required' }); return }
+    sendJson(res, 200, await gatewayBalance(address))
+    return
+  }
+
+  // ── Circle Gateway: one-click deposit + gasless cross-chain transfer (Arc→Base) ──
+  if (req.method === 'POST' && url.pathname === '/api/arc/gateway-demo') {
+    const body = (await readBody(req).catch(() => null)) as { amountUsd?: number } | null
+    sendJson(res, 200, await runGatewayDemo({ amountUsd: body?.amountUsd }))
     return
   }
 

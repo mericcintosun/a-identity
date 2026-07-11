@@ -3,6 +3,7 @@ import { ArrowUpRight, CheckCircle2, Clock, ExternalLink, Link2, Send, ShieldQue
 import { authHeaders } from '../../store/auth'
 import X402Panel from '../../components/app/X402Panel'
 import EscrowPanel from '../../components/app/EscrowPanel'
+import GatewayPanel from '../../components/app/GatewayPanel'
 
 import { MCP_BASE } from '../../lib/mcpBase'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
@@ -280,6 +281,7 @@ export default function Settlements() {
 
       <X402Panel />
       <EscrowPanel />
+      <GatewayPanel />
     </div>
   )
 }
