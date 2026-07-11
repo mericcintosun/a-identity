@@ -344,7 +344,7 @@ const usdcUnits = (amountUsd: number) => BigInt(Math.round(amountUsd * 1e6))
 const fromUnits = (v: bigint) => Number(v) / 1e6
 const addressUrl = (a: string) => `${ARC_EXPLORER}/address/${a}`
 
-type VaultDeployed = { executed: true; vault: string; txHash: string; explorerUrl: string }
+type VaultDeployed = { executed: true; vault: string; owner: string; operator: string; txHash: string; explorerUrl: string }
 type VaultTx = { executed: true; txHash: string; explorerUrl: string }
 type VaultReverted = { executed: false; reverted: true; reason: string }
 type VaultNoKey = { executed: false; reverted: false; reason: string }
@@ -364,9 +364,12 @@ async function revertReason(err: unknown): Promise<string> {
 }
 
 /**
- * Deploy an AgentSpendPolicy vault for an agent. owner/operator default to the
- * signer account when omitted (single-key testnet demo). Returns the deployed
- * vault address, or a prepared note when no signer key is present.
+ * Deploy an AgentSpendPolicy vault for an agent. The `operator` (the agent's signer
+ * that calls pay()) defaults to the server signer. The human `owner` (who freezes /
+ * overrides / withdraws) should be a DIFFERENT address — pass the agent owner's real
+ * wallet so the on-chain owner≠operator separation is genuine and verifiable on
+ * arcscan. Both fall back to the signer only when nothing is supplied. Returns the
+ * deployed vault + the owner/operator it was constructed with.
  */
 export async function deployPolicyVault(
   input: { owner?: string; operator?: string; dailyCapUsd: number; autoApproveUsd: number },
@@ -383,7 +386,7 @@ export async function deployPolicyVault(
     args: [owner, operator, CONTRACTS.usdc, usdcUnits(input.dailyCapUsd), usdcUnits(input.autoApproveUsd)],
   })
   const receipt = await client.waitForTransactionReceipt({ hash })
-  return { executed: true, vault: receipt.contractAddress as string, txHash: hash, explorerUrl: tx(hash) }
+  return { executed: true, vault: receipt.contractAddress as string, owner, operator, txHash: hash, explorerUrl: tx(hash) }
 }
 
 /** Simulate then broadcast a vault write; on a policy reject, return the on-chain

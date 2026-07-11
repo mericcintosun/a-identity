@@ -70,6 +70,11 @@ export type PlatformAgent = {
   /** On-chain AgentSpendPolicy vault: enforces this agent's spend policy on Arc. */
   vaultAddress?: string
   vaultExplorer?: string
+  /** The human owner the vault was deployed with (freeze/override/withdraw). Distinct
+   *  from the operator so the on-chain owner≠operator separation is real. */
+  vaultOwner?: string
+  /** The operator (agent signer) that calls pay(); the server signer in this demo. */
+  vaultOperator?: string
   /** Circle Agent Wallet (Developer-Controlled, ARC-TESTNET): Circle's hosted
    *  policy engine screens this wallet's transfers at the wallet layer. */
   circleWalletId?: string
@@ -453,14 +458,28 @@ export async function getAgentKya(agentId: string) {
  */
 export async function provisionAgentVault(
   agentId: string,
-  opts: { fundUsd?: number; caller?: string } = {},
+  opts: { fundUsd?: number; caller?: string; ownerAddress?: string } = {},
 ) {
   const agent = state.agents.find((a) => a.id === agentId)
   if (!agent) return { error: 'Unknown agent' }
   if (!ownsAgent(agent, opts.caller)) return { error: 'Forbidden: not the agent owner' }
   if (agent.vaultAddress) return { error: 'Agent already has an on-chain policy vault', vaultAddress: agent.vaultAddress }
 
+  // Human owner of the vault = a REAL wallet distinct from the server signer/operator,
+  // so freeze/override/withdraw are owner-gated on-chain. Prefer an explicit address,
+  // then the caller when they signed in with a wallet (SIWE → subject is a 0x addr),
+  // then the agent's own (browser-held) wallet. Falls back to the signer only if none.
+  const isAddr = (s?: string): s is string => !!s && /^0x[0-9a-fA-F]{40}$/.test(s)
+  const ownerAddress = isAddr(opts.ownerAddress)
+    ? opts.ownerAddress
+    : isAddr(opts.caller)
+      ? opts.caller
+      : isAddr(agent.walletAddress ?? undefined)
+        ? (agent.walletAddress as string)
+        : undefined
+
   const dep = await deployPolicyVault({
+    owner: ownerAddress,
     dailyCapUsd: agent.permissions.dailyCapUsd,
     autoApproveUsd: agent.permissions.autoApproveUnderUsd,
   })
@@ -468,7 +487,14 @@ export async function provisionAgentVault(
 
   agent.vaultAddress = dep.vault
   agent.vaultExplorer = `${ARC_EXPLORER}/address/${dep.vault}`
-  pushActivity(agent, `On-chain policy vault deployed at ${short(dep.vault)} (tx ${short(dep.txHash)})`)
+  agent.vaultOwner = dep.owner
+  agent.vaultOperator = dep.operator
+  const separated = dep.owner.toLowerCase() !== dep.operator.toLowerCase()
+  pushActivity(
+    agent,
+    `On-chain policy vault deployed at ${short(dep.vault)} (tx ${short(dep.txHash)})` +
+      (separated ? ` — human owner ${short(dep.owner)}, agent operator ${short(dep.operator)}` : ''),
+  )
 
   let funding: unknown = null
   if (opts.fundUsd && opts.fundUsd > 0) {
@@ -482,6 +508,9 @@ export async function provisionAgentVault(
   return {
     vaultAddress: agent.vaultAddress,
     vaultExplorer: agent.vaultExplorer,
+    owner: dep.owner,
+    operator: dep.operator,
+    ownerOperatorSeparated: separated,
     deployTx: dep.txHash,
     deployExplorer: dep.explorerUrl,
     funding,
@@ -770,7 +799,14 @@ export async function executeInstruction(ixId: string, caller?: string): Promise
   // (auto-approved) payments go through pay(); human-approved ones through
   // ownerPay() (override). A policy revert is an authoritative rejection; an
   // infra error falls through to direct settlement below.
-  if (settleTo && agent?.vaultAddress) {
+  // A human override uses the owner-only ownerPay(), which the SERVER can only sign
+  // when the vault owner is the server signer (== operator). When owner is the human's
+  // own wallet (the intended separation), the server can't sign as owner, so a human
+  // override can't settle through the vault here — it falls through to direct settlement
+  // below (an owner-signed ownerPay would come from the human's wallet client-side).
+  const serverCanOwnerPay =
+    !agent?.vaultOwner || !agent?.vaultOperator || agent.vaultOwner.toLowerCase() === agent.vaultOperator.toLowerCase()
+  if (settleTo && agent?.vaultAddress && !(ix.status === 'approved' && !serverCanOwnerPay)) {
     const humanApproved = ix.status === 'approved'
     const res = humanApproved
       ? await policyOwnerPay(agent.vaultAddress, settleTo, total)

@@ -54,6 +54,22 @@ import { randomBytes } from 'node:crypto'
 // Render/most hosts inject PORT; fall back to our own var, then the local default.
 const PORT = Number(process.env.PORT ?? process.env.A_IDENTITY_HTTP_PORT ?? 3399)
 
+// CORS: an explicit allowlist (comma-separated origins in ALLOWED_ORIGINS) locks the
+// API to known frontends in production; unset → '*' for local Vite dev. Prod uses a
+// same-origin Vercel proxy, so setting ALLOWED_ORIGINS to the site's origin(s) means
+// only the real app can call the API cross-origin.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((o) => o.trim().toLowerCase())
+  .filter(Boolean)
+
+/** Resolve the Access-Control-Allow-Origin value for a request's Origin header. */
+function resolveCorsOrigin(origin: string | undefined): string {
+  if (ALLOWED_ORIGINS.length === 0) return '*'
+  if (origin && ALLOWED_ORIGINS.includes(origin.toLowerCase())) return origin
+  return ALLOWED_ORIGINS[0] // a safe default so preflights still get a concrete allowed origin
+}
+
 /** Short-lived sign-in nonces, keyed by lowercase wallet address (in-memory). */
 const nonces = new Map<string, string>()
 
@@ -82,8 +98,11 @@ function errStatus(msg: string): number {
 }
 
 const server = http.createServer(async (req, res) => {
-  // Permissive CORS - Vite dev frontend calls this directly.
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  // CORS: '*' for local dev, or the request's origin when it's on the ALLOWED_ORIGINS
+  // allowlist (production lockdown). Vary: Origin keeps caches per-origin correct.
+  const reqOrigin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined
+  res.setHeader('Access-Control-Allow-Origin', resolveCorsOrigin(reqOrigin))
+  if (ALLOWED_ORIGINS.length > 0) res.setHeader('Vary', 'Origin')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Payment, mcp-session-id, mcp-protocol-version')
 
@@ -398,9 +417,9 @@ const server = http.createServer(async (req, res) => {
   }
   // Provision an on-chain policy vault for an agent (deploy + optional funding, env-gated)
   if (req.method === 'POST' && url.pathname === '/api/agents/vault') {
-    const body = (await readBody(req).catch(() => null)) as { agentId?: string; fundUsd?: number } | null
+    const body = (await readBody(req).catch(() => null)) as { agentId?: string; fundUsd?: number; ownerAddress?: string } | null
     if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
-    const r = await provisionAgentVault(body.agentId, { fundUsd: body.fundUsd, caller: callerId })
+    const r = await provisionAgentVault(body.agentId, { fundUsd: body.fundUsd, caller: callerId, ownerAddress: body.ownerAddress })
     if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return
