@@ -32,11 +32,11 @@
           },
           {
             "group": "Protocols",
-            "pages": ["protocols/erc-8004", "protocols/x402", "protocols/escrow", "protocols/mcp"]
+            "pages": ["protocols/erc-8004", "protocols/x402", "protocols/nanopayments", "protocols/escrow", "protocols/mcp"]
           },
           {
             "group": "Build on Arc",
-            "pages": ["chains/arc", "chains/gateway"]
+            "pages": ["chains/arc", "chains/gateway", "chains/cctp"]
           },
           {
             "group": "The App",

@@ -1,0 +1,69 @@
+---
+title: "Circle Nanopayments"
+description: "Gas-free, sub-cent USDC over the x402 exact scheme, settled by Circle Gateway in batches."
+---
+
+Nanopayments are A-Identity's **second x402 rail**. Where our on-chain rail settles
+each call as a real USDC transfer, Nanopayments settle **off-chain and in batches**:
+the buyer signs an EIP-3009 authorization (zero gas), Circle Gateway verifies and
+credits it instantly, and the on-chain settlement is netted across many payments into
+a single transaction. That is what makes true **sub-cent** payments economical for
+high-frequency agent traffic.
+
+It is the same [x402](/protocols/x402) negotiation, using Circle Gateway's
+`GatewayWalletBatched` scheme. **Permissionless on Arc testnet — no Circle API key.**
+
+## How one nanopayment works
+
+<Steps>
+  <Step title="Deposit once">
+    The buyer deposits USDC into the Gateway Wallet on Arc — a one-time on-chain
+    transaction that establishes a spendable Gateway balance. (This is the same
+    deposit [Circle Gateway](/chains/gateway) uses.)
+  </Step>
+  <Step title="402 Payment Required">
+    The buyer requests a paid resource. The seller answers `402` with the
+    `GatewayWalletBatched` requirements (network `eip155:5042002`, USDC, the
+    verifying contract).
+  </Step>
+  <Step title="Sign off-chain (zero gas)">
+    The buyer signs an **EIP-3009 `TransferWithAuthorization`** against the Gateway
+    contract and retries with the signed payload. No gas, no on-chain transaction.
+  </Step>
+  <Step title="Settle and serve">
+    The seller submits the authorization to Circle Gateway, which verifies it, credits
+    the seller's balance, and returns a settlement id. The resource is served
+    immediately; Gateway batches the on-chain settlement.
+  </Step>
+</Steps>
+
+## x402 on-chain vs Nanopayments
+
+A-Identity ships **both** rails, and says which is which:
+
+| | On-chain x402 | Nanopayments |
+| --- | --- | --- |
+| Where | `mcp/src/x402.ts` | `mcp/src/nanopay.ts` |
+| Settlement | A real USDC transfer per call, verified on-chain | Off-chain EIP-3009 auth, **batched** on-chain by Gateway |
+| Gas | Paid per call (USDC on Arc) | **Zero** for buyer and seller |
+| Proof | An arcscan tx hash | A Gateway batch settlement id |
+| Best for | Provable, standalone settlement | High-frequency, sub-cent streams |
+
+<Note>
+Verified live on Arc testnet: an EIP-3009 authorization signed off-chain settled
+through Circle Gateway with `success: true`, a real batch settlement id, and the
+buyer's Gateway balance debited by the paid amount — on both the local and the live
+production backend. SDK: [`@circle-fin/x402-batching`](https://developers.circle.com/gateway/nanopayments).
+</Note>
+
+## Why it matters for agents
+
+An AI agent paying per model response, per dataset row, or per API call cannot afford
+gas on every micro-transaction. Nanopayments make **streaming, sub-cent, machine-to-machine**
+payments economical — the buyer's own key still authorizes every payment, so authority
+stays bounded.
+
+<Card title="The x402 standard" icon="coins" href="/protocols/x402">
+  Both rails share the same 402 negotiation. See how the on-chain rail verifies and
+  binds each payment.
+</Card>

@@ -37,6 +37,18 @@ An agent earning USDC on Arc can pay a service that only accepts USDC on Base wi
 bridging friction, a second wallet, or holding gas on both chains. Value follows the
 work, not the chain.
 
+The same Gateway deposit also powers [Circle Nanopayments](/protocols/nanopayments) —
+gasless, batched, sub-cent x402 payments settle from this balance.
+
+<CardGroup cols={2}>
+  <Card title="Circle CCTP" icon="arrow-right-arrow-left" href="/chains/cctp">
+    The other cross-chain rail: native USDC by burn-and-mint, never wrapped.
+  </Card>
+  <Card title="Nanopayments" icon="gauge" href="/protocols/nanopayments">
+    Gasless sub-cent payments settled from your Gateway balance in batches.
+  </Card>
+</CardGroup>
+
 <Card title="Build on Arc" icon="link" href="/chains/arc">
   Arc is the primary rail — gas in USDC, sub-second finality. Gateway extends it
   across chains.
