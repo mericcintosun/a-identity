@@ -7,8 +7,11 @@
  * cleanly reports "not configured" and the UI falls back to wallet / guest.
  */
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { AUTH_SECRET } from './auth.js'
 
-const SECRET = process.env.AUTH_SECRET ?? 'a-identity-dev-secret-change-me'
+// Shares the single resolved signing secret (see auth.ts): AUTH_SECRET when set,
+// else a random per-process secret on prod-like hosts, else the dev default.
+const SECRET = AUTH_SECRET
 const TTL_MS = 15 * 60 * 1000 // links expire in 15 minutes
 
 /** True when an email provider is configured. The single gate for this feature. */

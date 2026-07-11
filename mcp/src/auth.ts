@@ -11,9 +11,41 @@
  * what stops someone from minting a token for an arbitrary email and acting as its
  * owner. The signing secret comes from AUTH_SECRET; set a strong one in production.
  */
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
-const SECRET = process.env.AUTH_SECRET ?? 'a-identity-dev-secret-change-me'
+const DEV_SECRET = 'a-identity-dev-secret-change-me'
+
+/** True when we look like a real deploy (Render / explicit prod / a Postgres DB). */
+function isProdLike(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(env.NODE_ENV === 'production' || env.RENDER || env.RENDER_EXTERNAL_URL || env.DATABASE_URL)
+}
+
+/**
+ * Resolve the token-signing secret ONCE, safely:
+ *  - AUTH_SECRET set        → use it (the correct path; stable across restarts).
+ *  - unset, prod-like host  → generate a strong RANDOM per-process secret and warn
+ *    loudly. This closes the forgeable-default-secret hole WITHOUT taking the deploy
+ *    down; the only cost is that existing sessions don't survive a restart.
+ *  - unset, local dev       → the fixed dev secret, for convenience.
+ * Shared by the session-token layer (this file) and the magic-link layer (magic.ts).
+ */
+function resolveSecret(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.AUTH_SECRET && env.AUTH_SECRET.length >= 16) return env.AUTH_SECRET
+  if (isProdLike(env)) {
+    console.error(
+      '[auth] WARNING: AUTH_SECRET is unset (or too short) on a production-like host. ' +
+        'Using a random per-process secret so tokens cannot be forged — but sessions will ' +
+        'NOT survive a restart. Set a strong AUTH_SECRET (>=16 chars) in the host env.',
+    )
+    return randomBytes(32).toString('hex')
+  }
+  return DEV_SECRET
+}
+
+/** The resolved signing secret. Import this instead of reading AUTH_SECRET directly. */
+export const AUTH_SECRET = resolveSecret()
+
+const SECRET = AUTH_SECRET
 
 /** How a session's identity was established. Only 'wallet' / 'email' are verified. */
 export type AuthMethod = 'guest' | 'email' | 'wallet'

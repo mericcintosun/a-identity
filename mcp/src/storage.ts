@@ -58,7 +58,17 @@ export function saveState(state: unknown): void {
   }, 300)
 }
 
-async function flush() {
+// Serialize flushes so two overlapping persists (e.g. a debounced flush racing the
+// SIGTERM flush) never interleave writes to the same row/file. Each flush awaits the
+// previous one, then persists the LATEST pending snapshot.
+let flushChain: Promise<void> = Promise.resolve()
+
+function flush(): Promise<void> {
+  flushChain = flushChain.then(doFlush, doFlush)
+  return flushChain
+}
+
+async function doFlush() {
   const data = pending
   pending = null
   if (data == null) return
@@ -75,6 +85,56 @@ async function flush() {
     }
   } catch (e) {
     console.error('[storage] persist failed:', e instanceof Error ? e.message : e)
+  }
+}
+
+// ── durable spent-payment set (x402 replay protection) ───────────────────────────
+//
+// x402 unlocks a resource with a real USDC tx hash exactly once. If that "already
+// spent" set lives only in memory, a restart (Render cold-start / redeploy) resets
+// it and a previously-used payment could be replayed. So we persist spent hashes:
+// Postgres when DATABASE_URL is set, else a local JSON file alongside the state.
+
+const SPENT_FILE = join(DATA_DIR, 'spent-payments.json')
+
+/** Load every spent payment hash (lowercase) recorded so far. */
+export async function loadSpentPayments(): Promise<string[]> {
+  const p = await getPool()
+  if (p) {
+    await p.query('CREATE TABLE IF NOT EXISTS spent_payments (hash text PRIMARY KEY)')
+    const r = await p.query('SELECT hash FROM spent_payments')
+    return r.rows.map((row: { hash: string }) => row.hash)
+  }
+  try {
+    return JSON.parse(readFileSync(SPENT_FILE, 'utf8')) as string[]
+  } catch {
+    return []
+  }
+}
+
+/** Durably record one spent payment hash (idempotent). */
+export async function persistSpentPayment(hash: string): Promise<void> {
+  const h = hash.toLowerCase()
+  try {
+    const p = await getPool()
+    if (p) {
+      await p.query('CREATE TABLE IF NOT EXISTS spent_payments (hash text PRIMARY KEY)')
+      await p.query('INSERT INTO spent_payments (hash) VALUES ($1) ON CONFLICT DO NOTHING', [h])
+      return
+    }
+    let arr: string[] = []
+    try {
+      arr = JSON.parse(readFileSync(SPENT_FILE, 'utf8')) as string[]
+    } catch {
+      /* first write */
+    }
+    if (!arr.includes(h)) {
+      arr.push(h)
+      mkdirSync(DATA_DIR, { recursive: true })
+      writeFileSync(SPENT_FILE, JSON.stringify(arr))
+    }
+  } catch (e) {
+    console.error('[storage] spent-payment persist failed:', e instanceof Error ? e.message : e)
   }
 }
 

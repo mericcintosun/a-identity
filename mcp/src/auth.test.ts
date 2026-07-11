@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { issueToken, verifyToken, isVerified } from './auth.js'
+import { issueToken, verifyToken, isVerified, AUTH_SECRET } from './auth.js'
 
 test('issueToken -> verifyToken round-trips subject + method', () => {
   const token = issueToken('alice@example.com', 'email')
@@ -43,9 +43,8 @@ test('verifyToken rejects garbage and empty input', () => {
 test('legacy { email }-only tokens fail closed to guest (never verified)', async () => {
   // Simulate an old token that carried only { email } and no method, correctly signed.
   const { createHmac } = await import('node:crypto')
-  const secret = process.env.AUTH_SECRET ?? 'a-identity-dev-secret-change-me'
   const payload = Buffer.from(JSON.stringify({ email: 'legacy@x.com', iat: 1 })).toString('base64url')
-  const sig = createHmac('sha256', secret).update(payload).digest('base64url')
+  const sig = createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url')
   const legacy = `${payload}.${sig}`
   assert.deepEqual(verifyToken(legacy), { subject: 'legacy@x.com', method: 'guest' })
   assert.equal(isVerified(verifyToken(legacy)), false)

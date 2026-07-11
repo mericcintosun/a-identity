@@ -9,12 +9,25 @@
  * and spent tx hashes are rejected (replay protection).
  */
 import { CONTRACTS, ARC_RPC, ARC_EXPLORER } from './arc-contracts.js'
+import { loadSpentPayments, persistSpentPayment } from './storage.js'
 
 /** Price per call: 0.001 USDC (6 decimals). A true sub-cent nanopayment. */
 const PRICE = 1000n
 
-/** Spent payment tx hashes — a payment can unlock the resource exactly once. */
+/** Spent payment tx hashes — a payment can unlock the resource exactly once. Backed
+ *  by durable storage (Postgres/JSON) so a restart can't reset replay protection. */
 const spent = new Set<string>()
+
+/** Hydrate the in-memory set from durable storage exactly once, before the first check. */
+let hydrated: Promise<void> | null = null
+function ensureHydrated(): Promise<void> {
+  if (!hydrated) {
+    hydrated = loadSpentPayments()
+      .then((hashes) => hashes.forEach((h) => spent.add(h.toLowerCase())))
+      .catch((e) => console.error('[x402] hydrate spent set failed:', e instanceof Error ? e.message : e))
+  }
+  return hydrated
+}
 
 const TRANSFER_ABI = [
   {
@@ -69,6 +82,7 @@ export async function verifyPayment(
   payTo: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) return { ok: false, reason: 'invalid tx hash' }
+  await ensureHydrated()
   const key = txHash.toLowerCase()
   if (spent.has(key)) return { ok: false, reason: 'payment already used' }
   try {
@@ -85,6 +99,7 @@ export async function verifyPayment(
     )
     if (!paid) return { ok: false, reason: `no USDC payment of >= ${PRICE} to ${payTo} in this tx` }
     spent.add(key)
+    await persistSpentPayment(key) // durable: survives restarts so the payment can't be replayed
     return { ok: true }
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : 'verification error' }
