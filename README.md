@@ -171,14 +171,26 @@ broadcast real transactions.
 Frontend is a static Vite build; the backend is a long-running Node server (not
 serverless).
 
-- **Frontend -> Vercel.** Set `VITE_MCP_URL` to the backend's public URL.
+- **Frontend -> Vercel.** Leave `VITE_MCP_URL` empty so the app calls same-origin
+  paths (`vercel.json` proxies them to the backend). Set `VITE_DOCS_URL` to the
+  deployed docs site (if unset, docs links fall back to the live app origin, not a
+  dead domain).
 - **Backend -> Render** (or any host that runs a persistent Node process). Root
   directory `mcp`, build `npm install --include=dev && npm run build`, start
-  `npm run start:http`. Set `ARC_SIGNER_KEY` in the host's env panel. The server
-  binds to the host-provided `$PORT` and self-pings to stay warm on free tiers.
+  `npm run start:http`. The server binds to the host-provided `$PORT` and self-pings
+  to stay warm on free tiers. Set in the host's env panel:
+  - `AUTH_SECRET` — **required**: a strong, stable random string. Without it the
+    server signs session tokens with a random per-process secret (safe, but sessions
+    drop on restart) and logs a warning; a public default is never used.
+  - `ALLOWED_ORIGINS` — comma-separated site origins allowed to call the API
+    cross-origin (e.g. `https://a-identity.xyz`). Unset → `*` (dev only).
+  - `ARC_SIGNER_KEY` — funded key to broadcast real Arc writes (optional; without it
+    writes are prepared/simulated and labeled as such).
+  - `DATABASE_URL` — Postgres connection string for durable state.
 
-State persists to `mcp/data/platform.json` (gitignored). On an ephemeral host,
-set `DATABASE_URL` to a Postgres connection string for durable state.
+State persists to Postgres when `DATABASE_URL` is set, else to
+`mcp/data/platform.json` (gitignored). x402 replay protection (spent-payment
+hashes) persists the same way, so a restart can't reset it.
 
 ## Human-on-the-loop
 
@@ -204,6 +216,42 @@ New networks follow the same provider pattern in `mcp/src` (see `erc8004.ts` and
 React 19, Vite 6, Tailwind v4, Framer Motion, React Router v7, Zustand ·
 Node, viem, Model Context Protocol SDK, Zod · Mintlify · Circle Arc, ERC-8004,
 ERC-8183, x402, USDC/EURC/USYC.
+
+## Circle Product Feedback
+
+Which Circle products we used, why, what worked, and what we'd improve.
+
+**Circle Arc (testnet)** — our base chain. Gas paid in USDC and sub-second finality
+made the whole "agent pays per action" loop feel native; a single asset for both gas
+and value removed a class of UX problems. *Improve:* the IdentityRegistry isn't
+enumerable (`totalSupply` reverts), so a "registered agents" count needs off-chain
+indexing; a documented events/indexing path would help.
+
+**Circle Gateway** — chain-abstracted USDC. We deposit on Arc → a unified balance →
+move it to Base Sepolia via the Forwarding Service (signed EIP-712 burn intent),
+minted gaslessly in seconds, permissionlessly (no API key). This is the cleanest
+cross-chain UX we integrated. *Improve:* the estimate→sign→submit shape and the
+bytes32-padded `TransferSpec` fields were the fiddly part; a typed helper in the SDK
+would cut integration time.
+
+**Circle Developer-Controlled Wallets (Agent Wallets)** — a hosted, wallet-layer
+policy engine that screens each transfer (sanctions / allow-block / freeze). We use
+it as one of three independent enforcement layers. *Improve:* the testnet faucet
+doesn't cover ARC-TESTNET (403), so we fund new Circle wallets from our own signer;
+first-class Arc faucet support would remove that step. Also, screening is transaction
+*screening*, not a per-wallet USD spend cap — we enforce the cap in our server + the
+on-chain vault and are explicit about that split.
+
+**USDC / faucet** — the unit of account throughout; `faucet.circle.com` for testnet
+funding.
+
+**Why x402 instead of Nanopayments.** Our micro-payment rail is a real HTTP-402
+pay-per-call flow (server returns 402 + requirements → client pays USDC on Arc →
+server verifies the payment on-chain with replay protection → serves the resource).
+We chose x402 because it's an open, self-verifying standard that fits agent-to-service
+commerce and lets us *prove* settlement on-chain rather than trust a hosted meter. If
+Circle Nanopayments exposes a comparable sub-cent primitive on Arc, it would be a
+natural addition alongside x402 — we'd be glad to compare the two on the same flow.
 
 ## License
 

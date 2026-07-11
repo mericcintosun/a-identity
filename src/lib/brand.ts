@@ -12,11 +12,13 @@ export const APP_TAGLINE = 'The passport and wallet for the agentic economy'
  * environment points somewhere real:
  *   - dev: http://localhost:3000 (set in .env.development; run `npm run docs`)
  *   - prod: the deployed docs domain (set VITE_DOCS_URL at build time)
- * Falls back to the production domain when no override is present.
+ * IMPORTANT: set VITE_DOCS_URL in the Vercel project once the docs site is deployed.
+ * The fallback is the LIVE app origin (not a dead `docs.*` domain), so an unset var
+ * degrades to the live homepage instead of a connection error.
  */
 export const DOCS_URL =
   (import.meta.env.VITE_DOCS_URL as string | undefined)?.replace(/\/$/, '') ??
-  'https://docs.a-identity.dev'
+  'https://a-identity.xyz'
 
 /** The three open protocols A-Identity connects, each with its own color. */
 export const PROTOCOLS = [
