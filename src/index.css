@@ -26,6 +26,17 @@ body,
   height: 100%;
 }
 
+/* Smooth in-page navigation for the landing anchor nav (Protocol/Compare/
+   Developers/Blog/FAQ → #pillars/#positioning/#developers/#blog/#faq), with a
+   little breathing room so a section doesn't land flush against the viewport top. */
+html {
+  scroll-behavior: smooth;
+}
+
+section[id] {
+  scroll-margin-top: 1.5rem;
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
