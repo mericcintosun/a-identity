@@ -11,6 +11,7 @@ import {
   Save,
   Shield,
   Snowflake,
+  TrendingUp,
   Wallet,
 } from 'lucide-react'
 import { useAuth, authHeaders } from '../../store/auth'
@@ -341,6 +342,9 @@ export default function Permissions() {
 
           {/* Circle Agent Wallet — the hosted, wallet-layer enforcement layer */}
           <CircleWalletPanel agentId={agentId} />
+
+          {/* Treasury — idle-balance auto-yield into USYC (Circle's yield-bearing token) */}
+          <TreasuryPanel agentId={agentId} />
 
           {/* Try a payment (live policy tester) */}
           <PolicyTester agentId={agentId} onSpent={() => loadPolicy(agentId)} />
@@ -767,6 +771,183 @@ function CircleWalletPanel({ agentId }: { agentId: string }) {
         >
           {busy ? 'Provisioning on Circle...' : 'Provision Circle Agent Wallet'}
         </button>
+      )}
+      {err && <div className="mt-3 text-xs text-red-600">{err}</div>}
+    </section>
+  )
+}
+
+type TreasuryState = {
+  balances?: { usdcUsd: number; eurcUsd: number; usycUsd: number; idleUsd: number; totalUsd: number }
+  capUsd?: number
+  deployableUsd?: number
+  projection?: { apyPct: number; weeklyUsd: number; monthlyUsd: number; yearlyUsd: number }
+  usyc?: { token: string; teller: string; explorer: string; apyEstimatePct: number }
+  note?: string
+  autoYieldEnabled?: boolean
+  authorizedAt?: string
+  error?: string
+}
+
+/**
+ * Treasury: put the agent's idle stablecoin to work in USYC, Circle's yield-bearing token.
+ * Idle USDC/EURC above a working-capital cap earns yield and redeems back to USDC on demand.
+ * The owner reviews projected earnings and authorizes; balances and the review are live, the
+ * on-chain USDC to USYC mint goes live once the wallet is USYC-allowlisted (enterprise-gated).
+ */
+function TreasuryPanel({ agentId }: { agentId: string }) {
+  const [t, setT] = useState<TreasuryState | null>(null)
+  const [cap, setCap] = useState('25')
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const load = useCallback(
+    async (capUsd?: string) => {
+      setLoading(true)
+      try {
+        const q = capUsd !== undefined && capUsd !== '' ? `&cap=${Number(capUsd)}` : ''
+        const res = await fetch(`${MCP_BASE}/api/agents/treasury?agentId=${agentId}${q}`, { signal: AbortSignal.timeout(12000) })
+        const j = (await res.json()) as TreasuryState
+        setT(j)
+        if (typeof j.capUsd === 'number') setCap(String(j.capUsd))
+        setErr(j.error ?? null)
+      } catch {
+        setErr('Could not load treasury status.')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [agentId],
+  )
+
+  useEffect(() => {
+    if (agentId) load()
+  }, [agentId, load])
+
+  const act = async (enable: boolean) => {
+    setBusy(true)
+    setErr(null)
+    try {
+      const res = await fetch(`${MCP_BASE}/api/agents/treasury`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(enable ? { agentId, capUsd: Number(cap) || 0 } : { agentId, enabled: false }),
+      })
+      const j = (await res.json()) as { error?: string }
+      if (j.error) setErr(j.error)
+      await load(cap)
+    } catch {
+      setErr('Action failed. Is the backend running?')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const b = t?.balances
+  const proj = t?.projection
+  const on = !!t?.autoYieldEnabled
+
+  return (
+    <section className="mt-4 rounded-2xl border border-[#1AAB7A]/25 bg-[#1AAB7A]/[0.04] p-6">
+      <div className="mb-1 flex items-center gap-2">
+        <TrendingUp size={16} className="text-[#1AAB7A]" />
+        <h3 className="font-semibold text-ink">Treasury: auto-yield into USYC</h3>
+        {on && (
+          <span className="ml-1 rounded-full bg-[#1AAB7A]/10 px-2 py-0.5 text-[10px] font-bold text-[#1AAB7A]">Auto-yield on</span>
+        )}
+      </div>
+      <p className="mb-4 text-xs text-ink/55">
+        Put the agent's <b>idle</b> stablecoin to work. Anything above your working-capital cap can earn yield in{' '}
+        <b>USYC</b>, Circle's tokenized money-market fund on Arc, and redeem back to USDC when the agent needs to
+        spend. You review the projected earnings and authorize. Nothing moves on its own.
+      </p>
+
+      {loading ? (
+        <div className="text-xs text-ink/45">Loading treasury...</div>
+      ) : t?.error ? (
+        <div className="text-xs text-ink/45">{t.error}</div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="USDC" value={`$${(b?.usdcUsd ?? 0).toFixed(2)}`} />
+            <Stat label="EURC" value={`$${(b?.eurcUsd ?? 0).toFixed(2)}`} />
+            <Stat label="USYC (yielding)" value={`$${(b?.usycUsd ?? 0).toFixed(2)}`} />
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="text-[11px] font-semibold text-ink/50">Working-capital cap (USD)</label>
+              <input
+                type="number"
+                min="0"
+                value={cap}
+                onChange={(e) => setCap(e.target.value)}
+                className="mt-1 w-32 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#1AAB7A]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => load(cap)}
+              className="rounded-full border border-ink/15 px-3 py-2 text-xs font-semibold text-ink/70 hover:border-[#1AAB7A]"
+            >
+              Preview
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Idle now" value={`$${(b?.idleUsd ?? 0).toFixed(2)}`} />
+            <Stat label="Deployable" value={`$${(t?.deployableUsd ?? 0).toFixed(2)}`} />
+            <Stat label="Est. / month" value={`$${(proj?.monthlyUsd ?? 0).toFixed(2)}`} />
+            <Stat label="Est. / week" value={`$${(proj?.weeklyUsd ?? 0).toFixed(2)}`} />
+          </div>
+          <p className="text-[11px] text-ink/45">
+            {t?.note} Estimated at about {t?.usyc?.apyEstimatePct ?? proj?.apyPct ?? 0}% APY. USYC yield floats with
+            short T-bill rates, so this is an estimate, not a quote.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {on ? (
+              <>
+                <span className="text-xs font-semibold text-[#1AAB7A]">
+                  Authorized{typeof t?.capUsd === 'number' ? `, cap $${t.capUsd}` : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => act(false)}
+                  disabled={busy}
+                  className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink/70 hover:border-red-400 disabled:opacity-50"
+                >
+                  {busy ? '...' : 'Turn off'}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => act(true)}
+                disabled={busy}
+                className="rounded-full bg-[#1AAB7A] px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
+              >
+                {busy ? 'Authorizing...' : 'Authorize auto-yield'}
+              </button>
+            )}
+            {t?.usyc?.explorer && (
+              <a
+                href={t.usyc.explorer}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#1AAB7A] hover:underline"
+              >
+                USYC contract <ExternalLink size={11} />
+              </a>
+            )}
+          </div>
+          <p className="text-[11px] text-ink/40">
+            USYC is an enterprise-gated Circle product. Balances, the cap and the earnings review are live now. The
+            on-chain USDC to USYC mint goes live once this wallet is USYC-allowlisted (Circle Support, about 24 to 48
+            hours).
+          </p>
+        </div>
       )}
       {err && <div className="mt-3 text-xs text-red-600">{err}</div>}
     </section>

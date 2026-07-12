@@ -43,6 +43,9 @@ import {
   startKyaChallenge,
   verifyKya,
   getAgentKya,
+  getAgentTreasury,
+  startAgentAutoYield,
+  stopAgentAutoYield,
   type InstructionType,
 } from './platform.js'
 import { issueToken, verifyToken, isVerified } from './auth.js'
@@ -524,6 +527,30 @@ const server = http.createServer(async (req, res) => {
     const agentId = url.searchParams.get('agentId') ?? ''
     if (!agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
     const r = await getAgentCircleWallet(agentId)
+    if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
+    sendJson(res, 200, r)
+    return
+  }
+  // ── Treasury: idle-balance auto-yield into USYC (Circle's yield-bearing token) ──
+  // Live multi-asset balances + deployable idle + projected USYC earnings (read-only)
+  if (req.method === 'GET' && url.pathname === '/api/agents/treasury') {
+    const agentId = url.searchParams.get('agentId') ?? ''
+    if (!agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
+    const capParam = url.searchParams.get('cap')
+    const cap = capParam !== null && Number.isFinite(Number(capParam)) ? Number(capParam) : undefined
+    const r = await getAgentTreasury(agentId, cap)
+    if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
+    sendJson(res, 200, r)
+    return
+  }
+  // Owner authorizes (or turns off) auto-yield at a working-capital cap
+  if (req.method === 'POST' && url.pathname === '/api/agents/treasury') {
+    const body = (await readBody(req).catch(() => null)) as { agentId?: string; capUsd?: number; enabled?: boolean } | null
+    if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
+    const r =
+      body.enabled === false
+        ? stopAgentAutoYield(body.agentId, callerId)
+        : await startAgentAutoYield(body.agentId, typeof body.capUsd === 'number' ? body.capUsd : 25, callerId)
     if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return

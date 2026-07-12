@@ -25,6 +25,7 @@ import {
   recordValidationOnchain, readValidation,
 } from './arc-contracts.js'
 import { createAgentWallet, circlePay, readCircleWallet } from './circle-agent.js'
+import { previewTreasury, startAutoYield, type TreasuryPreview, type TreasuryExecution } from './treasury.js'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,9 @@ export type PlatformAgent = {
   circleWalletId?: string
   circleWalletAddress?: string
   circleWalletExplorer?: string
+  /** Owner-authorized auto-yield: idle balance above capUsd is earmarked for USYC
+   *  (Circle's yield-bearing token). Off by default; the owner turns it on. */
+  treasury?: { autoYieldEnabled: boolean; capUsd: number; authorizedAt?: string }
   passport: {
     standard: 'ERC-8004'
     registrationJson: Record<string, unknown>
@@ -671,6 +675,68 @@ export async function getAgentCircleWallet(agentId: string) {
   if (!agent.circleWalletId) return { circleWalletId: null }
   const live = await readCircleWallet(agent.circleWalletId)
   return { circleWalletId: agent.circleWalletId, circleWalletAddress: agent.circleWalletAddress, ...live }
+}
+
+// ── treasury: idle-balance auto-yield into USYC (Circle's yield-bearing token) ────
+
+/** Default working-capital cap: idle balance above this is what auto-yield would deploy. */
+const DEFAULT_YIELD_CAP_USD = 25
+
+/**
+ * Live treasury view for an agent: real multi-asset balances (USDC/EURC/USYC) read
+ * from Arc, the deployable idle amount above the cap, and the projected USYC earnings
+ * the owner reviews before authorizing. Read-only, no key. Uses the saved cap if the
+ * owner has one, else the query cap, else the default.
+ */
+export async function getAgentTreasury(
+  agentId: string,
+  capUsd?: number,
+): Promise<{ error: string } | (TreasuryPreview & { autoYieldEnabled: boolean; authorizedAt?: string })> {
+  const agent = state.agents.find((a) => a.id === agentId)
+  if (!agent) return { error: 'Unknown agent' }
+  if (!agent.walletAddress) return { error: 'Agent has no wallet yet; create or assign one first' }
+  const cap = capUsd ?? agent.treasury?.capUsd ?? DEFAULT_YIELD_CAP_USD
+  const preview = await previewTreasury(agent.walletAddress, cap)
+  return { ...preview, autoYieldEnabled: agent.treasury?.autoYieldEnabled ?? false, authorizedAt: agent.treasury?.authorizedAt }
+}
+
+/**
+ * Owner authorizes auto-yield at a working-capital cap: persists the authorization
+ * (enabled + cap) and returns the on-chain USYC deployment plan. The USDC->USYC mint is
+ * gated on USYC allowlisting (like every other write here); the authorization + cap are
+ * real state either way. Owner-only.
+ */
+export async function startAgentAutoYield(
+  agentId: string,
+  capUsd: number,
+  caller?: string,
+): Promise<{ error: string } | { treasury: PlatformAgent['treasury']; execution: TreasuryExecution }> {
+  const agent = state.agents.find((a) => a.id === agentId)
+  if (!agent) return { error: 'Unknown agent' }
+  if (!ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
+  if (!agent.walletAddress) return { error: 'Agent has no wallet yet; create or assign one first' }
+  const cap = Math.max(0, capUsd)
+
+  const execution = await startAutoYield(agent.walletAddress, cap)
+  agent.treasury = { autoYieldEnabled: true, capUsd: cap, authorizedAt: new Date().toISOString() }
+  pushActivity(
+    agent,
+    `Auto-yield authorized: idle over $${cap} earmarked for USYC` +
+      (execution.deployableUsd > 0 ? ` (~$${execution.projection.monthlyUsd}/mo projected on $${execution.deployableUsd})` : ''),
+  )
+  save(state)
+  return { treasury: agent.treasury, execution }
+}
+
+/** Owner turns auto-yield off (leaves any USYC position untouched; just stops earmarking). */
+export function stopAgentAutoYield(agentId: string, caller?: string): { error: string } | { treasury: PlatformAgent['treasury'] } {
+  const agent = state.agents.find((a) => a.id === agentId)
+  if (!agent) return { error: 'Unknown agent' }
+  if (!ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
+  agent.treasury = { autoYieldEnabled: false, capUsd: agent.treasury?.capUsd ?? DEFAULT_YIELD_CAP_USD, authorizedAt: agent.treasury?.authorizedAt }
+  pushActivity(agent, 'Auto-yield turned off by a human')
+  save(state)
+  return { treasury: agent.treasury }
 }
 
 // ── policy / permissions ───────────────────────────────────────────────────────
