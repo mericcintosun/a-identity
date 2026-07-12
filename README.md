@@ -258,9 +258,16 @@ Nanopayments) are **permissionless** on Arc testnet — they need only a funded
   → `mcp/src/nanopay.ts` · permissionless (`ARC_SIGNER_KEY` only) · seller
   `GET /api/x402/nano/data`, one-click `POST /api/arc/nanopay-demo`, autonomous
   `POST /api/arc/agent-run` (the agent pays a burst on its own, then stops at its budget).
+- **USYC** (Circle's yield-bearing token) — the agent treasury: idle USDC/EURC above a
+  working-capital cap is put to work in USYC, Circle's tokenized money-market fund on Arc,
+  with a live projected-earnings review and owner authorization. Balances and the review are
+  real (no key); the USDC→USYC mint targets the real USYC Teller and is gated on USYC
+  allowlisting (Circle Support, ~24-48h), so it ships as a prepared, architecture-level
+  integration — never a mocked position.
+  → `mcp/src/treasury.ts` · `GET`/`POST /api/agents/treasury`.
 
-> USYC and StableFX are **not** used — they are enterprise-gated and out of scope for this
-> build, so they are not claimed anywhere.
+> StableFX is **not** used. USDY is deliberately avoided too — it is an Ondo product, not
+> Circle, and not deployed on Arc; **USYC** is the Circle-native yield token used here.
 
 ## Circle Product Feedback
 
