@@ -778,6 +778,7 @@ function CircleWalletPanel({ agentId }: { agentId: string }) {
 }
 
 type TreasuryState = {
+  address?: string
   balances?: { usdcUsd: number; eurcUsd: number; usycUsd: number; idleUsd: number; totalUsd: number }
   capUsd?: number
   deployableUsd?: number
@@ -795,6 +796,31 @@ type TreasuryState = {
  * The owner reviews projected earnings and authorizes; balances and the review are live, the
  * on-chain USDC to USYC mint goes live once the wallet is USYC-allowlisted (enterprise-gated).
  */
+const CAP_PRESETS = [0, 5, 25, 100]
+
+function BalanceTile({ ticker, value, yielding }: { ticker: string; value: string; yielding?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs font-semibold text-ink/55">{ticker}</span>
+        {yielding && (
+          <span className="rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9px] font-semibold text-emerald-700">Yielding</span>
+        )}
+      </div>
+      <div className="mt-1 text-lg font-semibold tracking-tight text-ink tabular-nums">{value}</div>
+    </div>
+  )
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
+      <div className="text-[11px] font-medium text-ink/45">{label}</div>
+      <div className="mt-0.5 text-base font-semibold tracking-tight text-ink tabular-nums">{value}</div>
+    </div>
+  )
+}
+
 function TreasuryPanel({ agentId }: { agentId: string }) {
   const [t, setT] = useState<TreasuryState | null>(null)
   const [cap, setCap] = useState('25')
@@ -844,91 +870,169 @@ function TreasuryPanel({ agentId }: { agentId: string }) {
     }
   }
 
+  const setCapPreset = (v: number) => {
+    setCap(String(v))
+    load(String(v))
+  }
+
   const b = t?.balances
   const proj = t?.projection
   const on = !!t?.autoYieldEnabled
+  const deployable = t?.deployableUsd ?? 0
+  const apy = t?.usyc?.apyEstimatePct ?? proj?.apyPct ?? 4.2
+  const money = (n?: number) => `$${(n ?? 0).toFixed(2)}`
 
   return (
-    <section className="mt-4 rounded-2xl border border-[#1AAB7A]/25 bg-[#1AAB7A]/[0.04] p-6">
-      <div className="mb-1 flex items-center gap-2">
-        <TrendingUp size={16} className="text-[#1AAB7A]" />
-        <h3 className="font-semibold text-ink">Treasury: auto-yield into USYC</h3>
-        {on && (
-          <span className="ml-1 rounded-full bg-[#1AAB7A]/10 px-2 py-0.5 text-[10px] font-bold text-[#1AAB7A]">Auto-yield on</span>
+    <section className="mt-4 overflow-hidden rounded-3xl border border-emerald-200/70 bg-gradient-to-b from-emerald-50/50 to-white p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:p-7">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-600 text-white">
+            <TrendingUp size={16} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-[15px] font-semibold text-ink">Treasury</h3>
+              {on && (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                  Auto Yield On
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-ink/50">Idle balance put to work in USYC</p>
+          </div>
+        </div>
+        {t?.address && (
+          <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-black/[0.07] bg-white px-2.5 py-1 text-[11px] font-medium text-ink/55 sm:inline-flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Reading {short(t.address)}
+          </span>
         )}
       </div>
-      <p className="mb-4 text-xs text-ink/55">
-        Put the agent's <b>idle</b> stablecoin to work. Anything above your working-capital cap can earn yield in{' '}
-        <b>USYC</b>, Circle's tokenized money-market fund on Arc, and redeem back to USDC when the agent needs to
-        spend. You review the projected earnings and authorize. Nothing moves on its own.
+
+      <p className="mt-3 text-xs leading-relaxed text-ink/55">
+        Put the agent's idle stablecoin to work. Anything above your working capital cap earns yield in <b>USYC</b>,
+        Circle's tokenized money market fund on Arc, and redeems back to USDC when the agent needs to spend. You review
+        the projection and authorize. Nothing moves on its own.
       </p>
 
       {loading ? (
-        <div className="text-xs text-ink/45">Loading treasury...</div>
+        <div className="mt-5 text-xs text-ink/45">Loading treasury...</div>
       ) : t?.error ? (
-        <div className="text-xs text-ink/45">{t.error}</div>
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-xs text-ink/60">{t.error}</div>
       ) : (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <Stat label="USDC" value={`$${(b?.usdcUsd ?? 0).toFixed(2)}`} />
-            <Stat label="EURC" value={`$${(b?.eurcUsd ?? 0).toFixed(2)}`} />
-            <Stat label="USYC (yielding)" value={`$${(b?.usycUsd ?? 0).toFixed(2)}`} />
-          </div>
-
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="text-[11px] font-semibold text-ink/50">Working-capital cap (USD)</label>
-              <input
-                type="number"
-                min="0"
-                value={cap}
-                onChange={(e) => setCap(e.target.value)}
-                className="mt-1 w-32 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#1AAB7A]"
-              />
+        <div className="mt-5 space-y-5">
+          <div>
+            <div className="mb-2 text-[11px] font-medium text-ink/45">Wallet Balances</div>
+            <div className="grid grid-cols-3 gap-2.5">
+              <BalanceTile ticker="USDC" value={money(b?.usdcUsd)} />
+              <BalanceTile ticker="EURC" value={money(b?.eurcUsd)} />
+              <BalanceTile ticker="USYC" value={money(b?.usycUsd)} yielding />
             </div>
-            <button
-              type="button"
-              onClick={() => load(cap)}
-              className="rounded-full border border-ink/15 px-3 py-2 text-xs font-semibold text-ink/70 hover:border-[#1AAB7A]"
-            >
-              Preview
-            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Idle now" value={`$${(b?.idleUsd ?? 0).toFixed(2)}`} />
-            <Stat label="Deployable" value={`$${(t?.deployableUsd ?? 0).toFixed(2)}`} />
-            <Stat label="Est. / month" value={`$${(proj?.monthlyUsd ?? 0).toFixed(2)}`} />
-            <Stat label="Est. / week" value={`$${(proj?.weeklyUsd ?? 0).toFixed(2)}`} />
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[11px] font-medium text-ink/45">Working Capital Cap</span>
+              <span className="text-[11px] text-ink/40">Idle below this stays liquid</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {CAP_PRESETS.map((v) => {
+                const active = Number(cap) === v
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setCapPreset(v)}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                      active ? 'bg-ink text-white' : 'border border-black/10 bg-white text-ink/60 hover:border-ink/25'
+                    }`}
+                  >
+                    ${v}
+                  </button>
+                )
+              })}
+              <div className="ml-1 inline-flex items-center rounded-full border border-black/10 bg-white pl-3">
+                <span className="text-[11px] text-ink/40">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={cap}
+                  onChange={(e) => setCap(e.target.value)}
+                  onBlur={() => load(cap)}
+                  className="w-16 bg-transparent px-1.5 py-1.5 text-xs font-semibold text-ink outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => load(cap)}
+                className="rounded-full border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+              >
+                Preview
+              </button>
+            </div>
           </div>
-          <p className="text-[11px] text-ink/45">
-            {t?.note} Estimated at about {t?.usyc?.apyEstimatePct ?? proj?.apyPct ?? 0}% APY. USYC yield floats with
-            short T-bill rates, so this is an estimate, not a quote.
-          </p>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="overflow-hidden rounded-2xl border border-emerald-300/60 bg-gradient-to-r from-emerald-400/[0.16] via-emerald-300/[0.08] to-transparent px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-medium text-ink/50">Ready To Earn In USYC</div>
+                <div className="mt-0.5 text-[26px] font-bold leading-none tracking-tight text-emerald-700 tabular-nums">
+                  {money(deployable)}
+                </div>
+              </div>
+              <div className="text-right text-[11px] leading-relaxed text-ink/50">
+                <div>About {apy}% APY estimate</div>
+                <div className="tabular-nums">
+                  {money(proj?.monthlyUsd)} per month · {money(proj?.weeklyUsd)} per week
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <MetricTile label="Idle Now" value={money(b?.idleUsd)} />
+            <MetricTile label="Deployable" value={money(deployable)} />
+            <MetricTile label="Est. Monthly" value={money(proj?.monthlyUsd)} />
+            <MetricTile label="Est. Yearly" value={money(proj?.yearlyUsd)} />
+          </div>
+
+          {deployable <= 0 && (
+            <p className="text-[11px] text-ink/45">
+              Idle balance is at or below the ${Number(cap) || 0} cap. Lower the cap to put more to work.
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             {on ? (
               <>
-                <span className="text-xs font-semibold text-[#1AAB7A]">
-                  Authorized{typeof t?.capUsd === 'number' ? `, cap $${t.capUsd}` : ''}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => act(true)}
+                  disabled={busy}
+                  className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {busy ? 'Updating...' : 'Update Cap'}
+                </button>
                 <button
                   type="button"
                   onClick={() => act(false)}
                   disabled={busy}
-                  className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink/70 hover:border-red-400 disabled:opacity-50"
+                  className="rounded-full border border-black/10 px-4 py-2.5 text-sm font-semibold text-ink/60 transition hover:border-red-300 hover:text-red-600 disabled:opacity-50"
                 >
-                  {busy ? '...' : 'Turn off'}
+                  Turn Off
                 </button>
+                <span className="text-xs font-medium text-emerald-700">
+                  Authorized{typeof t?.capUsd === 'number' ? ` · cap $${t.capUsd}` : ''}
+                </span>
               </>
             ) : (
               <button
                 type="button"
                 onClick={() => act(true)}
                 disabled={busy}
-                className="rounded-full bg-[#1AAB7A] px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
+                className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
               >
-                {busy ? 'Authorizing...' : 'Authorize auto-yield'}
+                {busy ? 'Authorizing...' : 'Authorize Auto Yield'}
               </button>
             )}
             {t?.usyc?.explorer && (
@@ -936,16 +1040,17 @@ function TreasuryPanel({ agentId }: { agentId: string }) {
                 href={t.usyc.explorer}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[#1AAB7A] hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline"
               >
-                USYC contract <ExternalLink size={11} />
+                USYC Contract <ExternalLink size={11} />
               </a>
             )}
           </div>
-          <p className="text-[11px] text-ink/40">
-            USYC is an enterprise-gated Circle product. Balances, the cap and the earnings review are live now. The
-            on-chain USDC to USYC mint goes live once this wallet is USYC-allowlisted (Circle Support, about 24 to 48
-            hours).
+
+          <p className="text-[11px] leading-relaxed text-ink/40">
+            USYC is an enterprise gated Circle product. Balances, the cap and the earnings review are live now. The
+            onchain USDC to USYC mint goes live once this wallet is USYC allowlisted (Circle Support, about 24 to 48
+            hours). Estimated APY only. USYC yield floats with short Treasury rates.
           </p>
         </div>
       )}
