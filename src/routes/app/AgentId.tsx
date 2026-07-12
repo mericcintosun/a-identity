@@ -86,14 +86,14 @@ export default function AgentId() {
     }
   }, [])
 
-  // Only resolve the MOCK demo agent as a fallback — and only once we've confirmed the
+  // Only resolve the MOCK demo agent as a fallback, and only once we've confirmed the
   // account has no real agent. Avoids two throwaway requests on every mount when a real
   // agent already exists.
   const useExampleFallback = realChecked && !realAgent
   const { agent: liveAgent, source, loading: agentLoading } = useResolveAgent(DEMO_AGENT_ID, useExampleFallback)
   const { reputation: liveRep, loading: repLoading } = useAgentReputation(DEMO_AGENT_ID, useExampleFallback)
 
-  // Real reputation when available; no fabricated fallback (show '—' if we have none).
+  // Real reputation when available; no fabricated fallback (show '-' if we have none).
   const score = realRep?.score ?? liveRep?.score ?? null
   const breakdown = realRep?.breakdown ?? liveRep?.breakdown ?? { settlement: 0, validation: 0, tenure: 0 }
 
@@ -101,15 +101,15 @@ export default function AgentId() {
   const agentName = realAgent?.name ?? `${liveAgent?.domain?.split('.')[0] ?? user?.name ?? 'My Agent'} Agent`
   const agentIdLabel = realAgent?.onchainAgentId
     ? `ERC-8004 #${realAgent.onchainAgentId}`
-    : realAgent?.id ?? liveAgent?.agentId ?? '—'
+    : realAgent?.id ?? liveAgent?.agentId ?? '-'
   const category = realAgent?.category ?? 'Trading / Finance'
   const kyaVerified = realAgent ? realAgent.kya === 'verified' : false
   const registeredLabel = realAgent?.createdAt
     ? new Date(realAgent.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-    : liveAgent?.registeredAt ?? '—'
+    : liveAgent?.registeredAt ?? '-'
   const networkLabel = realAgent ? 'Arc testnet' : '5 chains'
   // Honest progress: only a REAL agent advances the stepper. The illustrative sample
-  // (shown when the account has no agent yet) sits at stage 0 — the user hasn't
+  // (shown when the account has no agent yet) sits at stage 0: the user hasn't
   // registered anything, so nothing is "done".
   const stageIndex = !realAgent
     ? 0
@@ -153,7 +153,7 @@ export default function AgentId() {
           <ShieldQuestion size={18} className="mt-0.5 shrink-0" />
           <p>
             <span className="font-semibold">This is a real example agent</span> (ERC-8004 #849980 on
-            Arc), resolved live on-chain. You haven't created an agent yet — register one below to get
+            Arc), resolved live on-chain. You haven't created an agent yet. Register one below to get
             your own on-chain passport.
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function AgentId() {
           <div className="text-right">
             <div className="text-xs opacity-60">ERC-8004</div>
             <div className="mt-1 flex items-center justify-end gap-1.5">
-              <div className="text-3xl font-bold leading-none">{score ?? '—'}</div>
+              <div className="text-3xl font-bold leading-none">{score ?? '-'}</div>
               {repLoading && <RefreshCw size={13} className="animate-spin opacity-50" />}
             </div>
             <div className="mt-0.5 text-xs opacity-60">Reputation</div>
@@ -298,7 +298,7 @@ export default function AgentId() {
           <p className="text-sm font-semibold text-ink">Human approval required for deployment</p>
           <p className="mt-1 text-sm text-ink/65">
             Registering an ERC-8004 identity on-chain (Arc) requires your explicit approval. This
-            card reads live from Arc's ERC-8004 registry — no mock data.
+            card reads live from Arc's ERC-8004 registry. No mock data.
           </p>
         </div>
       </div>
@@ -324,7 +324,7 @@ export default function AgentId() {
         <ul className="flex flex-col gap-3">
           {(() => {
             // `done` reflects the agent's REAL reputation score, not a hardcoded flag:
-            // a milestone is achieved only once score >= its threshold (—/unknown → not done).
+            // a milestone is achieved only once score >= its threshold (-/unknown → not done).
             const has = score != null
             const s = score ?? 0
             const base = [
@@ -440,7 +440,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
     setWalletBusy(true)
     setError(null)
     try {
-      // Generate the keypair IN THE BROWSER — the private key never touches the server.
+      // Generate the keypair IN THE BROWSER. The private key never touches the server.
       const { generatePrivateKey, privateKeyToAccount } = await import('viem/accounts')
       const privateKey = generatePrivateKey()
       const address = privateKeyToAccount(privateKey).address
@@ -482,7 +482,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
       })
       const data = (await res.json()) as { agent?: { id: string } }
       if (data.agent) {
-        invalidatePlatformAgents() // a new agent joined the list — drop the shared cache
+        invalidatePlatformAgents() // a new agent joined the list, drop the shared cache
         setDone(data.agent.id)
       } else setError('Registration failed. Is the MCP server running?')
     } catch {
@@ -510,7 +510,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
         error?: string
       }
       if (data.result?.executed && data.agent) {
-        invalidatePlatformAgents() // on-chain status changed — refresh the shared list next read
+        invalidatePlatformAgents() // on-chain status changed, refresh the shared list next read
         setAnchored(data.agent)
       } else setAnchorNote(data.result?.reason ?? data.error ?? 'Could not broadcast. Set a funded ARC_SIGNER_KEY on the server.')
     } catch {
@@ -564,9 +564,9 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
         <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/70">
           <li>Permissions set (daily cap, auto-approve).</li>
           {kya?.verified ? (
-            <li>KYA verified — wallet control proven.</li>
+            <li>KYA verified: wallet control proven.</li>
           ) : (
-            <li>KYA pending — prove the agent controls its wallet below.</li>
+            <li>KYA pending: prove the agent controls its wallet below.</li>
           )}
           {wallet && <li>Wallet {wallet.address.slice(0, 10)}... is assigned to it.</li>}
           {!anchored && <li>On-chain anchor is queued. Anchor it on Arc to mint a real ERC-8004 identity.</li>}
@@ -576,7 +576,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
         {anchored ? (
           <div className="mt-4 rounded-xl border border-[#2775CA]/25 bg-[#2775CA]/[0.05] p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#2775CA]">
-              <BadgeCheck size={16} /> Anchored on Arc — ERC-8004 id #{anchored.onchainAgentId ?? '?'}
+              <BadgeCheck size={16} /> Anchored on Arc: ERC-8004 id #{anchored.onchainAgentId ?? '?'}
             </div>
             {anchored.onchainExplorer && (
               <a
@@ -609,7 +609,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
             {kya?.verified ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                  <BadgeCheck size={16} /> KYA verified — wallet control proven
+                  <BadgeCheck size={16} /> KYA verified: wallet control proven
                 </div>
                 {kya.onchainExplorer ? (
                   <a
@@ -618,7 +618,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
                     rel="noopener noreferrer"
                     className="mt-1 inline-block break-all text-xs font-semibold text-emerald-700 hover:underline"
                   >
-                    Attested on-chain — ERC-8004 ValidationRegistry (view tx)
+                    Attested on-chain: ERC-8004 ValidationRegistry (view tx)
                   </a>
                 ) : (
                   <p className="mt-1 text-xs text-ink/45">Anchor on Arc to also record this on the ERC-8004 ValidationRegistry.</p>
@@ -636,7 +636,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
                 </button>
                 <p className="mt-2 text-xs text-ink/45">
                   Signs a challenge with your agent's wallet key (in your browser)
-                  {anchored ? ' and records it on the ERC-8004 ValidationRegistry.' : ' — anchor first for an on-chain attestation.'}
+                  {anchored ? ' and records it on the ERC-8004 ValidationRegistry.' : '. Anchor first for an on-chain attestation.'}
                 </p>
                 {kyaNote && <p className="mt-2 text-xs text-amber-700">{kyaNote}</p>}
               </>
@@ -741,7 +741,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
             <div className="break-all font-mono text-xs text-ink">{wallet.address}</div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <div className="text-[11px] font-bold text-red-600">
-                Private key (generated in your browser — the server never sees it)
+                Private key (generated in your browser, the server never sees it)
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button
@@ -759,7 +759,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
                       setCopiedKey(true)
                       setTimeout(() => setCopiedKey(false), 1500)
                     } catch {
-                      setShowKey(true) // clipboard blocked — reveal so it can be copied by hand
+                      setShowKey(true) // clipboard blocked, reveal so it can be copied by hand
                     }
                   }}
                   className="text-[11px] font-semibold text-[#2775CA] hover:underline"
@@ -772,7 +772,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
               {showKey ? wallet.privateKey : '•'.repeat(48)}
             </div>
             <p className="mt-1 text-[11px] text-ink/45">
-              Save it now — it is shown once and never stored. Reveal only somewhere no one can see your screen.
+              Save it now. It is shown once and never stored. Reveal only somewhere no one can see your screen.
             </p>
             <a
               href="https://faucet.circle.com"

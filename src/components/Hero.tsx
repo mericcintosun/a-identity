@@ -7,7 +7,7 @@ import { EASE_OUT_EXPO, PROTOCOLS } from '../lib/brand'
  * Note on styling: the rest of the app is Tailwind-first, but this hero deliberately
  * uses inline `style` for its typography and CTAs. The values are fluid `clamp()`
  * expressions and brand tokens (shadows, per-protocol accent colors) that aren't part
- * of the Tailwind theme — keeping them inline here is intentional and self-contained,
+ * of the Tailwind theme. Keeping them inline here is intentional and self-contained,
  * not an oversight. Structural/layout classes still use Tailwind.
  */
 

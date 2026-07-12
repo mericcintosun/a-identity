@@ -38,7 +38,7 @@ export default function EscrowPanel() {
       }
       setResult((await res.json()) as Result)
     } catch {
-      setError('Could not run the escrow job (the backend may be waking up — try again).')
+      setError('Could not run the escrow job (the backend may be waking up, try again).')
     } finally {
       setBusy(false)
     }
@@ -56,7 +56,7 @@ export default function EscrowPanel() {
           <h3 className="font-semibold text-ink">Agent-to-agent escrow (ERC-8183)</h3>
           <p className="mt-0.5 text-sm text-ink/55">
             One click runs the full on-chain job: an agent hires an agent, USDC is held in escrow on
-            Arc and released on delivery — create → fund → submit → complete, all real txs.
+            Arc and released on delivery: create → fund → submit → complete, all real txs.
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ export default function EscrowPanel() {
                     ) : failedHere ? (
                       <span className="text-[11px] font-semibold text-red-500">reverted</span>
                     ) : (
-                      <span className="text-[11px] text-ink/30">—</span>
+                      <span className="text-[11px] text-ink/30">-</span>
                     )}
                   </span>
                 </li>

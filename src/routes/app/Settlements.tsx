@@ -127,7 +127,7 @@ export default function Settlements() {
       <h2 className="text-2xl font-bold tracking-tight">Settlements</h2>
       <p className="mt-1 text-sm text-ink/55">
         Every payment your agent makes runs through the policy engine, then settles in real
-        USDC on Arc. Pay a 0x… address or another agent (agent://&lt;agentId&gt;) — both move real
+        USDC on Arc. Pay a 0x… address or another agent (agent://&lt;agentId&gt;). Both move real
         testnet funds.
       </p>
 

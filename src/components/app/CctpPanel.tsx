@@ -10,7 +10,7 @@ type Result =
 
 /**
  * Circle CCTP: native USDC cross-chain via burn-and-mint (Bridge Kit / CCTPv2). One
- * click burns USDC on Arc and mints it natively on Base Sepolia — never wrapped. This
+ * click burns USDC on Arc and mints it natively on Base Sepolia, never wrapped. This
  * is the canonical bridge, distinct from Gateway's unified-balance Forwarding Service.
  * Hits POST /api/arc/cctp-demo.
  */
@@ -37,7 +37,7 @@ export default function CctpPanel() {
       }
       setResult((await res.json()) as Result)
     } catch {
-      setError('Could not run the CCTP bridge (attestation can take a bit — try again).')
+      setError('Could not run the CCTP bridge (attestation can take a bit, try again).')
     } finally {
       setBusy(false)
     }
@@ -54,7 +54,7 @@ export default function CctpPanel() {
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-ink">Native USDC bridge (Circle CCTP)</h3>
           <p className="mt-0.5 text-sm text-ink/55">
-            The canonical cross-chain rail: USDC is <b>burned on Arc and minted natively on Base Sepolia</b> —
+            The canonical cross-chain rail: USDC is <b>burned on Arc and minted natively on Base Sepolia</b>,
             never wrapped. Distinct from Gateway's unified-balance forwarding; this is CCTPv2 burn-and-mint.
           </p>
         </div>
@@ -101,7 +101,7 @@ export default function CctpPanel() {
           </div>
           {result.steps.length === 0 && (
             <div className="rounded-lg border border-ink/8 bg-cream/40 px-3 py-2 text-ink/60">
-              Bridge submitted — awaiting step confirmations.
+              Bridge submitted, awaiting step confirmations.
             </div>
           )}
           {result.steps.map((s, i) => (
@@ -132,7 +132,7 @@ export default function CctpPanel() {
           ))}
           {minted && (
             <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-emerald-700">
-              <Flame size={14} /> <span>Minted natively on Base Sepolia — burn-and-mint complete.</span>
+              <Flame size={14} /> <span>Minted natively on Base Sepolia, burn-and-mint complete.</span>
             </div>
           )}
         </div>

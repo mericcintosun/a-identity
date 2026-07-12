@@ -32,7 +32,7 @@ export default function WalletModal({
     setError(null)
     refreshInjectedWallets()
     setWallets(getInjectedWallets())
-    // Some wallets announce a beat late — re-read shortly after opening.
+    // Some wallets announce a beat late, re-read shortly after opening.
     const t = setTimeout(() => setWallets(getInjectedWallets()), 150)
     return () => clearTimeout(t)
   }, [open])

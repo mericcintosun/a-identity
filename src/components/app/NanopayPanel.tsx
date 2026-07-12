@@ -47,14 +47,14 @@ export default function NanopayPanel() {
       }
       setResult((await res.json()) as Result)
     } catch {
-      setError('Could not run the nanopayment (the backend may be waking up — try again).')
+      setError('Could not run the nanopayment (the backend may be waking up, try again).')
     } finally {
       setBusy(false)
     }
   }
 
   const settled = result?.executed && result.settle.success
-  const short = (a?: string) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—')
+  const short = (a?: string) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '-')
 
   return (
     <div className="mt-8 rounded-2xl border border-ink/10 bg-white p-6">
@@ -66,7 +66,7 @@ export default function NanopayPanel() {
           <h3 className="font-semibold text-ink">Gasless nanopayments (Circle Nanopayments)</h3>
           <p className="mt-0.5 text-sm text-ink/55">
             The second x402 rail: the payer signs an <b>EIP-3009 authorization off-chain (zero gas)</b> and
-            Circle Gateway settles it in a <b>batch</b> — making true sub-cent USDC payments economical for
+            Circle Gateway settles it in a <b>batch</b>, making true sub-cent USDC payments economical for
             high-frequency agent traffic.
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function NanopayPanel() {
             <Row label={`Topped up Gateway balance +${result.deposit.amountUsd} USDC`} link={result.deposit.explorerUrl} linkText="tx" />
           )}
           <Row
-            label="EIP-3009 authorization signed — 0 gas"
+            label="EIP-3009 authorization signed, 0 gas"
             value={`nonce ${short(result.authorization.nonce)}`}
             badge={<span className="rounded bg-[#7342E2]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#7342E2]">offchain</span>}
           />
@@ -127,7 +127,7 @@ export default function NanopayPanel() {
             {settled ? <Zap size={14} className="text-emerald-600" /> : <Loader2 size={14} className="animate-spin text-amber-600" />}
             <span className="text-ink/75">
               {settled ? (
-                <>Settled through Circle Gateway — <b>batched on-chain</b>, gasless for buyer &amp; seller</>
+                <>Settled through Circle Gateway, <b>batched on-chain</b>, gasless for buyer &amp; seller</>
               ) : (
                 <>Not settled{result.settle.errorReason ? `: ${result.settle.errorReason}` : ''}</>
               )}

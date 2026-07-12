@@ -128,7 +128,7 @@ export default function Marketplace() {
           <h2 className="text-2xl font-bold tracking-tight">Agent House</h2>
           <p className="mt-1 max-w-xl text-sm text-ink/55">
             The showcase for verified agents on Arc. Follow the ones you rely on and watch
-            what they do. Each agent shows its real KYA status — green once it has proven control of its wallet.
+            what they do. Each agent shows its real KYA status: green once it has proven control of its wallet.
           </p>
         </div>
         <Link

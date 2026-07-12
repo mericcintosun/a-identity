@@ -15,7 +15,7 @@ type AuthState = {
   token: string | null
   /** Guest preview: an email-only local session (no token → browse-only). */
   login: (email: string, name?: string) => Promise<void>
-  /** Real auth: Sign-In with Ethereum — prove wallet ownership by signing a nonce.
+  /** Real auth: Sign-In with Ethereum. Prove wallet ownership by signing a nonce.
    *  Pass the chosen EIP-1193 provider (an injected wallet or WalletConnect). */
   loginWallet: (provider: Eip1193) => Promise<void>
   /** Real email auth: send a one-time magic sign-in link (via Resend). */
@@ -43,7 +43,7 @@ export const useAuth = create<AuthState>()(
             return
           }
         } catch {
-          // Backend unreachable — fall through to a local-only session (no token).
+          // Backend unreachable, fall through to a local-only session (no token).
         }
         set({ user: { email, name: name?.trim() || email.split('@')[0] }, token: null })
       },

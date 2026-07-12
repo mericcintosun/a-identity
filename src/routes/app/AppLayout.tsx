@@ -173,7 +173,7 @@ export default function AppLayout() {
           </div>
         </header>
 
-        {/* Guest banner: browse-only session — writes won't persist until they sign in. */}
+        {/* Guest banner: browse-only session. Writes won't persist until they sign in. */}
         {isGuest && (
           <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-900 sm:px-8">
             <Lock size={13} className="shrink-0" />

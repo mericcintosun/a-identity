@@ -337,13 +337,13 @@ export default function Permissions() {
             </div>
           )}
 
-          {/* On-chain policy vault — deploy this policy as a smart contract on Arc */}
+          {/* Onchain policy vault: deploy this policy as a smart contract on Arc */}
           <VaultPanel agentId={agentId} />
 
-          {/* Circle Agent Wallet — the hosted, wallet-layer enforcement layer */}
+          {/* Circle Agent Wallet: the hosted wallet layer enforcement */}
           <CircleWalletPanel agentId={agentId} />
 
-          {/* Treasury — idle-balance auto-yield into USYC (Circle's yield-bearing token) */}
+          {/* Treasury: idle balance auto yield into USYC (Circle's yield bearing token) */}
           <TreasuryPanel agentId={agentId} />
 
           {/* Try a payment (live policy tester) */}
@@ -521,8 +521,8 @@ type VaultState = {
 
 /**
  * Deploy the agent's policy as a real smart contract on Arc. Once live, address
- * payments settle THROUGH the vault — a payment over the cap or auto-approve line
- * reverts on-chain, not just on our server. Programmable money enforcing itself.
+ * payments settle THROUGH the vault. A payment over the cap or auto-approve line
+ * reverts onchain, not just on our server. Programmable money enforcing itself.
  */
 function VaultPanel({ agentId }: { agentId: string }) {
   const [vault, setVault] = useState<VaultState | null>(null)
@@ -570,20 +570,27 @@ function VaultPanel({ agentId }: { agentId: string }) {
   const has = !!vault?.vaultAddress
 
   return (
-    <section className="mt-4 rounded-2xl border border-[#7342E2]/25 bg-[#7342E2]/[0.04] p-6">
-      <div className="mb-1 flex items-center gap-2">
-        <Link2 size={16} className="text-[#7342E2]" />
-        <h3 className="font-semibold text-ink">On-chain policy vault</h3>
-        {has && (
-          <span className="ml-1 rounded-full bg-[#7342E2]/10 px-2 py-0.5 text-[10px] font-bold text-[#7342E2]">
-            Live on Arc
-          </span>
-        )}
+    <section className="mt-4 overflow-hidden rounded-3xl border border-[#7342E2]/25 bg-gradient-to-b from-[#7342E2]/[0.06] to-white p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:p-7">
+      <div className="flex items-center gap-3">
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7342E2] text-white">
+          <Link2 size={16} />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-[15px] font-semibold text-ink">Onchain Policy Vault</h3>
+            {has && (
+              <span className="rounded-full bg-[#7342E2]/10 px-2 py-0.5 text-[10px] font-semibold text-[#7342E2]">
+                Live on Arc
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-ink/50">Your policy, enforced by a smart contract</p>
+        </div>
       </div>
-      <p className="mb-4 text-xs text-ink/55">
+      <p className="mt-3 mb-4 text-xs text-ink/55">
         Deploy this policy as a smart contract on Arc. Once live, the agent's payments to an Arc
-        address settle <b>through the vault</b> — anything over the cap or auto-approve line
-        reverts on-chain, not just on our server. Programmable money enforcing itself.
+        address settle <b>through the vault</b>. Anything over the cap or auto-approve line
+        reverts onchain, not just on our server. Programmable money enforcing itself.
       </p>
 
       {loading ? (
@@ -599,13 +606,13 @@ function VaultPanel({ agentId }: { agentId: string }) {
             {short(vault!.vaultAddress!)} <ExternalLink size={11} />
           </a>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Daily cap" value={`$${vault!.dailyCapUsd}`} />
-            <Stat label="Auto-approve" value={`$${vault!.autoApproveUsd}`} />
-            <Stat label="Spent today" value={`$${vault!.spentTodayUsd?.toFixed(2) ?? '0.00'}`} />
-            <Stat label="Vault balance" value={`$${vault!.balanceUsd?.toFixed(2) ?? '0.00'}`} />
+            <Stat label="Daily Cap" value={`$${vault!.dailyCapUsd}`} />
+            <Stat label="Auto Approve" value={`$${vault!.autoApproveUsd}`} />
+            <Stat label="Spent Today" value={`$${vault!.spentTodayUsd?.toFixed(2) ?? '0.00'}`} />
+            <Stat label="Vault Balance" value={`$${vault!.balanceUsd?.toFixed(2) ?? '0.00'}`} />
           </div>
           {vault!.frozen && (
-            <div className="text-xs font-semibold text-red-600">Frozen on-chain — the agent cannot spend.</div>
+            <div className="text-xs font-semibold text-red-600">Frozen onchain. The agent cannot spend.</div>
           )}
           <p className="text-[11px] text-ink/45">
             The contract enforces the same limits set above. Address payments now settle through it.
@@ -641,9 +648,9 @@ function VaultPanel({ agentId }: { agentId: string }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-ink/8 bg-white px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-ink/40">{label}</div>
-      <div className="mt-0.5 text-sm font-bold text-ink">{value}</div>
+    <div className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
+      <div className="text-[11px] font-medium text-ink/45">{label}</div>
+      <div className="mt-0.5 text-base font-semibold tracking-tight text-ink tabular-nums">{value}</div>
     </div>
   )
 }
@@ -662,7 +669,7 @@ type CircleWalletState = {
 }
 
 /**
- * Provision a Circle Agent Wallet for the agent — the hosted, wallet-layer enforcement
+ * Provision a Circle Agent Wallet for the agent: the hosted wallet layer enforcement
  * layer that complements the on-chain vault. The agent's USDC lives in a Circle-managed
  * wallet on Arc whose hosted policy engine SCREENS every transfer (sanctions, address
  * allow/block, freeze). Precise by design: Circle screens at the wallet layer; the spend
@@ -717,21 +724,28 @@ function CircleWalletPanel({ agentId }: { agentId: string }) {
   const usdc = wallet?.balances?.find((b) => (b.symbol ?? '').toUpperCase().includes('USDC'))
 
   return (
-    <section className="mt-4 rounded-2xl border border-[#2775CA]/25 bg-[#2775CA]/[0.04] p-6">
-      <div className="mb-1 flex items-center gap-2">
-        <Wallet size={16} className="text-[#2775CA]" />
-        <h3 className="font-semibold text-ink">Circle Agent Wallet</h3>
-        {has && (
-          <span className="ml-1 rounded-full bg-[#2775CA]/10 px-2 py-0.5 text-[10px] font-bold text-[#2775CA]">
-            Live on Arc
-          </span>
-        )}
+    <section className="mt-4 overflow-hidden rounded-3xl border border-[#2775CA]/25 bg-gradient-to-b from-[#2775CA]/[0.06] to-white p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:p-7">
+      <div className="flex items-center gap-3">
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#2775CA] text-white">
+          <Wallet size={16} />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-[15px] font-semibold text-ink">Circle Agent Wallet</h3>
+            {has && (
+              <span className="rounded-full bg-[#2775CA]/10 px-2 py-0.5 text-[10px] font-semibold text-[#2775CA]">
+                Live on Arc
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-ink/50">A Circle managed wallet, screened at the wallet layer</p>
+        </div>
       </div>
       <p className="mb-4 text-xs text-ink/55">
         Give the agent a <b>Circle-managed wallet</b> on Arc. Circle's hosted policy engine screens
-        every transfer at the <b>wallet layer</b> — sanctions, address allow/block, and freeze — and
-        settles real USDC. It complements the on-chain vault: the server sets the spend cap, Circle
-        screens at the wallet layer, and the vault enforces it trustlessly on-chain.
+        every transfer at the <b>wallet layer</b> (sanctions, address allow and block, and freeze) and
+        settles real USDC. It complements the onchain vault: the server sets the spend cap, Circle
+        screens at the wallet layer, and the vault enforces it trustlessly onchain.
       </p>
 
       {loading ? (
@@ -749,8 +763,8 @@ function CircleWalletPanel({ agentId }: { agentId: string }) {
             </a>
           )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Stat label="Wallet state" value={wallet?.state ?? (wallet?.configured === false ? 'keys off' : '—')} />
-            <Stat label="USDC balance" value={usdc ? `$${Number(usdc.amount).toFixed(2)}` : '—'} />
+            <Stat label="Wallet State" value={wallet?.state ?? (wallet?.configured === false ? 'Keys off' : 'Not set')} />
+            <Stat label="USDC Balance" value={usdc ? `$${Number(usdc.amount).toFixed(2)}` : 'Not set'} />
             <Stat label="Network" value={wallet?.blockchain ?? 'ARC-TESTNET'} />
           </div>
           {wallet?.configured === false && wallet?.reason && (

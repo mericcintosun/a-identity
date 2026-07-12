@@ -17,6 +17,10 @@ import { MCP_BASE } from '../../lib/mcpBase'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
 
+/** Shorten any full 40-hex address inside activity text so it never overflows the card. */
+const humanizeActivity = (text: string) =>
+  text.replace(/0x[0-9a-fA-F]{40}/g, (a) => `${a.slice(0, 6)}...${a.slice(-4)}`)
+
 type Perms = { dailyCapUsd: number; autoApproveUnderUsd: number; frozen: boolean }
 type Agent = {
   id: string
@@ -81,7 +85,7 @@ export default function Dashboard() {
           if (!cancelled && bal?.balance != null) setBalance(Number(bal.balance))
         }
       } catch {
-        /* backend unreachable — leave everything empty (no fake numbers) */
+        /* backend unreachable, leave everything empty (no fake numbers) */
       } finally {
         if (!cancelled) setLoaded(true)
       }
@@ -91,7 +95,7 @@ export default function Dashboard() {
     }
   }, [])
 
-  const dash = '—'
+  const dash = '-'
   const p = agent?.permissions
   const statusItems = [
     {
@@ -118,7 +122,7 @@ export default function Dashboard() {
     },
     {
       label: 'Permissions',
-      detail: !p ? 'Not set' : p.frozen ? 'Frozen — all activity paused' : `Daily cap $${p.dailyCapUsd}`,
+      detail: !p ? 'Not set' : p.frozen ? 'Frozen, all activity paused' : `Daily cap $${p.dailyCapUsd}`,
       ok: Boolean(p) && !p!.frozen,
       to: '/app/permissions',
       icon: SlidersHorizontal,
@@ -156,7 +160,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stat grid — real values, em-dash until the backend answers */}
+      {/* Stat grid: real values, placeholder dashes until the backend answers */}
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           icon={Star}
@@ -268,8 +272,8 @@ export default function Dashboard() {
               {activity.map((a, i) => (
                 <li key={i} className="flex gap-3 text-sm">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                  <span className="text-ink/70">
-                    {a.text}
+                  <span className="min-w-0 break-words text-ink/70">
+                    {humanizeActivity(a.text)}
                     <span className="block text-xs text-ink/40">{ago(a.at)}</span>
                   </span>
                 </li>

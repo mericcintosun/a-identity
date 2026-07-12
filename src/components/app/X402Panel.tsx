@@ -120,7 +120,7 @@ export default function X402Panel() {
           <Zap size={15} />
         </div>
         <div>
-          <h3 className="font-semibold text-ink">x402 — pay-per-call API</h3>
+          <h3 className="font-semibold text-ink">x402: pay-per-call API</h3>
           <p className="text-xs text-ink/55">
             A real HTTP 402 rail: the server asks for payment, you pay USDC on Arc, it verifies
             on-chain and serves. One payment unlocks one call.
@@ -146,7 +146,7 @@ export default function X402Panel() {
       </div>
 
       {tx && phase === 'verifying' && (
-        <p className="mt-2 font-mono text-xs text-ink/45">paid tx {tx.slice(0, 12)}... — verifying on Arc</p>
+        <p className="mt-2 font-mono text-xs text-ink/45">paid tx {tx.slice(0, 12)}..., verifying on Arc</p>
       )}
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -154,7 +154,7 @@ export default function X402Panel() {
       {resource && (
         <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
           <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-700">
-            <CheckCircle2 size={15} /> Unlocked — paid per request
+            <CheckCircle2 size={15} /> Unlocked: paid per request
           </div>
           <div className="mt-2 grid gap-1 text-xs text-ink/70">
             <div>

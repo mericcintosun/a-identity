@@ -23,7 +23,7 @@ type Result =
 
 /**
  * Autonomous agent run. A human sets a budget once; the agent then pays a service on
- * its OWN — a burst of real gasless nanopayments (pay-per-inference / streaming) —
+ * its OWN, a burst of real gasless nanopayments (pay-per-inference / streaming),
  * and stops itself when the next payment would breach the budget (bounded authority,
  * live). Each settlement accrues a protocol fee routed to the treasury. Hits
  * POST /api/arc/agent-run.
@@ -52,13 +52,13 @@ export default function AutopilotPanel() {
       }
       setResult((await res.json()) as Result)
     } catch {
-      setError('Could not run the agent (the backend may be waking up — try again).')
+      setError('Could not run the agent (the backend may be waking up, try again).')
     } finally {
       setBusy(false)
     }
   }
 
-  const short = (a?: string) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—')
+  const short = (a?: string) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '-')
 
   return (
     <div className="mt-8 rounded-2xl border-2 border-accent/30 bg-accent/[0.03] p-6">
@@ -117,7 +117,7 @@ export default function AutopilotPanel() {
                 <span className="shrink-0 text-red-500">✕</span>
               )}
               <span className="text-ink/75">
-                Payment #{p.n} — ${p.amountUsd.toFixed(3)}
+                Payment #{p.n}: ${p.amountUsd.toFixed(3)}
               </span>
               <span className="text-xs text-ink/45">cumulative ${p.cumulativeUsd.toFixed(3)}</span>
               {p.transaction && <span className="ml-auto font-mono text-[10px] text-ink/40">batch {p.transaction.slice(0, 8)}…</span>}
@@ -129,8 +129,8 @@ export default function AutopilotPanel() {
             <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50/70 px-3 py-2 text-amber-800">
               <Hand size={14} className="shrink-0" />
               <span>
-                <b>Bounded authority:</b> the agent hit your ${result.budgetUsd} budget and stopped itself —
-                further spend now needs a human.
+                <b>Bounded authority:</b> the agent hit your ${result.budgetUsd} budget and stopped itself.
+                Further spend now needs a human.
               </span>
             </div>
           )}
@@ -140,7 +140,7 @@ export default function AutopilotPanel() {
             <span>
               Protocol fee <b>{result.protocolFee.accruedUsd} USDC</b> ({result.feeBps} bps) →{' '}
               {short(result.treasury)}
-              {result.protocolFee.settled ? ' — settled' : result.protocolFee.note ? ` — ${result.protocolFee.note}` : ''}
+              {result.protocolFee.settled ? ', settled' : result.protocolFee.note ? `, ${result.protocolFee.note}` : ''}
             </span>
             {result.protocolFee.settled && result.protocolFee.transaction && (
               <span className="ml-auto font-mono text-[10px] text-ink/40">batch {result.protocolFee.transaction.slice(0, 8)}…</span>

@@ -6,7 +6,7 @@ type State = { error: Error | null }
 /**
  * App-root error boundary. Without it, an unexpected render throw anywhere in the tree
  * blanks the whole page (React unmounts the root). This catches it and shows a calm,
- * on-brand recovery card with a reload — a broken panel never takes the app down.
+ * on-brand recovery card with a reload. A broken panel never takes the app down.
  */
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null }
@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         <div className="w-full max-w-md rounded-2xl border border-ink/10 bg-white p-8 text-center shadow-sm">
           <h1 className="text-lg font-bold">Something went wrong</h1>
           <p className="mt-2 text-sm text-ink/60">
-            A panel hit an unexpected error. Your data is safe — reloading usually fixes it.
+            A panel hit an unexpected error. Your data is safe, reloading usually fixes it.
           </p>
           <button
             type="button"

@@ -173,6 +173,201 @@ export const USE_CASES: UseCase[] = [
       },
     ],
   },
+  {
+    slug: 'know-your-agent',
+    service: 'Verify',
+    title: 'A marketplace checks an agent\'s passport before it trades',
+    teaser: 'Before any money moves, the agent proves who it is and that it controls its wallet.',
+    accent: '#1AAB7A',
+    seed: 13,
+    metrics: [
+      { value: 'ERC-8004', label: 'onchain passport', note: 'identity, owner and reputation anyone can read' },
+      { value: 'Signed', label: 'wallet proof', note: 'the agent signs a challenge to prove control' },
+      { value: 'On Arc', label: 'attested', note: 'the result is written to the ValidationRegistry' },
+    ],
+    products: [
+      { name: 'ERC-8004 identity', href: `${DOCS_URL}/protocols/erc-8004`, external: true },
+      { name: 'Know Your Agent', href: `${DOCS_URL}/concepts/know-your-agent`, external: true },
+      { name: 'Agent House', href: '/app/marketplace' },
+    ],
+    principle: 'Trust is earned before value moves. A counterparty verifies the agent first, then transacts.',
+    sections: [
+      {
+        heading: 'The problem',
+        body: [
+          'A merchant or another agent cannot tell a trusted agent from a bot. There is no shared way to ask who an agent is and whether it can be held to account.',
+        ],
+      },
+      {
+        heading: 'How it works',
+        body: [
+          'The agent mints an ERC-8004 passport on Arc, then signs a challenge to prove it controls its wallet. That result is attested onchain, so any counterparty can check it without trusting us.',
+        ],
+      },
+      {
+        heading: 'Why it matters',
+        body: [
+          'Identity is the gate. Once an agent is verified, its payments, reputation and spend limits all hang off the same passport.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'agent-to-agent-settlement',
+    service: 'Settle',
+    title: 'One agent pays another and the receipt lives on Arc',
+    teaser: 'A hired agent finishes a job and gets paid in USDC, with a receipt anyone can verify.',
+    accent: '#2775CA',
+    seed: 14,
+    metrics: [
+      { value: 'USDC', label: 'settled on Arc', note: 'a real transfer, not a promise' },
+      { value: 'Under 1s', label: 'to finality', note: 'deterministic, gas paid in USDC' },
+      { value: 'Onchain', label: 'receipt', note: 'a transaction hash in the activity feed' },
+    ],
+    products: [
+      { name: 'Instructions and permissions', href: '/app/permissions' },
+      { name: 'Settlements', href: '/app/settlements' },
+      { name: 'Build on Arc', href: `${DOCS_URL}/chains/arc`, external: true },
+    ],
+    principle: 'Every payment leaves a trail. Settlement and proof are the same act.',
+    sections: [
+      {
+        heading: 'The problem',
+        body: [
+          'When one agent hires another, someone has to pay, and both sides want the same record of what happened. Card rails give you a statement days later, not a shared receipt.',
+        ],
+      },
+      {
+        heading: 'How it works',
+        body: [
+          'The paying agent settles the job in USDC on Arc, through its policy vault or its Circle wallet. The transfer finalizes in under a second and the hash lands in both agents\' activity feeds.',
+        ],
+      },
+      {
+        heading: 'The trail',
+        body: [
+          'Anyone following either agent in Agent House sees the settlement, so reputation is built from real payments, not claims.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'pay-per-inference',
+    service: 'Stream',
+    title: 'An agent pays per model call, gasless and sub cent',
+    teaser: 'The agent runs a burst of paid calls on its own and stops the instant it hits your budget.',
+    accent: '#0E7490',
+    seed: 15,
+    metrics: [
+      { value: '$0.001', label: 'per call', note: 'true sub cent, batched by Circle Gateway' },
+      { value: '0 gas', label: 'to the buyer', note: 'an EIP-3009 authorization signed offchain' },
+      { value: 'Bounded', label: 'by budget', note: 'the agent stops itself at the cap you set' },
+    ],
+    products: [
+      { name: 'Nanopayments', href: `${DOCS_URL}/protocols/nanopayments`, external: true },
+      { name: 'x402 payments', href: `${DOCS_URL}/protocols/x402`, external: true },
+      { name: 'Settlements', href: '/app/settlements' },
+    ],
+    principle: 'Autonomy with a ceiling. The agent moves fast, but never past the budget you drew.',
+    sections: [
+      {
+        heading: 'The problem',
+        body: [
+          'Paying for each model call or dataset read is only economical if the fee is smaller than the payment. Normal rails and normal gas make a tenth of a cent impossible.',
+        ],
+      },
+      {
+        heading: 'How it works',
+        body: [
+          'The buyer signs an EIP-3009 authorization offchain, with zero gas. Circle Gateway credits the seller instantly and batches the settlement, so thousands of tiny payments net into one onchain transaction.',
+        ],
+      },
+      {
+        heading: 'The guardrail',
+        body: [
+          'The agent runs the burst by itself and halts the moment it reaches the budget you set. Speed without a ceiling is how autonomy goes wrong; the budget is the ceiling.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'usdc-across-chains',
+    service: 'Move',
+    title: 'An agent moves native USDC across chains, no wrapping',
+    teaser: 'Funds on Arc reach Base in seconds, as a unified balance or a native burn and mint.',
+    accent: '#7342E2',
+    seed: 16,
+    metrics: [
+      { value: 'Gateway', label: 'unified balance', note: 'deposit on Arc, spend on Base gaslessly' },
+      { value: 'CCTP', label: 'burn and mint', note: 'native USDC, never a wrapped token' },
+      { value: 'Bridge Kit', label: 'one SDK', note: 'approve, burn, attest and mint in one flow' },
+    ],
+    products: [
+      { name: 'Circle Gateway', href: `${DOCS_URL}/chains/gateway`, external: true },
+      { name: 'CCTP and Bridge Kit', href: `${DOCS_URL}/chains/cctp`, external: true },
+      { name: 'Build on Arc', href: `${DOCS_URL}/chains/arc`, external: true },
+    ],
+    principle: 'One dollar, many chains. The agent should not have to care where its USDC sits.',
+    sections: [
+      {
+        heading: 'The problem',
+        body: [
+          'An agent earns on one chain and needs to spend on another. Classic bridges wrap the token, add lock and unlock risk, and leave the agent holding an asset that is not quite USDC.',
+        ],
+      },
+      {
+        heading: 'How it works',
+        body: [
+          'Two rails, one dollar. Circle Gateway holds a unified USDC balance the agent can spend across chains, and CCTP with Bridge Kit burns USDC on Arc and mints it natively on the destination. No wrapper, ever.',
+        ],
+      },
+      {
+        heading: 'Why it matters',
+        body: [
+          'Liquidity stops being fragmented. The agent treats USDC as one balance, and the rail decides how to move it.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'wallet-without-seed-phrase',
+    service: 'Wallet',
+    title: 'An agent gets a wallet it can use, with no seed phrase',
+    teaser: 'A Circle managed wallet screens every transfer at the wallet layer, so the user never touches a key.',
+    accent: '#059669',
+    seed: 17,
+    metrics: [
+      { value: 'No keys', label: 'for the user', note: 'developer controlled, no seed phrase to lose' },
+      { value: 'Screened', label: 'at the wallet', note: 'sanctions, allow and block, and freeze' },
+      { value: 'On Arc', label: 'real USDC', note: 'every transfer settles in USDC on Arc' },
+    ],
+    products: [
+      { name: 'Circle Wallets', href: `${DOCS_URL}/chains/arc`, external: true },
+      { name: 'Permissions', href: '/app/permissions' },
+      { name: 'Wallet', href: '/app/wallet' },
+    ],
+    principle: 'Key management is not the user\'s job when the user is an agent.',
+    sections: [
+      {
+        heading: 'The problem',
+        body: [
+          'An autonomous agent cannot be handed a seed phrase and told to keep it safe. But it still needs a wallet that can hold and move real money under rules.',
+        ],
+      },
+      {
+        heading: 'How it works',
+        body: [
+          'Circle provisions a developer controlled wallet on Arc for the agent. Circle\'s hosted policy engine screens every outbound transfer at the wallet layer, and the agent never sees a private key.',
+        ],
+      },
+      {
+        heading: 'How it fits',
+        body: [
+          'This is one of three enforcement layers. The server pre checks each payment, the Circle wallet screens it, and an onchain vault can enforce the hard limits trustlessly.',
+        ],
+      },
+    ],
+  },
 ]
 
 export function getUseCase(slug: string): UseCase | undefined {

@@ -106,7 +106,7 @@ export default function AuthScreen({ mode }: AuthScreenProps) {
           Sign in with your wallet
         </button>
         <p className="mt-2 text-center text-[11px] text-ink/45">
-          The real sign-in — proves you own your wallet. No password.
+          The real sign-in: proves you own your wallet. No password.
         </p>
 
         <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-ink/35">

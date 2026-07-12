@@ -2,14 +2,14 @@
  * Shared data layer for GET /api/platform-agents.
  *
  * Every app screen (Dashboard, AgentId, Wallet, Settlements, Permissions, Marketplace)
- * needs the agent list. Without a cache each navigation refires the request — a
+ * needs the agent list. Without a cache each navigation refires the request, a
  * "fetch storm". This is a tiny, dependency-free cache with:
  *   - in-flight dedup: concurrent callers share ONE request, and
  *   - a short TTL: a navigation within the window reuses the last result.
  * After a mutation that changes the list (create agent, anchor, permissions), call
  * `invalidatePlatformAgents()` so the next read is fresh.
  *
- * Errors are NOT cached — they propagate so each screen's own try/catch still shows
+ * Errors are NOT cached. They propagate so each screen's own try/catch still shows
  * its "backend offline" message.
  */
 import { MCP_BASE } from './mcpBase'

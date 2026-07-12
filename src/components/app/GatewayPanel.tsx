@@ -17,7 +17,7 @@ type Result =
 
 /**
  * Circle Gateway: a chain-abstracted USDC balance. One click deposits (if needed) and
- * moves USDC from Arc to Base Sepolia via the Forwarding Service — minted on Base in
+ * moves USDC from Arc to Base Sepolia via the Forwarding Service, minted on Base in
  * <500 ms, gaslessly (no wallet or gas needed there). Hits POST /api/arc/gateway-demo.
  */
 export default function GatewayPanel() {
@@ -43,7 +43,7 @@ export default function GatewayPanel() {
       }
       setResult((await res.json()) as Result)
     } catch {
-      setError('Could not run the Gateway transfer (the backend may be waking up — try again).')
+      setError('Could not run the Gateway transfer (the backend may be waking up, try again).')
     } finally {
       setBusy(false)
     }
@@ -61,7 +61,7 @@ export default function GatewayPanel() {
           <h3 className="font-semibold text-ink">Chain-abstracted USDC (Circle Gateway)</h3>
           <p className="mt-0.5 text-sm text-ink/55">
             Your agent's USDC isn't stuck on one chain. One click moves it from Arc to Base Sepolia
-            via Circle Gateway — minted on Base in under 500 ms, <b>gaslessly</b> (no wallet or gas there).
+            via Circle Gateway, minted on Base in under 500 ms, <b>gaslessly</b> (no wallet or gas there).
           </p>
         </div>
       </div>
@@ -130,11 +130,11 @@ export default function GatewayPanel() {
               <span className="text-ink/75">
                 {minted ? (
                   <>
-                    Minted on Base Sepolia — balance {result.baseMint.beforeUsd} → <b>{result.baseMint.afterUsd}</b> USDC,
+                    Minted on Base Sepolia: balance {result.baseMint.beforeUsd} → <b>{result.baseMint.afterUsd}</b> USDC,
                     gasless
                   </>
                 ) : (
-                  'Transfer submitted — minting on Base…'
+                  'Transfer submitted, minting on Base…'
                 )}
               </span>
               <a
