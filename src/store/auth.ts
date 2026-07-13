@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Eip1193 } from '../lib/wallets'
+import { setConnectedProvider, type Eip1193 } from '../lib/wallets'
 
 import { MCP_BASE } from '../lib/mcpBase'
 
@@ -48,6 +48,9 @@ export const useAuth = create<AuthState>()(
         set({ user: { email, name: name?.trim() || email.split('@')[0] }, token: null })
       },
       loginWallet: async (provider) => {
+        // Remember the wallet the user chose, so later payments (x402) use this exact
+        // provider instead of whichever extension won window.ethereum.
+        setConnectedProvider(provider)
         const eth = provider
         let address: string | undefined
         try {

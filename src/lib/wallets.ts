@@ -78,6 +78,19 @@ export function getActiveInjectedProvider(): Eip1193 | null {
   return getInjectedWallets()[0]?.provider ?? null
 }
 
+/**
+ * The provider the user actually signed in with. Reused for later actions (an x402
+ * payment, for example) so we pay from the SAME wallet the user chose, instead of
+ * whichever extension grabbed window.ethereum first when several are installed.
+ */
+let connectedProvider: Eip1193 | null = null
+export function setConnectedProvider(p: Eip1193 | null): void {
+  connectedProvider = p
+}
+export function getConnectedProvider(): Eip1193 | null {
+  return connectedProvider
+}
+
 // ── WalletConnect (mobile wallets via QR) ─────────────────────────────────────────
 
 export const WC_PROJECT_ID = (import.meta.env.VITE_WALLETCONNECT_PROJECT_ID as string | undefined) ?? ''

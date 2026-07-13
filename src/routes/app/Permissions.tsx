@@ -843,27 +843,38 @@ function TreasuryPanel({ agentId }: { agentId: string }) {
   const [err, setErr] = useState<string | null>(null)
 
   const load = useCallback(
-    async (capUsd?: string) => {
-      setLoading(true)
+    async (capUsd?: string, opts?: { syncCap?: boolean; quiet?: boolean }) => {
+      if (!opts?.quiet) setLoading(true)
       try {
         const q = capUsd !== undefined && capUsd !== '' ? `&cap=${Number(capUsd)}` : ''
         const res = await fetch(`${MCP_BASE}/api/agents/treasury?agentId=${agentId}${q}`, { signal: AbortSignal.timeout(12000) })
         const j = (await res.json()) as TreasuryState
         setT(j)
-        if (typeof j.capUsd === 'number') setCap(String(j.capUsd))
+        // Only sync the input to the saved cap on the first load; never overwrite what
+        // the owner is actively typing.
+        if (opts?.syncCap && typeof j.capUsd === 'number') setCap(String(j.capUsd))
         setErr(j.error ?? null)
       } catch {
         setErr('Could not load treasury status.')
       } finally {
-        setLoading(false)
+        if (!opts?.quiet) setLoading(false)
       }
     },
     [agentId],
   )
 
+  // Initial load: fetch balances and sync the cap to the saved config.
   useEffect(() => {
-    if (agentId) load()
+    if (agentId) load(undefined, { syncCap: true })
   }, [agentId, load])
+
+  // Auto-preview: a moment after the cap stops changing, recalculate quietly so typing a
+  // number updates the projection without hunting for the Preview button or a loading flash.
+  useEffect(() => {
+    if (!agentId) return
+    const t = setTimeout(() => load(cap, { quiet: true }), 400)
+    return () => clearTimeout(t)
+  }, [cap, agentId, load])
 
   const act = async (enable: boolean) => {
     setBusy(true)
@@ -972,13 +983,12 @@ function TreasuryPanel({ agentId }: { agentId: string }) {
                   min="0"
                   value={cap}
                   onChange={(e) => setCap(e.target.value)}
-                  onBlur={() => load(cap)}
                   className="w-16 bg-transparent px-1.5 py-1.5 text-xs font-semibold text-ink outline-none"
                 />
               </div>
               <button
                 type="button"
-                onClick={() => load(cap)}
+                onClick={() => load(cap, { quiet: true })}
                 className="rounded-full border border-emerald-300 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
               >
                 Preview
