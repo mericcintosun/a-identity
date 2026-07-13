@@ -83,7 +83,7 @@ vault** = three independent guarantees.
 
 The same system in three views (also drop-in slides for a deck):
 
-![End to end flow: verify the agent, bound its spend, let it pay](docs/images/architecture-flow.png)
+![End-to-end flow: verify the agent, bound its spend, let it pay](docs/images/architecture-flow.png)
 
 ![Three-layer spend enforcement: server pre-check, on-chain policy vault, Circle Agent Wallet](docs/images/architecture-enforcement.png)
 
@@ -107,7 +107,7 @@ a-identity/
 ```
 
 Two entry points share the same tools: an **MCP server** (read-only tools for
-agents) and a **REST API** (the write side the app uses).
+agents) and a **REST API** (the write side that the app uses).
 
 ### Backend endpoints (REST, port 3399)
 
@@ -121,7 +121,7 @@ GET  /api/circle                Circle platform link (real ping w/ CIRCLE_API_KE
 POST /api/wallets               create a real Arc keypair (key returned once)
 GET  /api/wallet-balance        live native-USDC balance
 POST /api/agents                register an agent (KYA + permissions)
-POST /api/instructions          pay / purchase / rental / batch (policy engine)
+POST /api/instructions          pay / purchase/rental / batch (policy engine)
 POST /api/instructions/approve  human approval
 POST /api/instructions/execute  execute (through the vault if provisioned, else direct; simulated without a signer)
 POST /api/agents/vault          provision an on-chain AgentSpendPolicy vault (real w/ key)
@@ -134,7 +134,7 @@ GET  /api/agents/kya            KYA status + live on-chain validation
 GET  /api/x402/nano/data        x402 Nanopayments seller (gasless, Gateway-batched; 402→settle)
 POST /api/arc/nanopay-demo      one-click gasless nanopayment (EIP-3009 + Circle Gateway batch)
 POST /api/arc/cctp-demo         one-click CCTP burn-and-mint (Arc→Base Sepolia, native USDC)
-POST /api/arc/agent-run         autonomous run: agent pays a service on its own until its budget, then stops (+ protocol fee)
+POST /api/arc/agent-run         autonomous run: agent pays a service on its own until its budget is used up, then stops (+ protocol fee)
 GET  /api/marketplace           Agent House feed
 POST /api/follow                follow an agent
 ```
@@ -147,7 +147,7 @@ npm install
 npm install --prefix mcp
 
 # 2. Run everything (UI + MCP backend + docs)
-npm run dev:all
+npm run dev: all
 #   UI    -> http://localhost:5173
 #   MCP   -> http://localhost:3399
 #   Docs  -> http://localhost:3000
@@ -159,7 +159,7 @@ curl http://localhost:3399/api/arc/contracts
 Copy `.env.example` to `.env.local` for the frontend (Vite). The backend reads
 its config from the process env directly — see below. Everything is optional for
 a demo: without a signer key the app still does live contract reads and labels
-on-chain writes as prepared / simulated; add a funded `ARC_SIGNER_KEY` to
+on-chain writes as prepared/simulated; add a funded `ARC_SIGNER_KEY` to
 broadcast real transactions.
 
 ## Going live (testnet)
@@ -176,7 +176,7 @@ broadcast real transactions.
    node --env-file=mcp/.env mcp/dist/http.js
    ```
 
-   Now on-chain registration, USDC settlement, and job escrow broadcast for real.
+   Now, on-chain registration, USDC settlement, and job escrow broadcast for real.
 3. **Circle platform:** add `CIRCLE_API_KEY` (from
    [console.circle.com](https://console.circle.com)) to enable the real Circle ping.
 
@@ -218,7 +218,7 @@ design rule, not an afterthought.
 
 - **Phase 1 (now):** Arc + Circle, end to end. Live contract reads; write path
   wired and env-gated.
-- **Phase 2:** Stellar (USDC + EURC native, Soroban), end to end.
+- **Phase 2:** Stellar (USDC + EURC native, Soroban), end-to-end.
 - **Phase 3:** Avalanche.
 - **Phase 4:** Solana.
 
@@ -241,7 +241,7 @@ New networks follow the same provider pattern in `mcp/src` (see `erc8004.ts` and
 
 ## Circle integration
 
-How each Circle product is wired — the code path, the credential to set, and the live
+How each Circle product is wired, the code path, the credential to set, and the live
 endpoint — so any of it can be verified against the repo. Nothing is mocked: with the
 credentials set, every path runs a real transaction on Arc; without them it returns a
 `prepared` / `not configured` state and says so. The on-chain rails (Gateway, CCTP,
@@ -252,22 +252,22 @@ Nanopayments) are **permissionless** on Arc testnet — they need only a funded
   (`0x3600…0000`, 6-decimal ERC-20 view); real `transfer` / `balanceOf`.
   → `mcp/src/arc-contracts.ts` · credential `ARC_SIGNER_KEY` (to broadcast) · read live at
   `GET /api/wallet-balance`.
-- **Circle Wallets** (Developer-Controlled / W3S) — each agent can get a hosted wallet on
+- **Circle Wallets (Developer-Controlled / W3S), each agent can get a hosted wallet on
   ARC-TESTNET whose outbound transfers are screened by Circle's policy engine (sanctions /
   allow-block / freeze). `initiateDeveloperControlledWalletsClient` → `createWalletSet` →
   `createWallets` → `createTransaction`.
   → `mcp/src/circle-agent.ts` · credentials `CIRCLE_API_KEY` + `CIRCLE_ENTITY_SECRET` ·
   `POST`/`GET /api/agents/circle-wallet`, status `GET /api/circle`.
-- **Circle Gateway** — a chain-abstracted USDC balance: deposit on Arc, then a signed
+- **Circle Gateway**, a chain-abstracted USDC balance: deposit on Arc, then a signed
   EIP-712 burn intent moves it to Base Sepolia via the Forwarding Service, minted gaslessly
   in seconds.
   → `mcp/src/gateway.ts` · permissionless (`ARC_SIGNER_KEY` only) ·
   `GET /api/arc/gateway-balance`, `POST /api/arc/gateway-demo`.
-- **CCTP · Bridge Kit** — native USDC cross-chain by burn-and-mint (CCTPv2) via
+- **CCTP · Bridge Kit**, native USDC cross-chain by burn-and-mint (CCTPv2) via
   `@circle-fin/bridge-kit` + `@circle-fin/adapter-viem-v2`: approve → burn → attestation →
   mint, Arc → Base Sepolia (never wrapped).
   → `mcp/src/cctp.ts` · permissionless (`ARC_SIGNER_KEY` only) · `POST /api/arc/cctp-demo`.
-- **Nanopayments** — gasless, sub-cent USDC over Circle Gateway's batched settlement
+- **Nanopayments**, gasless, sub-cent USDC over Circle Gateway's batched settlement
   (`@circle-fin/x402-batching`): the buyer signs an EIP-3009 authorization off-chain, Gateway
   credits instantly and batches the on-chain tx, so thousands of authorizations net into one.
   → `mcp/src/nanopay.ts` · permissionless (`ARC_SIGNER_KEY` only) · seller
@@ -278,7 +278,7 @@ Nanopayments) are **permissionless** on Arc testnet — they need only a funded
   with a live projected-earnings review and owner authorization. Balances and the review are
   real (no key); the USDC→USYC mint targets the real USYC Teller and is gated on USYC
   allowlisting (Circle Support, ~24-48h), so it ships as a prepared, architecture-level
-  integration — never a mocked position.
+  Integration, never a mocked position.
   → `mcp/src/treasury.ts` · `GET`/`POST /api/agents/treasury`.
 
 > StableFX is **not** used. USDY is deliberately avoided too — it is an Ondo product, not
@@ -288,35 +288,35 @@ Nanopayments) are **permissionless** on Arc testnet — they need only a funded
 
 Which Circle products we used, why, what worked, and what we'd improve.
 
-**Circle Arc (testnet)** — our base chain. Gas paid in USDC and sub-second finality
+**Circle Arc (testnet)**, our base chain. Gas paid in USDC and sub-second finality
 made the whole "agent pays per action" loop feel native; a single asset for both gas
 and value removed a class of UX problems. *Improve:* the IdentityRegistry isn't
 enumerable (`totalSupply` reverts), so a "registered agents" count needs off-chain
 indexing; a documented events/indexing path would help.
 
-**Circle Gateway** — chain-abstracted USDC. We deposit on Arc → a unified balance →
+**Circle Gateway**, chain-abstracted USDC. We deposit on Arc → a unified balance →
 move it to Base Sepolia via the Forwarding Service (signed EIP-712 burn intent),
 minted gaslessly in seconds, permissionlessly (no API key). This is the cleanest
 cross-chain UX we integrated. *Improve:* the estimate→sign→submit shape and the
 bytes32-padded `TransferSpec` fields were the fiddly part; a typed helper in the SDK
 would cut integration time.
 
-**Circle Developer-Controlled Wallets (Agent Wallets)** — a hosted, wallet-layer
+**Circle Developer-Controlled Wallets (Agent Wallets)**, a hosted wallet layer
 policy engine that screens each transfer (sanctions / allow-block / freeze). We use
 it as one of three independent enforcement layers. *Improve:* the testnet faucet
 doesn't cover ARC-TESTNET (403), so we fund new Circle wallets from our own signer;
 first-class Arc faucet support would remove that step. Also, screening is transaction
-*screening*, not a per-wallet USD spend cap — we enforce the cap in our server + the
+*screening*, not a per-wallet USD spend cap; we enforce the cap in our server + the
 on-chain vault and are explicit about that split.
 
 **USDC / faucet** — the unit of account throughout; `faucet.circle.com` for testnet
 funding.
 
-**Circle Nanopayments — gasless, sub-cent, Gateway-batched.** We ship **two** x402 rails:
+**Circle Nanopayments, gasless, sub-cent, Gateway-batched.** We ship **two** x402 rails:
 1. **On-chain, self-verifying x402** (`mcp/src/x402.ts`) — server returns 402 + requirements →
    client pays USDC on Arc → server verifies the payment on-chain with replay protection + a
    single-use request nonce → serves. Open standard, *provable* settlement, no hosted meter.
-2. **Circle Nanopayments** (`mcp/src/nanopay.ts`) — the same x402 negotiation over Circle
+2. **Circle Nanopayments** (`mcp/src/nanopay.ts`), the same x402 negotiation over Circle
    Gateway's `GatewayWalletBatched` scheme: the buyer signs an **EIP-3009 authorization
    off-chain (zero gas)**, Circle Gateway verifies + credits instantly and **batches** the
    on-chain settlement, so true sub-cent payments become economical for high-frequency agent
@@ -324,7 +324,7 @@ funding.
    Wallet deposit we already fund. *Improve:* a testnet faucet that pre-funds a Gateway balance
    would remove the one-time deposit step from a first-run demo.
 
-**Circle CCTP (Bridge Kit)** — native USDC cross-chain by burn-and-mint (`mcp/src/cctp.ts`):
+**Circle CCTP (Bridge Kit)**, native USDC cross-chain by burn-and-mint (`mcp/src/cctp.ts`):
 USDC is burned on Arc and minted **natively** on Base Sepolia — never wrapped — via CCTPv2
 (`@circle-fin/bridge-kit`). Distinct from Gateway's unified-balance forwarding; together they
 show both canonical USDC-liquidity primitives. *Improve:* the "leaving Arc, amount must exceed
