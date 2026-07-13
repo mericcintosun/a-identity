@@ -14,7 +14,7 @@ import { useAuth, authHeaders } from '../../store/auth'
 import { useAgentReputation, useMcpHealth, useResolveAgent } from '../../hooks/useMcp'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
 import { fetchPlatformAgents, invalidatePlatformAgents } from '../../lib/platformAgents'
-import { MCP_BASE } from '../../lib/mcpBase'
+import { MCP_BASE, BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 
 type Stage = 'register' | 'verify' | 'live'
 
@@ -458,6 +458,9 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
   const [showKey, setShowKey] = useState(false)
   const [copiedKey, setCopiedKey] = useState(false)
   const [keySaved, setKeySaved] = useState(false)
+  const [copiedAddr, setCopiedAddr] = useState(false)
+  const [fundBusy, setFundBusy] = useState(false)
+  const [fundBal, setFundBal] = useState<number | null>(null)
   const [walletBusy, setWalletBusy] = useState(false)
   const [submitBusy, setSubmitBusy] = useState(false)
   const [done, setDone] = useState<string | null>(null)
@@ -492,9 +495,34 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
       })
       setWallet({ address, privateKey })
     } catch {
-      setError('Wallet creation needs the MCP server. Run: npm run dev:all')
+      setError(BACKEND_UNREACHABLE)
     } finally {
       setWalletBusy(false)
+    }
+  }
+
+  const copyAddress = async () => {
+    if (!wallet) return
+    try {
+      await navigator.clipboard.writeText(wallet.address)
+      setCopiedAddr(true)
+      setTimeout(() => setCopiedAddr(false), 1500)
+    } catch { /* clipboard blocked; the address is visible to copy by hand */ }
+  }
+
+  // "I funded it": poll the live on-chain balance so the demo never waits on a manual
+  // page refresh after using the Circle faucet.
+  const checkFunded = async () => {
+    if (!wallet) return
+    setFundBusy(true)
+    try {
+      const r = await fetch(`${MCP_BASE}/api/wallet-balance?address=${wallet.address}`, { signal: AbortSignal.timeout(8000) })
+      const d = (await r.json()) as { balance?: string | null }
+      setFundBal(d.balance != null ? Number(d.balance) : 0)
+    } catch {
+      setFundBal(null)
+    } finally {
+      setFundBusy(false)
     }
   }
 
@@ -528,7 +556,7 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
         setDone(data.agent.id)
       } else setError('Registration failed. Is the MCP server running?')
     } catch {
-      setError('Registration needs the MCP server. Run: npm run dev:all')
+      setError(BACKEND_UNREACHABLE)
     } finally {
       setSubmitBusy(false)
     }
@@ -784,7 +812,12 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
           </button>
         ) : (
           <div className="mt-2 rounded-xl border border-[#2775CA]/25 bg-[#2775CA]/[0.04] p-4">
-            <div className="text-[11px] font-bold text-ink/50">Address</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[11px] font-bold text-ink/50">Address</div>
+              <button type="button" onClick={copyAddress} className="text-[11px] font-semibold text-[#2775CA] hover:underline">
+                {copiedAddr ? 'Copied' : 'Copy'}
+              </button>
+            </div>
             <div className="break-all font-mono text-xs text-ink">{wallet.address}</div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <div className="text-[11px] font-bold text-red-600">
@@ -838,6 +871,21 @@ function RegisterForm({ onClose }: { onClose: () => void }) {
             >
               Fund it with testnet USDC at faucet.circle.com
             </a>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={checkFunded}
+                disabled={fundBusy}
+                className="rounded-full border border-[#2775CA]/30 px-3 py-1.5 text-[11px] font-semibold text-[#2775CA] transition-colors hover:bg-[#2775CA]/5 disabled:opacity-50"
+              >
+                {fundBusy ? 'Checking...' : 'I funded it, check balance'}
+              </button>
+              {fundBal != null && (
+                <span className={`text-[11px] font-semibold ${fundBal > 0 ? 'text-emerald-600' : 'text-ink/50'}`}>
+                  {fundBal > 0 ? `Funded: ${fundBal.toFixed(4)} USDC` : 'Still 0 USDC, give the faucet a moment and check again'}
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>

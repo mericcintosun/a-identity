@@ -12,3 +12,11 @@
 export const MCP_BASE = import.meta.env.PROD
   ? ''
   : ((import.meta.env.VITE_MCP_URL as string | undefined) ?? 'http://localhost:3399')
+
+/**
+ * User-facing copy when a backend request fails. Honest and plain: on prod the app
+ * uses a same-origin proxy, so "run the server / npm run dev" is wrong and confusing
+ * to a judge. The free-tier backend usually just needs a few seconds to wake.
+ */
+export const BACKEND_UNREACHABLE =
+  'The backend is waking up or briefly unreachable (free tier). Give it a few seconds and refresh.'

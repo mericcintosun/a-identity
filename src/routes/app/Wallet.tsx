@@ -8,7 +8,7 @@ import {
   Wallet as WalletIcon,
 } from 'lucide-react'
 
-import { MCP_BASE } from '../../lib/mcpBase'
+import { MCP_BASE, BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
 import { CircleWalletPanel, TreasuryPanel } from '../../components/app/WalletPanels'
@@ -47,7 +47,7 @@ export default function Wallet() {
         setAgents(data.agents)
         if (data.agents.length) setAgentId((cur) => cur || pickPrimaryAgent(data.agents)?.id || data.agents[0].id)
       } catch {
-        setError('Wallet needs the MCP server on :3399.')
+        setError(BACKEND_UNREACHABLE)
       } finally {
         setLoaded(true)
       }
@@ -164,7 +164,7 @@ export default function Wallet() {
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="font-mono text-xs opacity-70">{short(agent.walletAddress)}</span>
-                    <button type="button" onClick={copy} className="opacity-70 hover:opacity-100" title="Copy address">
+                    <button type="button" onClick={copy} className="opacity-70 hover:opacity-100" title="Copy address" aria-label="Copy wallet address">
                       <Copy size={12} />
                     </button>
                     {copied && <span className="text-[10px] opacity-70">copied</span>}

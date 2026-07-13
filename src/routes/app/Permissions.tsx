@@ -15,7 +15,7 @@ import {
 import { useAuth, authHeaders } from '../../store/auth'
 import { Stat } from '../../components/app/WalletPanels'
 
-import { MCP_BASE } from '../../lib/mcpBase'
+import { MCP_BASE, BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 8)}...${a.slice(-4)}` : a)
 
@@ -80,7 +80,7 @@ export default function Permissions() {
         if (data.agents.length) setAgentId((cur) => cur || data.agents[0].id)
         else setLoading(false)
       } catch {
-        setError('Permissions need the MCP server. Start the backend on :3399.')
+        setError(BACKEND_UNREACHABLE)
         setLoading(false)
       }
     })()

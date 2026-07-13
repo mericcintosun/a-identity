@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { authHeaders, useAuth } from '../../store/auth'
 
-import { MCP_BASE } from '../../lib/mcpBase'
+import { MCP_BASE, BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 
 /** Shorten any full 40-hex address inside activity text so it never overflows the card. */
 const humanizeActivity = (text: string) =>
@@ -63,7 +63,7 @@ export default function Marketplace() {
       setCounts({ total: data.total ?? data.agents.length, totalAll: data.totalAll ?? data.agents.length })
       setError(null)
     } catch {
-      setError('Marketplace needs the MCP server. Run: npm run dev:all')
+      setError(BACKEND_UNREACHABLE)
     } finally {
       setLoading(false)
     }
@@ -214,7 +214,9 @@ export default function Marketplace() {
               <button
                 type="button"
                 onClick={() => toggleFollow(a.id)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                aria-pressed={a.followedByViewer}
+                aria-label={`${a.followedByViewer ? 'Unfollow' : 'Follow'} ${a.name}`}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                   a.followedByViewer
                     ? 'bg-accent text-white'
                     : 'border border-ink/15 text-ink/70 hover:bg-ink/5'

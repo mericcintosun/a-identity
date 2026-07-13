@@ -105,7 +105,7 @@ export default function AppLayout() {
                 }`}
               />
               <span className="text-[11px] text-ink/40">
-                {mcp === 'checking' ? 'checking' : mcp === 'waking' ? 'waking up' : mcp}
+                {mcp === 'checking' ? 'checking' : mcp === 'waking' ? 'waking up' : mcp === 'online' ? 'online' : 'reconnecting'}
               </span>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function AppLayout() {
                 ? 'Backend is cold-starting (~30s)...'
                 : mcp === 'checking'
                   ? 'Connecting...'
-                  : 'Backend unreachable'}
+                  : 'Reconnecting to the backend...'}
           </p>
         </div>
 
@@ -188,7 +188,7 @@ export default function AppLayout() {
         {mcp === 'waking' && (
           <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 sm:px-8">
             <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-400" />
-            Waking up the backend (cold start, ~30s). Live data will appear shortly.
+            Waking up the demo backend (free tier), usually under 30s. Live data will appear shortly.
           </div>
         )}
 

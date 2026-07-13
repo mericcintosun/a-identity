@@ -8,7 +8,7 @@ import EscrowPanel from '../../components/app/EscrowPanel'
 import GatewayPanel from '../../components/app/GatewayPanel'
 import CctpPanel from '../../components/app/CctpPanel'
 
-import { MCP_BASE } from '../../lib/mcpBase'
+import { MCP_BASE, BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
 
@@ -58,7 +58,7 @@ export default function Settlements() {
         if (data.agents.length) setAgentId((cur) => cur || pickPrimaryAgent(data.agents)?.id || data.agents[0].id)
         else setLoading(false)
       } catch {
-        setError('Settlements need the MCP server on :3399.')
+        setError(BACKEND_UNREACHABLE)
         setLoading(false)
       }
     })()
