@@ -57,24 +57,25 @@ export default function AgentId() {
 
   // The user's first real agent (from the platform), when available. Drives the
   // identity card below; falls back to the mock resolve only when there are no agents.
+  const [agents, setAgents] = useState<RealAgent[]>([])
+  const [selectedId, setSelectedId] = useState('')
   const [realAgent, setRealAgent] = useState<RealAgent | null>(null)
   const [realChecked, setRealChecked] = useState(false)
   const [realRep, setRealRep] = useState<{
     score: number
     breakdown: { settlement: number; validation: number; tenure: number }
   } | null>(null)
+
+  // Load the account's agents once; default the selection to the primary agent.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         const list = await fetchPlatformAgents<RealAgent>()
         if (cancelled) return
+        setAgents(list.agents)
         const first = pickPrimaryAgent(list.agents)
-        if (first) {
-          setRealAgent(first)
-          const rep = await fetch(`${MCP_BASE}/api/agents/reputation?agentId=${first.id}`).then((r) => r.json())
-          if (!cancelled && rep && !('error' in rep)) setRealRep({ score: rep.score, breakdown: rep.breakdown })
-        }
+        if (first) setSelectedId((cur) => cur || first.id)
       } catch {
         /* keep the fallbacks */
       } finally {
@@ -85,6 +86,27 @@ export default function AgentId() {
       cancelled = true
     }
   }, [])
+
+  // Show whichever agent is selected and recompute its reputation live from the backend,
+  // so you can run any existing agent through reputation, not just the newest one.
+  useEffect(() => {
+    let cancelled = false
+    const a = agents.find((x) => x.id === selectedId) ?? null
+    setRealAgent(a)
+    setRealRep(null)
+    if (!a) return
+    ;(async () => {
+      try {
+        const rep = await fetch(`${MCP_BASE}/api/agents/reputation?agentId=${a.id}`).then((r) => r.json())
+        if (!cancelled && rep && !('error' in rep)) setRealRep({ score: rep.score, breakdown: rep.breakdown })
+      } catch {
+        /* leave reputation null */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedId, agents])
 
   // Only resolve the MOCK demo agent as a fallback, and only once we've confirmed the
   // account has no real agent. Avoids two throwaway requests on every mount when a real
@@ -146,6 +168,23 @@ export default function AgentId() {
           {!mcpOnline ? 'Offline' : realAgent ? 'Live' : 'Sample'}
         </div>
       </div>
+
+      {agents.length > 1 && (
+        <div className="mt-5">
+          <label className="text-xs font-semibold text-ink/50">Agent</label>
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2.5 text-sm outline-none focus:border-accent"
+          >
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Sample notice: no real agent yet → the card below is illustrative, not yours. */}
       {isSample && (

@@ -269,6 +269,40 @@ export default function Permissions() {
                 onChange={() => set('agentToHuman', !draft.agentToHuman)}
               />
             </ul>
+
+            <div className="mt-5 border-t border-ink/8 pt-5">
+              <div className="text-sm font-semibold text-ink">Payee allowlist</div>
+              <p className="mt-1 text-xs text-ink/50">
+                When set, the agent can only pay these payees. Leave it empty to let it pay anyone within the limits above.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {draft.payeeAllowlist.length === 0 ? (
+                  <span className="text-xs text-ink/40">No allowlist. The agent may pay any payee within its limits.</span>
+                ) : (
+                  draft.payeeAllowlist.map((p) => (
+                    <span
+                      key={p}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-cream/70 px-2.5 py-1 font-mono text-[11px] text-ink/70"
+                    >
+                      {p.length > 14 ? short(p) : p}
+                      <button
+                        type="button"
+                        onClick={() => set('payeeAllowlist', draft.payeeAllowlist.filter((x) => x !== p))}
+                        className="grid h-4 w-4 place-items-center rounded-full text-sm leading-none text-ink/40 hover:bg-red-50 hover:text-red-500"
+                        aria-label={`Remove ${p}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+              <PayeeAdder
+                onAdd={(v) => {
+                  if (v && !draft.payeeAllowlist.includes(v)) set('payeeAllowlist', [...draft.payeeAllowlist, v])
+                }}
+              />
+            </div>
           </section>
 
           {/* Safety */}
@@ -368,6 +402,40 @@ export default function Permissions() {
           Log out
         </button>
       </section>
+    </div>
+  )
+}
+
+function PayeeAdder({ onAdd }: { onAdd: (v: string) => void }) {
+  const [v, setV] = useState('')
+  const add = () => {
+    const t = v.trim()
+    if (t) {
+      onAdd(t)
+      setV('')
+    }
+  }
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <input
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            add()
+          }
+        }}
+        placeholder="Add a 0x address or agent://<id>"
+        className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-cream/40 px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+      />
+      <button
+        type="button"
+        onClick={add}
+        className="shrink-0 rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 transition hover:border-accent"
+      >
+        Add
+      </button>
     </div>
   )
 }
