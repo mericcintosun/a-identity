@@ -1,10 +1,34 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowLeftRight,
+  Cpu,
+  Database,
+  Fingerprint,
+  Network,
+  TrendingUp,
+  Wallet,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react'
 import BlogCover from '../BlogCover'
 import { USE_CASES } from '../../lib/usecases'
 import { EASE_OUT_EXPO } from '../../lib/brand'
+
+/** A representative icon per use case, shown as a badge on the card. */
+const ICONS: Record<string, LucideIcon> = {
+  'pay-per-data-call': Database,
+  'gpu-hours-rented-by-agent': Cpu,
+  'idle-usdc-parked-in-usyc': TrendingUp,
+  'know-your-agent': Fingerprint,
+  'agent-to-agent-settlement': ArrowLeftRight,
+  'pay-per-inference': Zap,
+  'usdc-across-chains': Network,
+  'wallet-without-seed-phrase': Wallet,
+}
 
 const reveal = {
   initial: { opacity: 0, y: 24 },
@@ -70,7 +94,9 @@ export default function UseCases() {
           ref={track}
           className="mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {USE_CASES.map((uc) => (
+          {USE_CASES.map((uc) => {
+            const Icon = ICONS[uc.slug] ?? Database
+            return (
             <Link
               key={uc.slug}
               to={`/use-cases/${uc.slug}`}
@@ -90,6 +116,10 @@ export default function UseCases() {
                     'linear-gradient(to top, rgba(10,17,24,0.92) 0%, rgba(10,17,24,0.45) 45%, rgba(10,17,24,0.15) 100%)',
                 }}
               />
+              {/* Representative icon badge */}
+              <div className="absolute right-5 top-5 grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-md transition-all duration-500 group-hover:-translate-y-1 group-hover:bg-white/20">
+                <Icon size={22} />
+              </div>
               <div className="relative p-7">
                 <div
                   className="text-[11px] font-bold tracking-widest"
@@ -109,7 +139,8 @@ export default function UseCases() {
                 </div>
               </div>
             </Link>
-          ))}
+            )
+          })}
         </motion.div>
       </div>
     </section>

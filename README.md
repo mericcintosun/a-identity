@@ -219,10 +219,17 @@ New networks follow the same provider pattern in `mcp/src` (see `erc8004.ts` and
 
 ## Tech stack
 
-React 19, Vite 6, Tailwind v4, Framer Motion, React Router v7, Zustand ·
-Node, viem, Model Context Protocol SDK, Zod · Mintlify · Circle Arc, ERC-8004,
-ERC-8183, x402, **Circle Nanopayments** (`@circle-fin/x402-batching`), **Circle Gateway**,
-**Circle CCTP / Bridge Kit** (`@circle-fin/bridge-kit`), **Circle Wallets**, USDC/EURC.
+- **Frontend** — React 19, Vite 6, Tailwind v4, Framer Motion, React Router v7, Zustand, viem
+- **Backend** — TypeScript, Node.js, Arc Testnet (viem), Model Context Protocol SDK, Zod
+- **Circle** — USDC / EURC, Wallets (`@circle-fin/developer-controlled-wallets`), Gateway,
+  CCTP / Bridge Kit (`@circle-fin/bridge-kit`), Nanopayments (`@circle-fin/x402-batching`),
+  USYC (tokenized money-market yield)
+- **Standards** — ERC-8004 (agent identity + validation), ERC-8183 (agentic-commerce escrow),
+  x402 (HTTP-native pay-per-call), MCP (agent tool access)
+- **Core** — a three-layer spend policy (server pre-check, on-chain `AgentSpendPolicy` vault,
+  Circle Agent Wallet screening) and honest settlement: an instruction is never marked
+  `executed_onchain` without a confirmed transaction hash
+- **Docs** — Mintlify (`a-identity.mintlify.site`)
 
 ## Circle integration
 
