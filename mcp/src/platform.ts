@@ -771,9 +771,12 @@ function nextUtcMidnight(): string {
   ).toISOString()
 }
 
-/** True if the caller may act on this agent: owner match, or the agent has no owner. */
+/** True only if the caller is this agent's recorded owner. Fail closed: an agent with no
+ *  owner is actable by NO ONE (previously any verified caller could act on an ownerless
+ *  agent). Every API-created agent gets an owner (http.ts sets owner=callerId), so this
+ *  just closes the latent authorization gap without affecting real agents. */
 function ownsAgent(agent: PlatformAgent, caller?: string): boolean {
-  return !agent.owner || agent.owner === caller
+  return Boolean(agent.owner) && agent.owner === caller
 }
 
 export async function updateAgentPermissions(
@@ -965,6 +968,11 @@ function resolvePayeeAddress(payee: string): string | null {
  * direct settlement so a chain hiccup never blocks the flow. Without a signer
  * key, execution is SIMULATED and labeled as such; the trail stays honest.
  */
+/** Instruction ids currently mid-execution, so a concurrent double-execute of the same
+ *  instruction can't both settle (see the TOCTOU guard below). Process-local by design:
+ *  it only serializes overlapping requests within this single server process. */
+const executingIx = new Set<string>()
+
 export async function executeInstruction(ixId: string, caller?: string): Promise<Instruction | { error: string }> {
   const ix = state.instructions.find((i) => i.id === ixId)
   if (!ix) return { error: 'Unknown instruction' }
@@ -972,6 +980,13 @@ export async function executeInstruction(ixId: string, caller?: string): Promise
     return { error: `Cannot execute from status ${ix.status}` }
   const agent = state.agents.find((a) => a.id === ix.agentId)
   if (agent && !ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
+  // TOCTOU guard: the status flip to executed_* happens only AFTER the awaited on-chain
+  // settle, so two overlapping executes of the same id could both pay. Claim the id
+  // synchronously (check-and-add is atomic in single-threaded JS) and hold it across the
+  // awaits; the finally at the end releases it.
+  if (executingIx.has(ixId)) return { error: 'This instruction is already being executed' }
+  executingIx.add(ixId)
+  try {
   const total = ix.amountUsd * ix.count
   const fmt = (n: number) => (n < 0.01 ? n.toFixed(4) : n.toFixed(2))
   // Where this actually settles on-chain: a 0x… payee, or an agent:// payee
@@ -1065,6 +1080,9 @@ export async function executeInstruction(ixId: string, caller?: string): Promise
   if (agent) pushActivity(agent, `Executed (simulated) ${ix.type} of $${total.toFixed(2)}`)
   save(state)
   return ix
+  } finally {
+    executingIx.delete(ixId)
+  }
 }
 
 export function listInstructions(agentId?: string): Instruction[] {
