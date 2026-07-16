@@ -1,0 +1,36 @@
+# Render Blueprint (Infrastructure as Code) for the OKX.AI ASP gateway.
+#
+# This defines ONLY the new "a-identity-asp" web service — the OKX Agent Trust Oracle
+# ASP (mcp/src/asp-gateway.ts). The existing main backend (a-identity-backend) was set
+# up manually in the dashboard and is intentionally NOT declared here, so applying this
+# Blueprint never touches it.
+#
+# To use: Render Dashboard → New → Blueprint → pick the mericcintosun/a-identity repo →
+# Apply. Render creates the service below and PROMPTS you for the `sync: false` secrets
+# (they are never stored in git). Free plan; the keep-warm GitHub Action pings /health.
+services:
+  - type: web
+    name: a-identity-asp
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: mcp
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start:asp
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # OKX x402 seller credentials (from web3.okx.com/onchainos/dev-portal) + recipient.
+      # All four are required to charge per call; without them the gateway serves free.
+      - key: PAY_TO_ADDRESS
+        sync: false
+      - key: OKX_API_KEY
+        sync: false
+      - key: OKX_SECRET_KEY
+        sync: false
+      - key: OKX_PASSPHRASE
+        sync: false
+      # Same Neon Postgres as the main backend, so reputation/passport see platform agents.
+      # Optional: identity/verify work without it (live Arc reads).
+      - key: DATABASE_URL
+        sync: false
