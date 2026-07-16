@@ -26,6 +26,7 @@ import {
 } from './arc-contracts.js'
 import { createAgentWallet, circlePay, readCircleWallet } from './circle-agent.js'
 import { previewTreasury, startAutoYield, type TreasuryPreview, type TreasuryExecution } from './treasury.js'
+import { computeAgentReputation } from './reputation.js'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -815,27 +816,24 @@ export function agentPolicy(agentId: string) {
 // ── reputation (from real activity) ─────────────────────────────────────────────
 
 /**
- * Reputation (0-1000) computed from the agent's REAL signals, deterministically:
- *  - settlement: real on-chain USDC settlements (diminishing returns), + a credit
- *    for holding a verified on-chain ERC-8004 identity
- *  - validation: share of clean (settled vs rejected) actions
- *  - tenure: days on the platform
- * Every input is real and verifiable (settlements carry tx hashes) — no mock history.
+ * Reputation (0-1000) computed from the agent's REAL signals: on-chain USDC settlements,
+ * a credit for holding a verified on-chain ERC-8004 identity, the clean (settled vs
+ * rejected) ratio, and tenure. Every input is real and verifiable (settlements carry tx
+ * hashes) — no mock history. The math lives in the pure, unit-tested `computeAgentReputation`
+ * (reputation.ts), so the tested scorer and the production scorer are the same code.
  */
 function repOf(agent: PlatformAgent) {
   const ixs = state.instructions.filter((i) => i.agentId === agent.id)
   const settled = ixs.filter((i) => i.status === 'executed_onchain')
   const rejected = ixs.filter((i) => i.status === 'rejected').length
-  const settledCount = settled.length
   const settledUsd = settled.reduce((s, i) => s + i.amountUsd * i.count, 0)
-  const total = settledCount + rejected
-  const idBonus = agent.onchain === 'registered' ? 60 : 0
-  const settlement = Math.min(600, Math.round(600 * (1 - Math.exp(-settledCount / 6))) + idBonus)
-  const validation = total === 0 ? 0 : Math.round(240 * (settledCount / total))
-  const days = Math.max(0, Math.floor((Date.now() - new Date(agent.createdAt).getTime()) / 86_400_000))
-  const tenure = Math.min(160, Math.round(days / 2))
-  const score = Math.max(0, Math.min(1000, settlement + validation + tenure))
-  return { score, breakdown: { settlement, validation, tenure }, settledOnchain: settledCount, settledUsd }
+  return computeAgentReputation({
+    settledCount: settled.length,
+    rejected,
+    onchainRegistered: agent.onchain === 'registered',
+    createdAt: agent.createdAt,
+    settledUsd,
+  })
 }
 
 export function agentReputation(agentId: string) {

@@ -88,6 +88,51 @@ function resolveCorsOrigin(origin: string | undefined): string {
 const NONCE_TTL_MS = 10 * 60 * 1000
 const nonces = new Map<string, { nonce: string; exp: number }>()
 
+// ── basic per-IP rate limiting (in-memory, per-process) ──────────────────────────
+// Fixed-window counters for sensitive/expensive endpoints, so a single client can't
+// spam auth challenges, magic-link emails, or the on-chain demo runs. Process-local by
+// design (same as the nonce / KYA / x402 stores); a horizontally-scaled deploy would move
+// this (and those) to a shared store.
+const rlBuckets = new Map<string, { count: number; resetAt: number }>()
+
+function rateLimited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now()
+  const b = rlBuckets.get(key)
+  if (!b || b.resetAt <= now) {
+    rlBuckets.set(key, { count: 1, resetAt: now + windowMs })
+    return false
+  }
+  b.count += 1
+  return b.count > max
+}
+
+// Prune expired buckets occasionally so the map can't grow unbounded. unref() so this
+// timer never keeps the process alive on its own.
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, v] of rlBuckets) if (v.resetAt <= now) rlBuckets.delete(k)
+}, 5 * 60 * 1000).unref()
+
+/** Per-path rate budget, or null when the path isn't limited. */
+function rateBudget(method: string, pathname: string): { bucket: string; max: number; windowMs: number } | null {
+  if (method !== 'POST') return null
+  // Auth challenges + guest login: cheap to abuse, keep them tight.
+  if (pathname === '/api/auth/nonce' || pathname === '/api/auth/verify' || pathname === '/api/auth/login')
+    return { bucket: 'auth', max: 20, windowMs: 60_000 }
+  // Passwordless email: sends a real email, so limit hardest.
+  if (pathname === '/api/auth/magic/request') return { bucket: 'magic', max: 5, windowMs: 60_000 }
+  // Expensive on-chain demo runs (each spends gas / moves real testnet value).
+  if (pathname === '/api/arc/agent-run' || (pathname.startsWith('/api/arc/') && pathname.endsWith('-demo')))
+    return { bucket: 'demo', max: 8, windowMs: 60_000 }
+  return null
+}
+
+function clientIpOf(req: http.IncomingMessage): string {
+  const xff = req.headers['x-forwarded-for']
+  const fromXff = typeof xff === 'string' ? xff.split(',')[0].trim() : ''
+  return fromXff || req.socket.remoteAddress || 'unknown'
+}
+
 function readBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
@@ -138,6 +183,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204).end(); return }
 
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`)
+
+  // Rate-limit sensitive/expensive endpoints per client IP before doing any work.
+  const budget = rateBudget(req.method ?? 'GET', url.pathname)
+  if (budget && rateLimited(`${clientIpOf(req)}:${budget.bucket}`, budget.max, budget.windowMs)) {
+    res.setHeader('Retry-After', String(Math.ceil(budget.windowMs / 1000)))
+    sendJson(res, 429, { error: 'Too many requests. Slow down and try again in a minute.' })
+    return
+  }
 
   // Session identity from the bearer token (null if none / invalid).
   const authHeader = req.headers.authorization

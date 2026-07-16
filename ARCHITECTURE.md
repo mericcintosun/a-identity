@@ -128,9 +128,9 @@ real settlement — the on-chain proof of the "fee per settlement" model.
   `/mcp` JSON-RPC for agents. Durable state via Postgres (`DATABASE_URL`), JSON-file fallback for dev.
 - **Auth** — Sign-In with Ethereum (wallet) + email magic link (Resend) are *verified*; a plain guest
   session is read-only. Agent ownership is bound to a verified identity.
-- **Tests / CI** — `node:test` unit (13) + a full E2E: **38 checks** green without a signer key, and
-  **55/55 with a funded `ARC_SIGNER_KEY`** (real Arc writes — incl. x402, ERC-8183 escrow, Gateway,
-  **Nanopayments settle**, and **CCTP burn-and-mint**). Runs in GitHub Actions (no signer → 38).
+- **Tests / CI** — `node:test` unit (13) + a full E2E: **39 checks** green without a signer key, and
+  **55 with a funded `ARC_SIGNER_KEY`** (real Arc writes — incl. x402, ERC-8183 escrow, Gateway,
+  **Nanopayments settle**, and **CCTP burn-and-mint**). Runs in GitHub Actions (no signer → 39).
 
 ## Honesty guardrails (we say exactly what's true)
 
