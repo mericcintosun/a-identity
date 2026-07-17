@@ -40,33 +40,38 @@ export function renderProofHtml(): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A-Identity Trust Oracle — Proof (OKX.AI Agent #6271)</title>
 <style>
-  :root { color-scheme: dark; }
+  /* a-identity.xyz brand palette: ink #192837, accent #7342e2, cream #f2f2ee, sand #cfc8c5, Inter. */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  :root { color-scheme: light; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: #0b0d10; color: #e6e9ef; font: 15px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
-  header { border-bottom: 1px solid #1e2530; padding-bottom: 20px; margin-bottom: 24px; }
-  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.02em; }
-  .tag { color: #8aa0b6; font-size: 14px; }
-  .badge { display: inline-block; background: #12331f; color: #4ade80; border: 1px solid #1f6b3a; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; margin-top: 10px; }
-  h2 { font-size: 16px; margin: 30px 0 10px; color: #cdd6e2; text-transform: uppercase; letter-spacing: 0.06em; }
-  table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 14px; overflow-x: auto; display: block; }
+  body { margin: 0; background: #f2f2ee; color: #192837; font: 15px/1.6 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
+  header { border-bottom: 1px solid #cfc8c5; padding-bottom: 22px; margin-bottom: 26px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.02em; font-weight: 800; }
+  .tag { color: #5a6b7a; font-size: 14.5px; max-width: 62ch; }
+  .badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(115,66,226,0.08); color: #7342e2; border: 1px solid rgba(115,66,226,0.28); padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; margin-top: 12px; }
+  .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #7342e2; box-shadow: 0 0 0 3px rgba(115,66,226,0.16); }
+  h2 { font-size: 13px; margin: 32px 0 10px; color: #7342e2; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; overflow-x: auto; display: block; }
   @media (min-width: 560px) { table { display: table; } }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #171d26; vertical-align: top; }
-  th { color: #8aa0b6; font-weight: 600; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: #a7f3d0; }
-  a { color: #60a5fa; text-decoration: none; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #e2ddd8; vertical-align: top; }
+  th { color: #5a6b7a; font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: none; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #192837; background: rgba(25,40,55,0.055); padding: 1px 5px; border-radius: 5px; }
+  a { color: #7342e2; text-decoration: none; font-weight: 500; }
   a:hover { text-decoration: underline; }
-  .price { color: #4ade80; white-space: nowrap; }
-  .grid { display: grid; gap: 6px 16px; grid-template-columns: 160px 1fr; font-size: 14px; }
-  .grid dt { color: #8aa0b6; }
+  a code { color: #7342e2; background: rgba(115,66,226,0.08); }
+  .price { color: #192837; font-weight: 600; white-space: nowrap; }
+  .grid { display: grid; gap: 8px 16px; grid-template-columns: 150px 1fr; font-size: 14px; }
+  .grid dt { color: #5a6b7a; }
   .grid dd { margin: 0; }
-  ul { margin: 6px 0; padding-left: 20px; }
-  li { margin: 4px 0; }
-  footer { margin-top: 36px; padding-top: 18px; border-top: 1px solid #1e2530; color: #6b7a8d; font-size: 13px; }
-  .kpi { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
-  .kpi div { background: #11151b; border: 1px solid #1e2530; border-radius: 10px; padding: 10px 14px; }
-  .kpi b { display: block; font-size: 20px; color: #fff; }
-  .kpi span { font-size: 12px; color: #8aa0b6; }
+  ul { margin: 8px 0; padding-left: 20px; }
+  li { margin: 5px 0; }
+  footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #cfc8c5; color: #7a8794; font-size: 13px; }
+  .kpi { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0 4px; }
+  .kpi div { background: #ffffff; border: 1px solid #e2ddd8; border-radius: 12px; padding: 12px 16px; min-width: 96px; }
+  .kpi b { display: block; font-size: 22px; color: #7342e2; font-weight: 800; letter-spacing: -0.02em; }
+  .kpi span { font-size: 12px; color: #5a6b7a; }
 </style>
 </head>
 <body>
