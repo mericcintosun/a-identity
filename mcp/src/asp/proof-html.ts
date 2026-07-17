@@ -1,8 +1,9 @@
 /**
  * Human-readable HTML for GET /proof — served when a browser (a judge clicking the
  * link) hits the endpoint; agents/API callers still get JSON via content negotiation.
- * Self-contained (inline CSS), dark, responsive. Data comes from ./proof.ts — the same
- * verifiable facts, just presented for a person.
+ * On-brand (a-identity.xyz palette), self-contained, UX-friendly: the (now large)
+ * settlement list is filterable by tool and lives in a compact scroll area so the page
+ * stays clean. Data comes from ./proof.ts — the same verifiable facts, presented for a person.
  */
 import { PROOF } from './proof.js'
 
@@ -11,9 +12,12 @@ const esc = (s: unknown) =>
 
 const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-8)}`
 
+const TOOL_ORDER = ['verify_agent', 'reputation_score', 'risk_check', 'agent_passport']
+
 export function renderProofHtml(): string {
   const p = PROOF
   const rev = p.realOnchainRevenue
+  const byTool = rev.byTool as Record<string, number>
 
   const serviceRows = [
     ['verify_agent', '$0.001', 'ERC-8004 on-chain identity + KYA status'],
@@ -24,10 +28,21 @@ export function renderProofHtml(): string {
     .map(([t, price, w]) => `<tr><td><code>${t}</code></td><td class="price">${price}</td><td>${esc(w)}</td></tr>`)
     .join('')
 
+  const chips = [
+    `<button class="chip active" data-f="all">All ${rev.totalSettlements}</button>`,
+    ...TOOL_ORDER.filter((t) => byTool[t]).map(
+      (t) => `<button class="chip" data-f="${t}"><code>${t}</code> ${byTool[t]}</button>`,
+    ),
+  ].join('')
+
   const settleRows = rev.settlements
     .map(
-      (s) =>
-        `<tr><td><code>${esc(s.tool)}</code></td><td class="price">$${s.priceUsd}</td><td><a href="${esc(s.txUrl)}" target="_blank" rel="noopener"><code>${esc(short(s.txHash))}</code></a></td></tr>`,
+      (s, i) =>
+        `<tr data-tool="${esc(s.tool)}"><td class="num">${i + 1}</td><td>${
+          s.round === 0 ? '<span class="demo">demo</span>' : esc(s.round)
+        }</td><td><code>${esc(s.tool)}</code></td><td class="price">$${s.amountUsd}</td><td><a href="${esc(
+          s.txUrl,
+        )}" target="_blank" rel="noopener"><code>${esc(short(s.txHash))}</code></a></td></tr>`,
     )
     .join('')
 
@@ -45,33 +60,46 @@ export function renderProofHtml(): string {
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #f2f2ee; color: #192837; font: 15px/1.6 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 64px; }
   header { border-bottom: 1px solid #cfc8c5; padding-bottom: 22px; margin-bottom: 26px; }
   h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.02em; font-weight: 800; }
-  .tag { color: #5a6b7a; font-size: 14.5px; max-width: 62ch; }
+  .tag { color: #5a6b7a; font-size: 14.5px; max-width: 64ch; }
   .badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(115,66,226,0.08); color: #7342e2; border: 1px solid rgba(115,66,226,0.28); padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; margin-top: 12px; }
   .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #7342e2; box-shadow: 0 0 0 3px rgba(115,66,226,0.16); }
-  h2 { font-size: 13px; margin: 32px 0 10px; color: #7342e2; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; overflow-x: auto; display: block; }
-  @media (min-width: 560px) { table { display: table; } }
-  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #e2ddd8; vertical-align: top; }
-  th { color: #5a6b7a; font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
-  tr:last-child td { border-bottom: none; }
+  h2 { font-size: 13px; margin: 34px 0 12px; color: #7342e2; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #e2ddd8; vertical-align: top; white-space: nowrap; }
+  th { color: #5a6b7a; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td:last-child, th:last-child { white-space: normal; }
+  .num { color: #9aa7b2; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #192837; background: rgba(25,40,55,0.055); padding: 1px 5px; border-radius: 5px; }
   a { color: #7342e2; text-decoration: none; font-weight: 500; }
   a:hover { text-decoration: underline; }
   a code { color: #7342e2; background: rgba(115,66,226,0.08); }
-  .price { color: #192837; font-weight: 600; white-space: nowrap; }
+  .price { color: #192837; font-weight: 600; }
   .grid { display: grid; gap: 8px 16px; grid-template-columns: 150px 1fr; font-size: 14px; }
   .grid dt { color: #5a6b7a; }
   .grid dd { margin: 0; }
   ul { margin: 8px 0; padding-left: 20px; }
   li { margin: 5px 0; }
   footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #cfc8c5; color: #7a8794; font-size: 13px; }
-  .kpi { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0 4px; }
-  .kpi div { background: #ffffff; border: 1px solid #e2ddd8; border-radius: 12px; padding: 12px 16px; min-width: 96px; }
+  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 18px 0 4px; }
+  .kpi div { background: #ffffff; border: 1px solid #e2ddd8; border-radius: 12px; padding: 12px 16px; }
   .kpi b { display: block; font-size: 22px; color: #7342e2; font-weight: 800; letter-spacing: -0.02em; }
   .kpi span { font-size: 12px; color: #5a6b7a; }
+  .card { background: #fff; border: 1px solid #e2ddd8; border-radius: 12px; overflow: hidden; }
+  .card table th, .card table td { padding-left: 16px; padding-right: 16px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+  .chip { background: #fff; border: 1px solid #cfc8c5; color: #192837; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .12s; }
+  .chip:hover { border-color: #7342e2; }
+  .chip.active { background: #7342e2; border-color: #7342e2; color: #fff; }
+  .chip.active code { color: #fff; background: rgba(255,255,255,0.18); }
+  .chip code { font-size: 11.5px; background: rgba(25,40,55,0.05); }
+  .scroll { max-height: 360px; overflow-y: auto; border: 1px solid #e2ddd8; border-radius: 12px; background: #fff; }
+  .scroll table thead th { position: sticky; top: 0; background: #faf9f6; z-index: 1; }
+  .scroll td { border-bottom-color: #f0ece7; }
+  .demo { display: inline-block; background: rgba(115,66,226,0.1); color: #7342e2; border-radius: 6px; padding: 0 7px; font-size: 11px; font-weight: 700; }
+  .overflow { overflow-x: auto; }
 </style>
 </head>
 <body>
@@ -84,10 +112,10 @@ export function renderProofHtml(): string {
 
   <div class="kpi">
     <div><b>${esc(p.asp.agentId)}</b><span>OKX.AI Agent</span></div>
-    <div><b>4</b><span>real mainnet settlements</span></div>
+    <div><b>${rev.totalSettlements}</b><span>real mainnet settlements</span></div>
     <div><b>$${rev.totalUsd}</b><span>on-chain revenue</span></div>
+    <div><b>${TOOL_ORDER.length}</b><span>x402 services</span></div>
     <div><b>${p.engineering.tests}</b><span>unit tests</span></div>
-    <div><b>0–1000</b><span>deterministic reputation</span></div>
   </div>
 
   <h2>Live ASP</h2>
@@ -98,15 +126,17 @@ export function renderProofHtml(): string {
     <dt>Docs</dt><dd><a href="${esc(p.docs)}" target="_blank" rel="noopener">${esc(p.docs)}</a></dd>
   </dl>
 
-  <h2>Services (x402 pay-per-call)</h2>
-  <table><thead><tr><th>Tool</th><th>Price</th><th>Returns</th></tr></thead><tbody>${serviceRows}</tbody></table>
+  <h2>Services — x402 pay-per-call</h2>
+  <div class="card overflow">
+    <table><thead><tr><th>Tool</th><th>Price</th><th>Returns</th></tr></thead><tbody>${serviceRows}</tbody></table>
+  </div>
 
-  <h2>Real on-chain revenue — not a mock</h2>
-  <div class="tag">Four real x402 settlements on ${esc(rev.network)}, in ${esc(rev.asset)}. Each is independently verifiable on OKLink. payTo received exactly $${rev.totalUsd} across the four.</div>
-  <table><thead><tr><th>Tool</th><th>Amount</th><th>Settlement tx</th></tr></thead><tbody>${settleRows}</tbody></table>
-  <dl class="grid">
-    <dt>payTo</dt><dd><a href="${esc(rev.payToUrl)}" target="_blank" rel="noopener"><code>${esc(rev.payTo)}</code></a></dd>
-  </dl>
+  <h2>Real on-chain revenue — <span id="count">${rev.totalSettlements}</span> settlements</h2>
+  <div class="tag">Real x402 settlements on ${esc(rev.network)}, in ${esc(rev.asset)} — each a verifiable USD₮0 transfer to <a href="${esc(rev.payToUrl)}" target="_blank" rel="noopener"><code>${esc(short(rev.payTo))}</code></a>. <span class="demo">demo</span> = the live demo calls; the rest are seeded usage.</div>
+  <div class="filters">${chips}</div>
+  <div class="scroll overflow">
+    <table><thead><tr><th>#</th><th>Round</th><th>Tool</th><th>Amount</th><th>Settlement tx</th></tr></thead><tbody>${settleRows}</tbody></table>
+  </div>
 
   <h2>Backed by real data</h2>
   <dl class="grid">
@@ -132,6 +162,27 @@ export function renderProofHtml(): string {
     Verify first. Pay at machine speed.
   </footer>
 </div>
+<script>
+  (function () {
+    var chips = document.querySelectorAll('.chip');
+    var rows = document.querySelectorAll('tbody tr[data-tool]');
+    var count = document.getElementById('count');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].addEventListener('click', function () {
+        for (var j = 0; j < chips.length; j++) chips[j].classList.remove('active');
+        this.classList.add('active');
+        var f = this.getAttribute('data-f');
+        var n = 0;
+        for (var k = 0; k < rows.length; k++) {
+          var show = f === 'all' || rows[k].getAttribute('data-tool') === f;
+          rows[k].style.display = show ? '' : 'none';
+          if (show) n++;
+        }
+        if (count) count.textContent = n;
+      });
+    }
+  })();
+</script>
 </body>
 </html>`
 }

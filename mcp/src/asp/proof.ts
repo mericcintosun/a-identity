@@ -13,6 +13,8 @@
  * to "feels like a product, not a hackathon project."
  */
 
+import { SETTLEMENTS } from './settlements.js'
+
 const OKLINK_TX = 'https://www.oklink.com/x-layer/evm/tx/'
 const OKLINK_ADDR = 'https://www.oklink.com/x-layer/evm/address/'
 
@@ -20,12 +22,14 @@ const OKLINK_ADDR = 'https://www.oklink.com/x-layer/evm/address/'
 const PAYER = '0x169ead25d35c146f3f3a7d2936ae37eab2e256d1'
 const PAY_TO = '0x6a5f1b8e56a19d456b799c2fa00e513244f58ce6'
 
-const SETTLEMENTS = [
-  { tool: 'verify_agent', priceUsd: 0.001, txHash: '0x8174a4b29a3bc20d421531d2966d7091ee6d75f994a774aad5886870c5e7a27a' },
-  { tool: 'reputation_score', priceUsd: 0.002, txHash: '0x2ede816a12acc7b1ae62d02b610e56079d619a1feeaa6cd61370bbbb977fc9af' },
-  { tool: 'risk_check', priceUsd: 0.005, txHash: '0x36977927f1449ea84df341df6fd6c94288f70fd9f4e6c1b57bbe7ba7fa8557c1' },
-  { tool: 'agent_passport', priceUsd: 0.01, txHash: '0xc7f9342bde496f21be725f72f5555fa685aeffcc901b54d47bd75e51c302a0cb' },
-]
+// All real settlements (round 0 = live demo, rounds 1-20 = seeding), each + an OKLink link.
+const WITH_URLS = SETTLEMENTS.map((s) => ({ ...s, txUrl: `${OKLINK_TX}${s.txHash}` }))
+const FEATURED = WITH_URLS.filter((s) => s.round === 0)
+const TOTAL_USD = Math.round(SETTLEMENTS.reduce((a, s) => a + s.amountUsd, 0) * 1000) / 1000
+const BY_TOOL = SETTLEMENTS.reduce<Record<string, number>>((m, s) => {
+  m[s.tool] = (m[s.tool] || 0) + 1
+  return m
+}, {})
 
 export const PROOF = {
   submission: 'OKX.AI Genesis Hackathon',
@@ -37,15 +41,19 @@ export const PROOF = {
     registrationTx: '0x03a614a902ed742526047dffa165378cb16350a81bf083d4672f6d7a9ecfb078',
     registrationTxUrl: `${OKLINK_TX}0x03a614a902ed742526047dffa165378cb16350a81bf083d4672f6d7a9ecfb078`,
   },
-  // Four REAL x402 pay-per-call settlements on X Layer mainnet — one per tool.
+  // REAL x402 pay-per-call settlements on X Layer mainnet — round 0 = the live demo,
+  // rounds 1-20 = seeding. Every row is a real USD₮0 transfer to payTo.
   realOnchainRevenue: {
     network: 'X Layer mainnet (eip155:196)',
     asset: 'USD₮0 (0x779Ded0c9e1022225f8E0630b35a9b54bE713736)',
     payer: PAYER,
     payTo: PAY_TO,
     payToUrl: `${OKLINK_ADDR}${PAY_TO}`,
-    totalUsd: 0.018,
-    settlements: SETTLEMENTS.map((s) => ({ ...s, txUrl: `${OKLINK_TX}${s.txHash}` })),
+    totalSettlements: WITH_URLS.length,
+    totalUsd: TOTAL_USD,
+    byTool: BY_TOOL,
+    featured: FEATURED,
+    settlements: WITH_URLS,
   },
   // Real data the tools return, not mocks: a live ERC-8004 agent on Circle Arc.
   showcaseAgent: {
@@ -69,7 +77,7 @@ export const PROOF = {
   howToVerify: [
     'Call any tool endpoint (POST /tools/*) — it returns HTTP 402 with an x402 challenge on X Layer mainnet (eip155:196).',
     'Open any settlement txUrl on OKLink — each is a real USD₮0 transfer to payTo on X Layer mainnet.',
-    `Check the payTo balance (${PAY_TO}) — it received exactly $0.018 across the four settlements.`,
+    `Check the payTo balance (${PAY_TO}) — it received every one of these settlements in USD₮0.`,
     'GET /methodology for the exact, reproducible reputation and risk formulas.',
   ],
   docs: 'https://a-identity.xyz',
