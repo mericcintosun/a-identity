@@ -52,13 +52,13 @@ export default function Hero() {
             fontSize: 'clamp(1.65rem, 5vw, 3rem)',
             lineHeight: 1.05,
             letterSpacing: '-0.01em',
-            color: '#192837',
+            color: 'var(--foreground)',
             marginBottom: 24,
           }}
         >
-          <Fingerprint size={24} color="#192837" style={inlineIcon} /> The Passport &amp;{' '}
-          <Coins size={24} color="#192837" style={inlineIcon} /> Wallet for the Agentic{' '}
-          <Network size={24} color="#192837" style={inlineIcon} /> Economy
+          <Fingerprint size={24} color="var(--foreground)" style={inlineIcon} /> The Passport &amp;{' '}
+          <Coins size={24} color="var(--foreground)" style={inlineIcon} /> Wallet for the Agentic{' '}
+          <Network size={24} color="var(--foreground)" style={inlineIcon} /> Economy
         </motion.h1>
 
         {/* Subtext */}

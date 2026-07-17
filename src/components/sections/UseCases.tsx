@@ -52,7 +52,7 @@ export default function UseCases() {
   }
 
   return (
-    <section id="use-cases" className="w-full bg-cream px-5 py-20 sm:px-8 sm:py-28">
+    <section id="use-cases" className="w-full bg-background px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-[1100px]">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -61,7 +61,7 @@ export default function UseCases() {
             </motion.span>
             <motion.h2
               {...reveal}
-              className="mt-4 max-w-2xl text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
+              className="mt-4 max-w-2xl text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl"
               style={{ fontFamily: 'var(--font-heading)' }}
             >
               What agents actually do here.
@@ -73,7 +73,7 @@ export default function UseCases() {
               type="button"
               onClick={() => scroll(-1)}
               aria-label="Scroll use cases left"
-              className="grid h-11 w-11 place-items-center rounded-full border border-ink/15 text-ink/60 transition-colors hover:bg-ink/5"
+              className="grid h-11 w-11 place-items-center rounded-full border border-foreground/15 text-foreground/60 transition-colors hover:bg-foreground/5"
             >
               <ArrowLeft size={18} />
             </button>
@@ -81,7 +81,7 @@ export default function UseCases() {
               type="button"
               onClick={() => scroll(1)}
               aria-label="Scroll use cases right"
-              className="grid h-11 w-11 place-items-center rounded-full border border-ink/15 text-ink/60 transition-colors hover:bg-ink/5"
+              className="grid h-11 w-11 place-items-center rounded-full border border-foreground/15 text-foreground/60 transition-colors hover:bg-foreground/5"
             >
               <ArrowRight size={18} />
             </button>

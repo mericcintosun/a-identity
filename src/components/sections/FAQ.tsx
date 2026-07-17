@@ -1,8 +1,14 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowUpRight, ChevronDown } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import { EASE_OUT_EXPO } from '../../lib/brand'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../ui/accordion'
+import { Button } from '../ui/button'
 
 const reveal = {
   initial: { opacity: 0, y: 24 },
@@ -123,30 +129,56 @@ const GROUPS: Group[] = [
 // Flatten for a single open-at-a-time accordion across all groups.
 const FLAT = GROUPS.flatMap((g) => g.items)
 
+// FAQPage structured data — makes every Q&A machine-readable (search engines +
+// agents) even while the visible accordion keeps answers collapsed. A cleaner,
+// richer signal than the old "keep every answer mounted in the DOM" trick.
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FLAT.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.tag ? `${item.a} ${item.tag}` : item.a,
+    },
+  })),
+}
+
 export default function FAQ() {
-  const [open, setOpen] = useState<number | null>(0)
   let runningIndex = -1
 
   return (
-    <section id="faq" className="w-full bg-cream px-5 py-20 sm:px-8 sm:py-28">
+    <section id="faq" className="w-full bg-background px-5 py-20 sm:px-8 sm:py-28">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="mx-auto max-w-[820px]">
         <motion.span {...reveal} className="text-base font-semibold tracking-wide text-accent">
           FAQ
         </motion.span>
         <motion.h2
           {...reveal}
-          className="mt-4 text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
+          className="mt-4 text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           Questions humans (still) ask.
         </motion.h2>
 
-        <div className="mt-10 flex flex-col gap-10">
+        {/* One shadcn Accordion across all groups → single open-at-a-time; first
+            item open by default. Category headers interleave between the items. */}
+        <Accordion
+          type="single"
+          collapsible
+          defaultValue="faq-0"
+          className="mt-10 flex flex-col gap-10"
+        >
           {GROUPS.map((group) => (
             <div key={group.category}>
               <motion.h3
                 {...reveal}
-                className="mb-3 text-xs font-bold tracking-widest text-ink/40"
+                className="mb-3 text-xs font-bold tracking-widest text-foreground/40"
               >
                 {group.category}
               </motion.h3>
@@ -154,69 +186,50 @@ export default function FAQ() {
                 {group.items.map((item) => {
                   runningIndex += 1
                   const i = runningIndex
-                  const isOpen = open === i
                   return (
-                    <motion.div
-                      {...reveal}
-                      key={item.q}
-                      className="overflow-hidden rounded-2xl border border-ink/10 bg-white"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpen(isOpen ? null : i)}
-                        aria-expanded={isOpen}
-                        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+                    <motion.div {...reveal} key={item.q}>
+                      <AccordionItem
+                        value={`faq-${i}`}
+                        className="overflow-hidden rounded-2xl border border-foreground/10 bg-card"
                       >
-                        <span className="font-semibold text-ink">{item.q}</span>
-                        <ChevronDown
-                          size={20}
-                          className={`shrink-0 text-accent transition-transform duration-300 ${
-                            isOpen ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </button>
-                      {/* Answers stay mounted (agent-parsable); the grid-rows
-                          0fr to 1fr trick collapses them with pure CSS. */}
-                      <div
-                        className="grid transition-all duration-300 ease-out"
-                        style={{ gridTemplateRows: isOpen ? '1fr' : '0fr', opacity: isOpen ? 1 : 0 }}
-                      >
-                        <div className="overflow-hidden">
+                        <AccordionTrigger className="justify-between gap-4 px-6 py-5 text-left font-semibold text-foreground">
+                          <span>{item.q}</span>
+                        </AccordionTrigger>
+                        <AccordionContent>
                           <div className="px-6 pb-6">
-                            <p className="text-sm leading-relaxed text-ink/65">{item.a}</p>
+                            <p className="text-sm leading-relaxed text-foreground/65">{item.a}</p>
                             {item.tag && (
                               <p className="mt-3 text-sm font-bold text-accent">{item.tag}</p>
                             )}
                           </div>
-                        </div>
-                      </div>
+                        </AccordionContent>
+                      </AccordionItem>
                     </motion.div>
                   )
                 })}
               </div>
             </div>
           ))}
-        </div>
+        </Accordion>
 
         {/* Closing CTA */}
         <motion.div
           {...reveal}
           className="mt-12 rounded-3xl border border-accent/20 bg-accent/[0.05] p-8 text-center sm:p-10"
         >
-          <h3 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
+          <h3 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             Building agent-native products?
           </h3>
-          <p className="mx-auto mt-3 max-w-xl text-ink/65">
+          <p className="mx-auto mt-3 max-w-xl text-foreground/65">
             A-Identity gives your agents verified identity, wallets, and payment infrastructure
             built for the next economy.
           </p>
           <p className="mt-4 font-bold text-accent">Verify first. Pay at machine speed.</p>
-          <Link
-            to="/signup"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.03]"
-          >
-            Get Your Agent ID <ArrowUpRight size={16} />
-          </Link>
+          <Button asChild size="lg" className="mt-6">
+            <Link to="/signup">
+              Get Your Agent ID <ArrowUpRight size={16} />
+            </Link>
+          </Button>
         </motion.div>
       </div>
     </section>

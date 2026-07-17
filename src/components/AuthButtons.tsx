@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { Button } from './ui/button'
 
 type AuthButtonsProps = {
   /** Stack vertically (mobile sheet) instead of inline (desktop navbar). */
@@ -9,7 +10,8 @@ type AuthButtonsProps = {
 
 /**
  * The "Start For Free" + "Sign In" pill pair. Shared between the desktop
- * navbar and the mobile sheet so both stay visually identical.
+ * navbar and the mobile sheet so both stay visually identical. Uses the shadcn
+ * Button (accent + secondary variants) — same look, now consistent everywhere.
  */
 export default function AuthButtons({ stacked = false, onNavigate }: AuthButtonsProps) {
   const navigate = useNavigate()
@@ -21,22 +23,12 @@ export default function AuthButtons({ stacked = false, onNavigate }: AuthButtons
 
   return (
     <div className={stacked ? 'flex flex-col gap-3' : 'flex items-center gap-3'}>
-      <button
-        type="button"
-        onClick={go('/signup')}
-        className="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.03]"
-        style={{ background: 'var(--color-accent)' }}
-      >
+      <Button type="button" variant="default" onClick={go('/signup')}>
         Start For Free
-      </button>
-      <button
-        type="button"
-        onClick={go('/login')}
-        className="rounded-full px-5 py-2.5 text-sm font-semibold transition-transform duration-200 hover:scale-[1.03]"
-        style={{ background: 'var(--color-login-bg)', color: 'var(--color-text)' }}
-      >
+      </Button>
+      <Button type="button" variant="secondary" onClick={go('/login')}>
         Sign In
-      </button>
+      </Button>
     </div>
   )
 }

@@ -24,7 +24,7 @@ const FRICTIONS = [
 
 export default function Problem() {
   return (
-    <section className="w-full bg-white px-5 py-20 sm:px-8 sm:py-28">
+    <section className="w-full bg-card px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-[1100px]">
         <motion.span {...reveal} className="text-base font-semibold tracking-wide text-accent">
           The Friction
@@ -32,13 +32,13 @@ export default function Problem() {
 
         <motion.h2
           {...reveal}
-          className="mt-4 max-w-3xl text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
+          className="mt-4 max-w-3xl text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           Agents can book your flight. They still pay with your 16-digit card.
         </motion.h2>
 
-        <motion.p {...reveal} className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/65">
+        <motion.p {...reveal} className="mt-5 max-w-2xl text-lg leading-relaxed text-foreground/65">
           The hard part is no longer making agents smart. It is letting them trust and pay
           each other. A-Identity solves both, so money moves as fast as the agents do.
         </motion.p>
@@ -48,13 +48,13 @@ export default function Problem() {
             <motion.div
               {...reveal}
               key={title}
-              className="rounded-2xl border border-ink/10 bg-cream/50 p-7"
+              className="rounded-2xl border border-foreground/10 bg-background/50 p-7"
             >
               <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-accent/10 text-accent">
                 <Icon size={20} />
               </div>
-              <h3 className="text-lg font-semibold text-ink">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink/60">{body}</p>
+              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/60">{body}</p>
             </motion.div>
           ))}
         </div>

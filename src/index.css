@@ -2,8 +2,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import 'tailwindcss';
 
+/* Class-based dark mode: make Tailwind's `dark:` variant respond to our scoped
+   `.dark` wrapper (the landing) instead of the OS `prefers-color-scheme`. Our
+   section colors flip via CSS-variable overrides; this enables `dark:` utilities
+   (e.g. the hero scrim) on top of that. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Tailwind v4 design tokens that generate utilities like bg-accent, text-ink,
-   font-heading. Also emitted as :root CSS variables. */
+   font-heading. Also emitted as :root CSS variables. These are the FIXED brand
+   colors — they never change between light and dark. */
 @theme {
   --color-ink: #192837;
   --color-accent: #7342e2;
@@ -12,12 +19,76 @@
 
   --font-heading: 'Helvetica Now Display Bold', sans-serif;
   --font-body: 'Inter', sans-serif;
+
+  /* Radix accordion open/close (shadcn Accordion). */
+  --animate-accordion-down: accordion-down 0.3s ease-out;
+  --animate-accordion-up: accordion-up 0.3s ease-out;
 }
 
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+/*
+ * Theme-aware semantic tokens (shadcn-style). In LIGHT mode they resolve to the
+ * exact same colors the landing already used (background=cream, foreground=ink,
+ * card=white), so the default look is pixel-identical. The `.dark` scope (applied
+ * to the landing wrapper) flips them for dark mode — purely additive.
+ */
 :root {
-  /* Spec-named aliases kept for the landing components that reference them */
-  --color-text: var(--color-ink);
-  --color-login-bg: var(--color-cream);
+  --background: #f2f2ee;   /* was bg-cream */
+  --foreground: #192837;   /* was text-ink */
+  --card: #ffffff;         /* was bg-white surfaces */
+  --card-foreground: #192837;
+  --border: rgba(25, 40, 55, 0.1); /* was border-ink/10 */
+  --ring: #7342e2;
+  --secondary: #f2f2ee;    /* the cream "Sign In" / secondary-button surface */
+  --sheet: #cfc8c5;        /* mobile slide-in menu surface (was sand) */
+  --radius: 0.75rem;
+
+  /* Spec-named aliases kept for the landing components that reference them.
+     Now theme-aware (were --color-ink / --color-cream). */
+  --color-text: var(--foreground);
+  --color-login-bg: var(--secondary);
+}
+
+.dark {
+  --background: #0e161e;
+  --foreground: #e7e9ec;
+  --card: #182430;
+  --card-foreground: #e7e9ec;
+  --border: rgba(231, 233, 236, 0.12);
+  --ring: #8b63e8;
+  --secondary: #22303c;
+  --sheet: #1b2733;
+
+  /* Re-alias here too: a custom property whose value is `var(--foreground)` is
+     substituted where it is DECLARED, so the :root aliases stay pinned to the
+     light foreground. Re-declaring them in `.dark` makes them recompute against
+     the dark foreground/secondary for elements inside the landing wrapper. */
+  --color-text: var(--foreground);
+  --color-login-bg: var(--secondary);
+}
+
+/* Bind the semantic tokens into Tailwind v4 as `bg-background`, `text-foreground`,
+   `bg-card`, `border-border`, `ring-ring`, etc. `inline` keeps them as live
+   var() references so the runtime `.dark` override actually takes effect. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-secondary: var(--secondary);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 }
 
 html,

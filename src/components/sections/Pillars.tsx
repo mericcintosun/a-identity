@@ -48,14 +48,14 @@ const PILLARS: Pillar[] = [
 
 export default function Pillars() {
   return (
-    <section id="pillars" className="w-full bg-cream px-5 py-20 sm:px-8 sm:py-28">
+    <section id="pillars" className="w-full bg-background px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-[1100px]">
         <motion.span {...reveal} className="text-base font-semibold tracking-wide text-accent">
           The Underlying Magic
         </motion.span>
         <motion.h2
           {...reveal}
-          className="mt-4 max-w-2xl text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
+          className="mt-4 max-w-2xl text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           Three protocols, one agent-native stack.
@@ -66,19 +66,19 @@ export default function Pillars() {
             <motion.div
               {...reveal}
               key={tag}
-              className="flex flex-col rounded-2xl border border-ink/10 bg-white p-7"
+              className="flex flex-col rounded-2xl border border-foreground/10 bg-card p-7"
             >
               <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-accent text-white">
                 <Icon size={22} />
               </div>
               <div className="text-xs font-bold tracking-wide text-accent">{tag}</div>
-              <h3 className="mt-1 text-xl font-semibold text-ink">{title}</h3>
-              <p className="mt-3 flex-1 text-sm leading-relaxed text-ink/60">{body}</p>
+              <h3 className="mt-1 text-xl font-semibold text-foreground">{title}</h3>
+              <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground/60">{body}</p>
               <a
                 href={href}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-5 flex items-center justify-between border-t border-ink/10 pt-4 text-xs font-medium text-ink/45 transition-colors hover:text-accent"
+                className="mt-5 flex items-center justify-between border-t border-foreground/10 pt-4 text-xs font-medium text-foreground/45 transition-colors hover:text-accent"
               >
                 {spec}
                 <ArrowUpRight size={14} />
@@ -89,7 +89,7 @@ export default function Pillars() {
 
         {/* Integration buttons, straight to the docs */}
         <motion.div {...reveal} className="mt-8 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-ink/55">Read the integration docs:</span>
+          <span className="text-sm font-medium text-foreground/55">Read the integration docs:</span>
           <a
             href={`${DOCS_URL}/developers/sdk`}
             target="_blank"
@@ -102,7 +102,7 @@ export default function Pillars() {
             href={`${DOCS_URL}/developers/mcp-server`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink/80 transition-transform hover:scale-[1.03]"
+            className="inline-flex items-center gap-2 rounded-full border border-foreground/15 bg-card px-4 py-2 text-sm font-semibold text-foreground/80 transition-transform hover:scale-[1.03]"
           >
             <Server size={16} /> MCP
           </a>

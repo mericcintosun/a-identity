@@ -31,7 +31,7 @@ const STATS = [
  */
 export default function OkxAsp() {
   return (
-    <section id="okx-asp" className="w-full bg-cream px-5 py-20 text-ink sm:px-8 sm:py-28">
+    <section id="okx-asp" className="w-full bg-background px-5 py-20 text-foreground sm:px-8 sm:py-28">
       <div className="mx-auto max-w-[1100px]">
         <motion.span
           {...reveal}
@@ -48,27 +48,27 @@ export default function OkxAsp() {
           The trust oracle for the agent economy — live.
         </motion.h2>
 
-        <motion.p {...reveal} className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/65">
+        <motion.p {...reveal} className="mt-5 max-w-2xl text-lg leading-relaxed text-foreground/65">
           A-Identity is live on OKX.AI as an A2MCP ASP. Before any agent-to-agent transaction, an
           agent calls us to verify the counterparty — pay-per-call via x402 on X Layer mainnet.
         </motion.p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {TOOLS.map((t) => (
-            <motion.div {...reveal} key={t.name} className="rounded-2xl border border-sand bg-white p-5">
+            <motion.div {...reveal} key={t.name} className="rounded-2xl border border-sand bg-card p-5">
               <div className="flex items-baseline justify-between gap-2">
-                <code className="font-mono text-sm font-semibold text-ink">{t.name}</code>
+                <code className="font-mono text-sm font-semibold text-foreground">{t.name}</code>
                 <span className="text-sm font-bold text-accent">{t.price}</span>
               </div>
-              <p className="mt-2 text-sm text-ink/60">{t.desc}</p>
+              <p className="mt-2 text-sm text-foreground/60">{t.desc}</p>
             </motion.div>
           ))}
         </div>
 
-        <motion.div {...reveal} className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-ink/70">
+        <motion.div {...reveal} className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-foreground/70">
           {STATS.map(([n, label]) => (
             <span key={label}>
-              <b className="text-ink">{n}</b> {label}
+              <b className="text-foreground">{n}</b> {label}
             </span>
           ))}
         </motion.div>

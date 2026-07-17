@@ -40,7 +40,7 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
             style={{
               width: 'min(88vw, 360px)',
               height: '100dvh',
-              background: '#CFC8C5',
+              background: 'var(--sheet)',
               boxShadow: '-12px 0 48px rgba(25,40,55,0.18)',
             }}
             initial={{ x: '100%' }}
@@ -49,20 +49,20 @@ export default function MobileMenu({ open, onClose }: MobileMenuProps) {
             transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
           >
             {/* Header: logo + close */}
-            <div className="flex items-center justify-between px-6 py-5">
-              <Logo />
+            <div className="flex items-center justify-between px-6 py-5 text-foreground">
+              <Logo fill="currentColor" />
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close menu"
-                className="grid h-10 w-10 place-items-center rounded-full transition-colors hover:bg-black/5"
+                className="grid h-10 w-10 place-items-center rounded-full text-foreground transition-colors hover:bg-foreground/5"
               >
-                <X size={24} color="#192837" />
+                <X size={24} />
               </button>
             </div>
 
             {/* Divider */}
-            <div className="h-px w-full" style={{ background: 'rgba(25,40,55,0.12)' }} />
+            <div className="h-px w-full" style={{ background: 'var(--border)' }} />
 
             {/* Nav links (staggered) */}
             <nav className="flex flex-1 flex-col gap-1 px-6 py-6">

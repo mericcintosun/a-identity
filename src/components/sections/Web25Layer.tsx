@@ -44,11 +44,11 @@ function TokenCoin({ kind, size = 32 }: { kind: TokenKind; size?: number }) {
         transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }}
       />
       <div
-        className="relative grid h-full w-full place-items-center rounded-full shadow-md ring-1 ring-black/10"
+        className="relative grid h-full w-full place-items-center rounded-full shadow-md ring-1 ring-foreground/10"
         style={{ background: t.color }}
       >
         {t.glyph}
-        <span className="absolute -right-1 -top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-white shadow">
+        <span className="absolute -right-1 -top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-card shadow">
           <Sparkles size={8} className="text-accent" />
         </span>
       </div>
@@ -68,7 +68,7 @@ function VerifyChip({ delay }: { delay: number }) {
       transition={{ duration: VERIFY_DUR, repeat: Infinity, ease: 'linear', delay }}
     >
       <motion.div
-        className="relative grid h-11 w-11 place-items-center rounded-full bg-white"
+        className="relative grid h-11 w-11 place-items-center rounded-full bg-card"
         animate={{
           boxShadow: [
             '0 0 0 2px rgba(25,40,55,0.18)',
@@ -106,9 +106,9 @@ function VerifyChip({ delay }: { delay: number }) {
 
 function VerifyLane() {
   return (
-    <div className="relative h-40 overflow-hidden rounded-2xl border border-ink/10 bg-cream/40">
+    <div className="relative h-40 overflow-hidden rounded-2xl border border-foreground/10 bg-background/40">
       {/* track */}
-      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-ink/10" />
+      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-foreground/10" />
 
       {/* KYA gate */}
       <div className="absolute inset-y-0 left-1/2 -translate-x-1/2">
@@ -123,7 +123,7 @@ function VerifyLane() {
       </div>
 
       {/* labels (hidden on very small screens to avoid overlapping the gate) */}
-      <span className="absolute left-3 top-3 hidden text-[11px] font-semibold text-ink/45 sm:block">
+      <span className="absolute left-3 top-3 hidden text-[11px] font-semibold text-foreground/45 sm:block">
         Unverified
       </span>
       <span className="absolute right-3 top-3 hidden items-center gap-1 text-[11px] font-semibold text-emerald-600 sm:inline-flex">
@@ -188,18 +188,18 @@ function Node({ pt, icon, label }: { pt: Pt; icon: ReactNode; label: string }) {
           animate={{ scale: [1, 1.35, 1], opacity: [0.5, 0, 0.5] }}
           transition={{ duration: 2.4, repeat: Infinity, ease: 'easeOut' }}
         />
-        <div className="relative grid h-12 w-12 place-items-center rounded-2xl border border-ink/10 bg-white text-accent shadow-sm">
+        <div className="relative grid h-12 w-12 place-items-center rounded-2xl border border-foreground/10 bg-card text-accent shadow-sm">
           {icon}
         </div>
       </div>
-      <div className="mt-1.5 text-center text-[11px] font-semibold text-ink/70">{label}</div>
+      <div className="mt-1.5 text-center text-[11px] font-semibold text-foreground/70">{label}</div>
     </div>
   )
 }
 
 function PayLane() {
   return (
-    <div className="relative h-64 overflow-hidden rounded-2xl border border-ink/10 bg-cream/40">
+    <div className="relative h-64 overflow-hidden rounded-2xl border border-foreground/10 bg-background/40">
       {/* connectors */}
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
         {(
@@ -224,10 +224,10 @@ function PayLane() {
       </svg>
 
       {/* edge labels */}
-      <span className="absolute left-1/2 top-[58%] -translate-x-1/2 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-ink/55 shadow-sm">
+      <span className="absolute left-1/2 top-[58%] -translate-x-1/2 rounded-full bg-card px-2 py-0.5 text-[10px] font-semibold text-foreground/55 shadow-sm">
         agent to agent, x402
       </span>
-      <span className="absolute left-[27%] top-[36%] -translate-x-1/2 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-ink/55 shadow-sm">
+      <span className="absolute left-[27%] top-[36%] -translate-x-1/2 rounded-full bg-card px-2 py-0.5 text-[10px] font-semibold text-foreground/55 shadow-sm">
         agent to human
       </span>
 
@@ -248,26 +248,26 @@ function PayLane() {
 
 export default function Web25Layer() {
   return (
-    <section className="w-full bg-white px-5 py-20 sm:px-8 sm:py-28">
+    <section className="w-full bg-card px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-[1100px]">
         <motion.span {...reveal} className="text-base font-semibold tracking-wide text-accent">
           The Web2.5 Layer
         </motion.span>
         <motion.h2
           {...reveal}
-          className="mt-4 max-w-2xl text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
+          className="mt-4 max-w-2xl text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl"
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           Verify first. Then pay, at machine speed.
         </motion.h2>
-        <motion.p {...reveal} className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/65">
+        <motion.p {...reveal} className="mt-5 max-w-2xl text-lg leading-relaxed text-foreground/65">
           First the agent proves who it is. Then it pays, in stablecoins, inside limits both
           sides agreed to. Web2 trust, running on Web3 rails.
         </motion.p>
 
         {/* legend */}
-        <motion.div {...reveal} className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-ink/60">
-          <span className="font-semibold text-ink/70">Settled in:</span>
+        <motion.div {...reveal} className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-foreground/60">
+          <span className="font-semibold text-foreground/70">Settled in:</span>
           {(['usdc', 'usdt', 'pyusd'] as const).map((k) => (
             <span key={k} className="inline-flex items-center gap-2">
               <TokenCoin kind={k} size={26} /> {TOKENS[k].label}
@@ -279,7 +279,7 @@ export default function Web25Layer() {
         <motion.div {...reveal} className="mt-8 grid gap-5">
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <span className="grid h-6 w-6 place-items-center rounded-md bg-accent/10 text-accent">1</span>
                 First, prove the agent is real
               </div>
@@ -295,7 +295,7 @@ export default function Web25Layer() {
             <VerifyLane />
           </div>
           <div>
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
               <span className="grid h-6 w-6 place-items-center rounded-md bg-accent/10 text-accent">2</span>
               Then pay, under permissions both sides set
             </div>
@@ -306,11 +306,11 @@ export default function Web25Layer() {
         {/* Integration offer: use it like an SDK / MCP server */}
         <motion.div
           {...reveal}
-          className="mt-5 flex flex-col gap-4 rounded-2xl border border-ink/10 bg-cream/40 p-6 sm:flex-row sm:items-center sm:justify-between"
+          className="mt-5 flex flex-col gap-4 rounded-2xl border border-foreground/10 bg-background/40 p-6 sm:flex-row sm:items-center sm:justify-between"
         >
           <div>
-            <h3 className="font-semibold text-ink">Want this in your own project?</h3>
-            <p className="mt-1 text-sm text-ink/60">
+            <h3 className="font-semibold text-foreground">Want this in your own project?</h3>
+            <p className="mt-1 text-sm text-foreground/60">
               We expose the same verify and pay flow as an SDK and an MCP server, so any
               agent or service can plug in.
             </p>
@@ -328,7 +328,7 @@ export default function Web25Layer() {
               href={`${DOCS_URL}/developers/mcp-server`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white px-4 py-2.5 text-sm font-semibold text-ink/80 transition-transform hover:scale-[1.03]"
+              className="inline-flex items-center gap-2 rounded-full border border-foreground/15 bg-card px-4 py-2.5 text-sm font-semibold text-foreground/80 transition-transform hover:scale-[1.03]"
             >
               <Server size={16} /> MCP
             </a>
