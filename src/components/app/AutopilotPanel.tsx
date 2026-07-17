@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bot, CheckCircle2, Loader2, Hand, Coins } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
+import { Button } from '../ui/button'
 import { authHeaders } from '../../store/auth'
 
 type Payment = { n: number; amountUsd: number; cumulativeUsd: number; ok: boolean; transaction?: string; reason?: string }
@@ -105,8 +106,8 @@ export default function AutopilotPanel() {
           <Bot size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-ink">Autonomous agent run</h3>
-          <p className="mt-0.5 text-sm text-ink/55">
+          <h3 className="font-semibold text-foreground">Autonomous agent run</h3>
+          <p className="mt-0.5 text-sm text-foreground/55">
             Set a budget once, then the agent runs <b>on its own</b>: a burst of real gasless
             nanopayments to a service (pay-per-inference), stopping <b>itself</b> the moment the
             next payment would breach your budget. A protocol fee is routed to the treasury on each run.
@@ -117,35 +118,30 @@ export default function AutopilotPanel() {
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <Field label="Budget (agent stops itself here)" value={budget} onChange={setBudget} step="0.005" />
         <Field label="Per call" value={amount} onChange={setAmount} step="0.001" />
-        <button
-          type="button"
-          onClick={run}
-          disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
-        >
+        <Button type="button" size="sm" className="text-sm" onClick={run} disabled={busy}>
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Bot size={15} />}
           {busy ? 'Agent running' : 'Run the agent'}
-        </button>
+        </Button>
       </div>
 
       {busy && (
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-accent/20 bg-accent/[0.04] p-3 text-sm text-ink/60">
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-accent/20 bg-accent/[0.04] p-3 text-sm text-foreground/60">
           <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
           <span>The agent is paying autonomously on Arc. Real gasless nanopayments settle in a batch.</span>
         </div>
       )}
 
-      {error && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-sm text-ink/70">{error}</div>}
+      {error && <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 p-3 text-sm text-foreground/70">{error}</div>}
 
       {result && result.executed === false && (
-        <div className="mt-4 rounded-xl border border-ink/10 bg-cream/40 p-3 text-sm text-ink/70">
+        <div className="mt-4 rounded-xl border border-foreground/10 bg-background/40 p-3 text-sm text-foreground/70">
           Prepared (no signer configured on the server): {result.reason}
         </div>
       )}
 
       {executed && (
         <div className="mt-4 space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-ink/45">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground/45">
             {revealing ? (
               <>
                 <Loader2 size={12} className="shrink-0 animate-spin text-accent" />
@@ -161,11 +157,11 @@ export default function AutopilotPanel() {
 
           {/* Live budget bar: fills as payments reveal, turns amber at the self-stop line. */}
           <div>
-            <div className="flex items-center justify-between text-[11px] text-ink/50">
+            <div className="flex items-center justify-between text-[11px] text-foreground/50">
               <span>Budget ${executed.budgetUsd.toFixed(3)}</span>
               <span>spent ${spent.toFixed(3)}</span>
             </div>
-            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-ink/8">
+            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-foreground/8">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   allRevealed && executed.pausedForHuman ? 'bg-amber-500' : 'bg-accent'
@@ -179,7 +175,7 @@ export default function AutopilotPanel() {
             <div
               key={p.n}
               className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
-                p.ok ? 'border-emerald-200 bg-emerald-50/60' : 'border-red-200 bg-red-50/60'
+                p.ok ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/10' : 'border-red-200 dark:border-red-500/25 bg-red-50/60 dark:bg-red-500/10'
               } motion-safe:animate-[fadeIn_0.35s_ease-out]`}
             >
               {p.ok ? (
@@ -187,24 +183,24 @@ export default function AutopilotPanel() {
               ) : (
                 <span className="shrink-0 text-red-500">✕</span>
               )}
-              <span className="text-ink/75">
+              <span className="text-foreground/75">
                 Payment #{p.n}: ${p.amountUsd.toFixed(3)}
               </span>
-              <span className="text-xs text-ink/45">cumulative ${p.cumulativeUsd.toFixed(3)}</span>
-              {p.transaction && <span className="ml-auto font-mono text-[10px] text-ink/40">batch {p.transaction.slice(0, 8)}...</span>}
+              <span className="text-xs text-foreground/45">cumulative ${p.cumulativeUsd.toFixed(3)}</span>
+              {p.transaction && <span className="ml-auto font-mono text-[10px] text-foreground/40">batch {p.transaction.slice(0, 8)}...</span>}
               {p.reason && <span className="ml-auto text-[11px] text-red-600">{p.reason}</span>}
             </div>
           ))}
 
           {revealing && (
-            <div className="flex items-center gap-2 rounded-lg border border-dashed border-ink/15 px-3 py-2 text-ink/40">
+            <div className="flex items-center gap-2 rounded-lg border border-dashed border-foreground/15 px-3 py-2 text-foreground/40">
               <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent" />
               <span className="text-xs">agent deciding whether the next payment fits the budget</span>
             </div>
           )}
 
           {allRevealed && executed.pausedForHuman && (
-            <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50/70 px-3 py-2 text-amber-800 motion-safe:animate-[fadeIn_0.4s_ease-out]">
+            <div className="flex items-center gap-2 rounded-lg border border-amber-300 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2 text-amber-800 dark:text-amber-300 motion-safe:animate-[fadeIn_0.4s_ease-out]">
               <Hand size={14} className="shrink-0" />
               <span>
                 <b>Bounded authority:</b> the agent hit your ${executed.budgetUsd} budget and stopped itself.
@@ -214,7 +210,7 @@ export default function AutopilotPanel() {
           )}
 
           {allRevealed && (
-            <div className="flex items-center gap-2 rounded-lg border border-[#2775CA]/25 bg-[#2775CA]/[0.05] px-3 py-2 text-ink/75 motion-safe:animate-[fadeIn_0.4s_ease-out]">
+            <div className="flex items-center gap-2 rounded-lg border border-[#2775CA]/25 bg-[#2775CA]/[0.05] px-3 py-2 text-foreground/75 motion-safe:animate-[fadeIn_0.4s_ease-out]">
               <Coins size={14} className="shrink-0 text-[#2775CA]" />
               <span>
                 Protocol fee <b>{executed.protocolFee.accruedUsd} USDC</b> ({executed.feeBps} bps) →{' '}
@@ -226,7 +222,7 @@ export default function AutopilotPanel() {
                     : ''}
               </span>
               {executed.protocolFee.settled && executed.protocolFee.transaction && (
-                <span className="ml-auto font-mono text-[10px] text-ink/40">batch {executed.protocolFee.transaction.slice(0, 8)}...</span>
+                <span className="ml-auto font-mono text-[10px] text-foreground/40">batch {executed.protocolFee.transaction.slice(0, 8)}...</span>
               )}
             </div>
           )}
@@ -239,9 +235,9 @@ export default function AutopilotPanel() {
 function Field({ label, value, onChange, step }: { label: string; value: string; onChange: (v: string) => void; step: string }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-ink/50">{label}</label>
-      <div className="mt-1 flex items-center gap-1 rounded-xl border border-ink/10 bg-white px-3 py-2">
-        <span className="text-sm text-ink/50">$</span>
+      <label className="text-xs font-semibold text-foreground/50">{label}</label>
+      <div className="mt-1 flex items-center gap-1 rounded-xl border border-foreground/10 bg-card px-3 py-2">
+        <span className="text-sm text-foreground/50">$</span>
         <input
           type="number"
           min="0"

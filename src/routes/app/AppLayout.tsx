@@ -12,6 +12,8 @@ import {
   Store,
 } from 'lucide-react'
 import Logo from '../../components/Logo'
+import ThemeToggle from '../../components/ThemeToggle'
+import { useTheme } from '../../components/ThemeProvider'
 import { useAuth } from '../../store/auth'
 import { APP_NAME } from '../../lib/brand'
 import { useMcpHealth } from '../../hooks/useMcp'
@@ -61,17 +63,19 @@ export default function AppLayout() {
     navigate('/')
   }
 
+  const { theme } = useTheme()
+
   return (
-    <div className="flex min-h-screen w-full bg-cream text-ink">
+    <div className={`flex min-h-screen w-full bg-background text-foreground ${theme === 'dark' ? 'dark' : ''}`}>
       {/* Sidebar (desktop) */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-ink/10 bg-white px-4 py-6 md:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-foreground/10 bg-card px-4 py-6 md:flex">
         <div className="mb-8 flex items-center gap-2 px-2">
           <Logo size={28} />
           <span className="text-lg font-bold tracking-tight">{APP_NAME}</span>
         </div>
 
         <div className="mb-3 px-3">
-          <span className="text-[10px] font-semibold tracking-widest text-ink/35">
+          <span className="text-[10px] font-semibold tracking-widest text-foreground/35">
             Agent Console
           </span>
         </div>
@@ -84,7 +88,7 @@ export default function AppLayout() {
               end={end}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-accent text-white' : 'text-ink/70 hover:bg-ink/5'
+                  isActive ? 'bg-accent text-white' : 'text-foreground/70 hover:bg-foreground/5'
                 }`
               }
             >
@@ -95,17 +99,17 @@ export default function AppLayout() {
         </nav>
 
         {/* MCP server status */}
-        <div className="mb-2 mt-2 rounded-xl border border-ink/8 bg-ink/[0.03] px-3 py-3">
+        <div className="mb-2 mt-2 rounded-xl border border-foreground/8 bg-foreground/[0.03] px-3 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Bot size={13} className="text-accent" />
-              <span className="text-xs font-semibold text-ink/70">MCP server</span>
+              <span className="text-xs font-semibold text-foreground/70">MCP server</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span
                 className={`h-2 w-2 rounded-full ${
                   mcp === 'checking'
-                    ? 'animate-pulse bg-ink/25'
+                    ? 'animate-pulse bg-foreground/25'
                     : mcp === 'waking'
                       ? 'animate-pulse bg-amber-400'
                       : mcp === 'online'
@@ -113,12 +117,12 @@ export default function AppLayout() {
                         : 'bg-red-400'
                 }`}
               />
-              <span className="text-[11px] text-ink/40">
+              <span className="text-[11px] text-foreground/40">
                 {mcp === 'checking' ? 'checking' : mcp === 'waking' ? 'waking up' : mcp === 'online' ? 'online' : 'reconnecting'}
               </span>
             </div>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-ink/40">
+          <p className="mt-1 text-[11px] leading-relaxed text-foreground/40">
             {mcp === 'online'
               ? 'Live on-chain data'
               : mcp === 'waking'
@@ -129,11 +133,11 @@ export default function AppLayout() {
           </p>
         </div>
 
-        <div className="mb-3 rounded-xl border border-ink/8 bg-ink/[0.03] px-3 py-2">
+        <div className="mb-3 rounded-xl border border-foreground/8 bg-foreground/[0.03] px-3 py-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold text-ink/40">Human-on-the-loop</span>
+            <span className="text-[10px] font-semibold text-foreground/40">Human-on-the-loop</span>
           </div>
-          <p className="text-[11px] leading-relaxed text-ink/40">
+          <p className="text-[11px] leading-relaxed text-foreground/40">
             Keys, contracts, real value require your approval.
           </p>
         </div>
@@ -141,7 +145,7 @@ export default function AppLayout() {
         <button
           type="button"
           onClick={onLogout}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink/70 transition-colors hover:bg-ink/5"
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:bg-foreground/5"
         >
           <LogOut size={18} />
           Log out
@@ -151,15 +155,15 @@ export default function AppLayout() {
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-ink/10 bg-cream/80 px-5 py-4 backdrop-blur-md sm:px-8">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-foreground/10 bg-background/80 px-5 py-4 backdrop-blur-md sm:px-8">
           <div className="flex items-center gap-2 md:hidden">
             <Logo size={24} />
           </div>
           {/* Breadcrumb (desktop): context without duplicating the page heading. */}
           <div className="hidden items-center gap-1.5 text-sm md:flex">
-            <span className="text-ink/40">Agent Console</span>
-            <span className="text-ink/25">/</span>
-            <span className="font-medium text-ink/70">{title}</span>
+            <span className="text-foreground/40">Agent Console</span>
+            <span className="text-foreground/25">/</span>
+            <span className="font-medium text-foreground/70">{title}</span>
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-3">
@@ -171,11 +175,12 @@ export default function AppLayout() {
                     ? 'bg-emerald-400'
                     : mcp === 'waking'
                       ? 'animate-pulse bg-amber-400'
-                      : 'bg-ink/20'
+                      : 'bg-foreground/20'
                 }`}
               />
-              <span className="text-xs text-ink/40">MCP</span>
+              <span className="text-xs text-foreground/40">MCP</span>
             </div>
+            <ThemeToggle />
             <div className="grid h-9 w-9 place-items-center rounded-full bg-accent text-xs font-bold text-white">
               {user ? initials(user.name) : 'AI'}
             </div>
@@ -184,7 +189,7 @@ export default function AppLayout() {
 
         {/* Guest banner: browse-only session. Writes won't persist until they sign in. */}
         {isGuest && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-900 sm:px-8">
+          <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200 sm:px-8">
             <Lock size={13} className="shrink-0" />
             You're browsing read-only as a guest. Registering, approving, and paying won't save.
             <Link to="/login" className="font-semibold underline underline-offset-2 hover:text-amber-950">
@@ -195,14 +200,14 @@ export default function AppLayout() {
 
         {/* Cold-start banner: the backend (free tier) may nap and take ~30s to wake. */}
         {mcp === 'waking' && (
-          <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 sm:px-8">
+          <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-200 sm:px-8">
             <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-400" />
             Waking up the demo backend (free tier), usually under 30s. Live data will appear shortly.
           </div>
         )}
 
         {/* Mobile nav */}
-        <nav className="flex gap-1 overflow-x-auto border-b border-ink/10 bg-white px-4 py-2 md:hidden">
+        <nav className="flex gap-1 overflow-x-auto border-b border-foreground/10 bg-card px-4 py-2 md:hidden">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -210,7 +215,7 @@ export default function AppLayout() {
               end={end}
               className={({ isActive }) =>
                 `flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-accent text-white' : 'text-ink/70'
+                  isActive ? 'bg-accent text-white' : 'text-foreground/70'
                 }`
               }
             >

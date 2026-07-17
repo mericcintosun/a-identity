@@ -140,7 +140,7 @@ export default function Marketplace() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Agent House</h2>
-          <p className="mt-1 max-w-xl text-sm text-ink/55">
+          <p className="mt-1 max-w-xl text-sm text-foreground/55">
             The showcase for verified agents on Arc. Follow the ones you rely on and watch
             what they do. Each agent shows its real KYA status: green once it has proven control of its wallet.
           </p>
@@ -160,11 +160,11 @@ export default function Marketplace() {
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1.5 font-semibold text-ink/70 transition-colors hover:bg-ink/5"
+            className="inline-flex items-center gap-1.5 rounded-full border border-foreground/15 px-3 py-1.5 font-semibold text-foreground/70 transition-colors hover:bg-foreground/5"
           >
             {showAll ? 'Show verified only' : 'Show all (including pending)'}
           </button>
-          <span className="text-ink/45">
+          <span className="text-foreground/45">
             {showAll
               ? `Showing all ${counts.totalAll} agents`
               : `${counts.total} KYA-verified shown, ${counts.totalAll - counts.total} pending hidden`}
@@ -173,25 +173,25 @@ export default function Marketplace() {
       )}
 
       {error && (
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-5 text-sm text-ink/70">
+        <div className="mt-6 rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 p-5 text-sm text-foreground/70">
           {error}
         </div>
       )}
 
       {loading && !error && (
-        <div className="mt-6 rounded-2xl border border-ink/10 bg-white p-8 text-center text-sm text-ink/45">
+        <div className="mt-6 rounded-2xl border border-foreground/10 bg-card p-8 text-center text-sm text-foreground/45">
           Loading the house...
         </div>
       )}
 
       {/* Empty state: the lean-startup honest zero */}
       {!loading && !error && agents.length === 0 && (
-        <div className="mt-6 rounded-3xl border border-dashed border-ink/15 bg-white p-12 text-center">
+        <div className="mt-6 rounded-3xl border border-dashed border-foreground/15 bg-card p-12 text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-accent/10 text-accent">
             <Store size={26} />
           </div>
-          <h3 className="mt-4 text-lg font-bold text-ink">The house is open, the floor is empty.</h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-ink/55">
+          <h3 className="mt-4 text-lg font-bold text-foreground">The house is open, the floor is empty.</h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-foreground/55">
             Be the first: register an agent, pass KYA, and it appears here with its own
             follower count and activity feed.
           </p>
@@ -208,15 +208,15 @@ export default function Marketplace() {
           instead of stretching its row-mate and shifting the whole layout. */}
       <div className="mt-6 grid items-start gap-4 sm:grid-cols-2">
         {agents.map((a) => (
-          <div key={a.id} className="flex flex-col rounded-2xl border border-ink/10 bg-white p-6">
+          <div key={a.id} className="flex flex-col rounded-2xl border border-foreground/10 bg-card p-6">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 text-accent">
                   <Bot size={20} />
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate font-bold text-ink">{a.name}</div>
-                  <div className="truncate text-xs text-ink/50">{a.category}</div>
+                  <div className="truncate font-bold text-foreground">{a.name}</div>
+                  <div className="truncate text-xs text-foreground/50">{a.category}</div>
                 </div>
               </div>
               <button
@@ -227,7 +227,7 @@ export default function Marketplace() {
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                   a.followedByViewer
                     ? 'bg-accent text-white'
-                    : 'border border-ink/15 text-ink/70 hover:bg-ink/5'
+                    : 'border border-foreground/15 text-foreground/70 hover:bg-foreground/5'
                 }`}
               >
                 <Heart size={12} fill={a.followedByViewer ? 'currentColor' : 'none'} />
@@ -235,7 +235,7 @@ export default function Marketplace() {
               </button>
             </div>
 
-            <p className="mt-3 flex-1 text-sm leading-relaxed text-ink/60">
+            <p className="mt-3 flex-1 text-sm leading-relaxed text-foreground/60">
               {a.description || 'No description yet.'}
             </p>
 
@@ -243,10 +243,10 @@ export default function Marketplace() {
             {a.reputation && (
               <div className="mt-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-ink/50">Reputation</span>
+                  <span className="font-semibold text-foreground/50">Reputation</span>
                   <span className="font-bold text-accent">{a.reputation.score} / 1000</span>
                 </div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink/8">
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-foreground/8">
                   <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(a.reputation.score / 1000) * 100}%` }} />
                 </div>
               </div>
@@ -255,11 +255,11 @@ export default function Marketplace() {
             {/* Badges */}
             <div className="mt-4 flex flex-wrap gap-2">
               {a.kya === 'verified' ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
                   <BadgeCheck size={12} /> KYA verified
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
                   KYA unverified
                 </span>
               )}
@@ -276,7 +276,7 @@ export default function Marketplace() {
                   <BadgeCheck size={12} /> On-chain #{a.onchainAgentId ?? ''}
                 </a>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
                   <Clock size={12} /> on-chain queued
                 </span>
               )}
@@ -288,7 +288,7 @@ export default function Marketplace() {
                 {a.capabilities.map((c) => (
                   <span
                     key={c}
-                    className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-medium text-ink/60"
+                    className="rounded-full bg-foreground/5 px-2 py-0.5 text-[11px] font-medium text-foreground/60"
                   >
                     {c}
                   </span>
@@ -307,7 +307,7 @@ export default function Marketplace() {
                 >
                   {anchoringId === a.id ? 'Anchoring on Arc...' : 'Anchor on Arc'}
                 </button>
-                {anchorNote[a.id] && <p className="mt-1.5 text-[11px] text-amber-700">{anchorNote[a.id]}</p>}
+                {anchorNote[a.id] && <p className="mt-1.5 text-[11px] text-amber-700 dark:text-amber-300">{anchorNote[a.id]}</p>}
               </div>
             )}
 
@@ -315,7 +315,7 @@ export default function Marketplace() {
             <button
               type="button"
               onClick={() => setOpenActivity(openActivity === a.id ? null : a.id)}
-              className="mt-4 inline-flex items-center gap-1.5 border-t border-ink/8 pt-3 text-xs font-semibold text-accent"
+              className="mt-4 inline-flex items-center gap-1.5 border-t border-foreground/8 pt-3 text-xs font-semibold text-accent"
             >
               <Activity size={13} />
               {openActivity === a.id ? 'Hide activity' : `Activity (${a.activity.length})`}
@@ -323,11 +323,11 @@ export default function Marketplace() {
             {openActivity === a.id && (
               <ul className="mt-2 flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
                 {a.activity.map((ev, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-ink/60">
+                  <li key={i} className="flex items-start gap-2 text-xs text-foreground/60">
                     <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
                     <span className="min-w-0 break-words">
                       {humanizeActivity(ev.text)}
-                      <span className="ml-1.5 text-ink/35">
+                      <span className="ml-1.5 text-foreground/35">
                         {new Date(ev.at).toLocaleString()}
                       </span>
                     </span>

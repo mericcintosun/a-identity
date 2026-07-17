@@ -154,25 +154,25 @@ export default function Permissions() {
   return (
     <div className="mx-auto max-w-2xl">
       <h2 className="text-2xl font-bold tracking-tight">Permissions</h2>
-      <p className="mt-1 text-sm text-ink/55">
+      <p className="mt-1 text-sm text-foreground/55">
         You are in control. Set what your agent can do, who it can pay, and how much it
         can spend per day. The policy engine enforces every rule here for real.
       </p>
 
       {error && (
-        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-ink/70">
+        <div className="mt-5 rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 p-4 text-sm text-foreground/70">
           {error}
         </div>
       )}
 
       {loading && !error && (
-        <div className="mt-5 rounded-2xl border border-ink/10 bg-white p-8 text-center text-sm text-ink/45">
+        <div className="mt-5 rounded-2xl border border-foreground/10 bg-card p-8 text-center text-sm text-foreground/45">
           Loading policy...
         </div>
       )}
 
       {!loading && !error && agents.length === 0 && (
-        <div className="mt-5 rounded-2xl border border-dashed border-ink/15 bg-white p-8 text-center text-sm text-ink/55">
+        <div className="mt-5 rounded-2xl border border-dashed border-foreground/15 bg-card p-8 text-center text-sm text-foreground/55">
           No agents yet. Register one in Agent ID, then set its permissions here.
         </div>
       )}
@@ -182,11 +182,11 @@ export default function Permissions() {
           {/* Agent selector */}
           {agents.length > 1 && (
             <div className="mt-5">
-              <label className="text-xs font-semibold text-ink/50">Agent</label>
+              <label className="text-xs font-semibold text-foreground/50">Agent</label>
               <select
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2.5 text-sm outline-none focus:border-accent"
+                className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-sm outline-none focus:border-accent"
               >
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -198,26 +198,26 @@ export default function Permissions() {
           )}
 
           {/* Daily limit status */}
-          <div className="mt-5 rounded-2xl border border-ink/10 bg-white p-5">
+          <div className="mt-5 rounded-2xl border border-foreground/10 bg-card p-5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <CreditCard size={16} className="text-[#2775CA]" />
                 Today's spending
               </div>
-              <div className="text-xs text-ink/45">
+              <div className="text-xs text-foreground/45">
                 Resets at 00:00 UTC (in {untilReset(policy.resetsAt)})
               </div>
             </div>
             <div className="mt-3 flex items-end justify-between">
-              <div className="text-2xl font-bold tracking-tight text-ink">
+              <div className="text-2xl font-bold tracking-tight text-foreground">
                 ${policy.spentTodayUsd.toFixed(2)}
-                <span className="text-sm font-semibold text-ink/40"> / ${policy.permissions.dailyCapUsd}</span>
+                <span className="text-sm font-semibold text-foreground/40"> / ${policy.permissions.dailyCapUsd}</span>
               </div>
               <div className="text-xs font-semibold text-emerald-600">
                 ${policy.remainingTodayUsd.toFixed(2)} left today
               </div>
             </div>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-ink/8">
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-foreground/8">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -229,42 +229,42 @@ export default function Permissions() {
           </div>
 
           {/* Spending limits (editable) */}
-          <section className="mt-4 rounded-2xl border border-ink/10 bg-white p-6">
-            <h3 className="mb-4 font-semibold text-ink">Spending limits</h3>
+          <section className="mt-4 rounded-2xl border border-foreground/10 bg-card p-6">
+            <h3 className="mb-4 font-semibold text-foreground">Spending limits</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold text-ink/50">Daily cap (USD)</label>
+                <label className="text-xs font-semibold text-foreground/50">Daily cap (USD)</label>
                 <input
                   type="number"
                   min="0"
                   value={draft.dailyCapUsd}
                   onChange={(e) => set('dailyCapUsd', Number(e.target.value) || 0)}
-                  className="mt-1 w-full rounded-xl border border-ink/10 bg-cream/40 px-3 py-2.5 text-sm outline-none focus:border-accent"
+                  className="mt-1 w-full rounded-xl border border-foreground/10 bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-accent"
                 />
-                <p className="mt-1 text-[11px] text-ink/45">Total the agent may commit per day. Resets 00:00 UTC.</p>
+                <p className="mt-1 text-[11px] text-foreground/45">Total the agent may commit per day. Resets 00:00 UTC.</p>
               </div>
               <div>
-                <label className="text-xs font-semibold text-ink/50">Auto-approve under (USD)</label>
+                <label className="text-xs font-semibold text-foreground/50">Auto-approve under (USD)</label>
                 <input
                   type="number"
                   min="0"
                   step="0.1"
                   value={draft.autoApproveUnderUsd}
                   onChange={(e) => set('autoApproveUnderUsd', Number(e.target.value) || 0)}
-                  className="mt-1 w-full rounded-xl border border-ink/10 bg-cream/40 px-3 py-2.5 text-sm outline-none focus:border-accent"
+                  className="mt-1 w-full rounded-xl border border-foreground/10 bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-accent"
                 />
-                <p className="mt-1 text-[11px] text-ink/45">Payments below this settle without asking you.</p>
+                <p className="mt-1 text-[11px] text-foreground/45">Payments below this settle without asking you.</p>
               </div>
             </div>
           </section>
 
           {/* Access controls (toggles) */}
-          <section className="mt-4 rounded-2xl border border-ink/10 bg-white p-6">
+          <section className="mt-4 rounded-2xl border border-foreground/10 bg-card p-6">
             <div className="mb-4 flex items-center gap-2">
               <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#1AAB7A] text-white">
                 <Shield size={15} />
               </div>
-              <h3 className="font-semibold text-ink">Access controls</h3>
+              <h3 className="font-semibold text-foreground">Access controls</h3>
             </div>
             <ul className="divide-y divide-ink/8">
               <Row
@@ -281,25 +281,25 @@ export default function Permissions() {
               />
             </ul>
 
-            <div className="mt-5 border-t border-ink/8 pt-5">
-              <div className="text-sm font-semibold text-ink">Payee allowlist</div>
-              <p className="mt-1 text-xs text-ink/50">
+            <div className="mt-5 border-t border-foreground/8 pt-5">
+              <div className="text-sm font-semibold text-foreground">Payee allowlist</div>
+              <p className="mt-1 text-xs text-foreground/50">
                 When set, the agent can only pay these payees. Leave it empty to let it pay anyone within the limits above.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {draft.payeeAllowlist.length === 0 ? (
-                  <span className="text-xs text-ink/40">No allowlist. The agent may pay any payee within its limits.</span>
+                  <span className="text-xs text-foreground/40">No allowlist. The agent may pay any payee within its limits.</span>
                 ) : (
                   draft.payeeAllowlist.map((p) => (
                     <span
                       key={p}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-cream/70 px-2.5 py-1 font-mono text-[11px] text-ink/70"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-foreground/10 bg-background/70 px-2.5 py-1 font-mono text-[11px] text-foreground/70"
                     >
                       {p.length > 14 ? short(p) : p}
                       <button
                         type="button"
                         onClick={() => set('payeeAllowlist', draft.payeeAllowlist.filter((x) => x !== p))}
-                        className="grid h-4 w-4 place-items-center rounded-full text-sm leading-none text-ink/40 hover:bg-red-50 hover:text-red-500"
+                        className="grid h-4 w-4 place-items-center rounded-full text-sm leading-none text-foreground/40 hover:bg-red-50 hover:text-red-500"
                         aria-label={`Remove ${p}`}
                       >
                         ×
@@ -317,12 +317,12 @@ export default function Permissions() {
           </section>
 
           {/* Safety */}
-          <section className="mt-4 rounded-2xl border border-ink/10 bg-white p-6">
+          <section className="mt-4 rounded-2xl border border-foreground/10 bg-card p-6">
             <div className="mb-4 flex items-center gap-2">
               <div className="grid h-8 w-8 place-items-center rounded-lg bg-red-500 text-white">
                 <Snowflake size={15} />
               </div>
-              <h3 className="font-semibold text-ink">Safety</h3>
+              <h3 className="font-semibold text-foreground">Safety</h3>
             </div>
             <ul className="divide-y divide-ink/8">
               <Row
@@ -346,7 +346,7 @@ export default function Permissions() {
               {saved ? <Check size={16} /> : <Save size={16} />}
               {saving ? 'Saving...' : saved ? 'Saved' : 'Save permissions'}
             </button>
-            <span className="text-xs text-ink/45">Applies to every new action immediately.</span>
+            <span className="text-xs text-foreground/45">Applies to every new action immediately.</span>
           </div>
 
           {/* On-chain vault sync outcome (only when the agent has a deployed vault) */}
@@ -354,8 +354,8 @@ export default function Permissions() {
             <div
               className={`mt-3 rounded-xl border px-4 py-3 text-xs ${
                 vaultSync.synced
-                  ? 'border-[#7342E2]/25 bg-[#7342E2]/[0.05] text-ink/70'
-                  : 'border-amber-400/40 bg-amber-50 text-amber-800'
+                  ? 'border-[#7342E2]/25 bg-[#7342E2]/[0.05] text-foreground/70'
+                  : 'border-amber-400/40 bg-amber-50 text-amber-800 dark:text-amber-300'
               }`}
             >
               {vaultSync.synced ? (
@@ -390,7 +390,7 @@ export default function Permissions() {
       )}
 
       {/* Profile */}
-      <section className="mt-6 rounded-2xl border border-ink/10 bg-white p-6">
+      <section className="mt-6 rounded-2xl border border-foreground/10 bg-card p-6">
         <h3 className="mb-4 font-semibold">Profile</h3>
         <div className="flex items-center gap-4">
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent text-lg font-bold text-white">
@@ -398,7 +398,7 @@ export default function Permissions() {
           </div>
           <div className="min-w-0">
             <div className="truncate font-semibold">{user?.name}</div>
-            <div className="truncate text-sm text-ink/55">{user?.email}</div>
+            <div className="truncate text-sm text-foreground/55">{user?.email}</div>
           </div>
         </div>
         <button
@@ -407,7 +407,7 @@ export default function Permissions() {
             logout()
             navigate('/')
           }}
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white px-5 py-3 text-sm font-semibold text-ink/80 transition-colors hover:bg-ink/5"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-foreground/15 bg-card px-5 py-3 text-sm font-semibold text-foreground/80 transition-colors hover:bg-foreground/5"
         >
           <LogOut size={16} />
           Log out
@@ -438,12 +438,12 @@ function PayeeAdder({ onAdd }: { onAdd: (v: string) => void }) {
           }
         }}
         placeholder="Add a 0x address or agent://<id>"
-        className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-cream/40 px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+        className="min-w-0 flex-1 rounded-xl border border-foreground/10 bg-background/40 px-3 py-2 font-mono text-xs outline-none focus:border-accent"
       />
       <button
         type="button"
         onClick={add}
-        className="shrink-0 rounded-full border border-ink/15 px-4 py-2 text-xs font-semibold text-ink/70 transition hover:border-accent"
+        className="shrink-0 rounded-full border border-foreground/15 px-4 py-2 text-xs font-semibold text-foreground/70 transition hover:border-accent"
       >
         Add
       </button>
@@ -467,8 +467,8 @@ function Row({
   return (
     <li className="flex items-center justify-between gap-4 py-4">
       <div className="min-w-0">
-        <div className={`text-sm font-medium ${danger ? 'text-red-600' : 'text-ink'}`}>{label}</div>
-        <div className="mt-0.5 text-xs text-ink/50">{desc}</div>
+        <div className={`text-sm font-medium ${danger ? 'text-red-600' : 'text-foreground'}`}>{label}</div>
+        <div className="mt-0.5 text-xs text-foreground/50">{desc}</div>
       </div>
       <Toggle on={on} danger={danger} onChange={onChange} />
     </li>
@@ -483,10 +483,10 @@ function Toggle({ on, danger, onChange }: { on: boolean; danger?: boolean; onCha
       role="switch"
       aria-checked={on}
       onClick={onChange}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? activeColor : 'bg-ink/20'}`}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? activeColor : 'bg-foreground/20'}`}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`}
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`}
       />
     </button>
   )
@@ -529,29 +529,29 @@ function PolicyTester({ agentId, onSpent }: { agentId: string; onSpent: () => vo
     <section className="mt-4 rounded-2xl border border-accent/20 bg-accent/[0.04] p-6">
       <div className="mb-1 flex items-center gap-2">
         <PlayCircle size={16} className="text-accent" />
-        <h3 className="font-semibold text-ink">Try a payment</h3>
+        <h3 className="font-semibold text-foreground">Try a payment</h3>
       </div>
-      <p className="mb-4 text-xs text-ink/55">
+      <p className="mb-4 text-xs text-foreground/55">
         Send a test payment through the real policy engine. Watch it auto-approve under your
         rules, or pause for approval once it would break the daily cap.
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-[11px] font-semibold text-ink/50">Amount (USD)</label>
+          <label className="text-[11px] font-semibold text-foreground/50">Amount (USD)</label>
           <input
             type="number"
             min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="mt-1 w-28 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-28 rounded-xl border border-foreground/10 bg-card px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
         <div className="flex-1">
-          <label className="text-[11px] font-semibold text-ink/50">Payee</label>
+          <label className="text-[11px] font-semibold text-foreground/50">Payee</label>
           <input
             value={payee}
             onChange={(e) => setPayee(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
         <button
@@ -568,10 +568,10 @@ function PolicyTester({ agentId, onSpent }: { agentId: string; onSpent: () => vo
         <div
           className={`mt-4 rounded-xl border p-3 text-sm ${
             approved
-              ? 'border-emerald-200 bg-emerald-50/60 text-emerald-800'
+              ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/10 text-emerald-800'
               : pending
-                ? 'border-amber-200 bg-amber-50/60 text-amber-800'
-                : 'border-red-200 bg-red-50/60 text-red-700'
+                ? 'border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300'
+                : 'border-red-200 dark:border-red-500/25 bg-red-50/60 dark:bg-red-500/10 text-red-700 dark:text-red-300'
           }`}
         >
           <div className="flex items-center gap-1.5 font-bold">
@@ -654,31 +654,31 @@ function VaultPanel({ agentId }: { agentId: string }) {
   const has = !!vault?.vaultAddress
 
   return (
-    <section className="mt-4 overflow-hidden rounded-2xl border border-[#7342E2]/25 bg-gradient-to-b from-[#7342E2]/[0.06] to-white p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:p-7">
+    <section className="mt-4 overflow-hidden rounded-2xl border border-[#7342E2]/25 bg-gradient-to-b from-[#7342E2]/[0.06] to-card p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:p-7">
       <div className="flex items-center gap-3">
         <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7342E2] text-white">
           <Link2 size={16} />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-[15px] font-semibold text-ink">Onchain Policy Vault</h3>
+            <h3 className="text-[15px] font-semibold text-foreground">Onchain Policy Vault</h3>
             {has && (
               <span className="rounded-full bg-[#7342E2]/10 px-2 py-0.5 text-[10px] font-semibold text-[#7342E2]">
                 Live on Arc
               </span>
             )}
           </div>
-          <p className="text-[11px] text-ink/50">Your policy, enforced by a smart contract</p>
+          <p className="text-[11px] text-foreground/50">Your policy, enforced by a smart contract</p>
         </div>
       </div>
-      <p className="mt-3 mb-4 text-xs text-ink/55">
+      <p className="mt-3 mb-4 text-xs text-foreground/55">
         Deploy this policy as a smart contract on Arc. Once live, the agent's payments to an Arc
         address settle <b>through the vault</b>. Anything over the cap or auto-approve line
         reverts onchain, not just on our server. Programmable money enforcing itself.
       </p>
 
       {loading ? (
-        <div className="text-xs text-ink/45">Loading vault status...</div>
+        <div className="text-xs text-foreground/45">Loading vault status...</div>
       ) : has ? (
         <div className="space-y-3">
           <a
@@ -698,21 +698,21 @@ function VaultPanel({ agentId }: { agentId: string }) {
           {vault!.frozen && (
             <div className="text-xs font-semibold text-red-600">Frozen onchain. The agent cannot spend.</div>
           )}
-          <p className="text-[11px] text-ink/45">
+          <p className="text-[11px] text-foreground/45">
             The contract enforces the same limits set above. Address payments now settle through it.
           </p>
         </div>
       ) : (
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="text-[11px] font-semibold text-ink/50">Fund with (USDC)</label>
+            <label className="text-[11px] font-semibold text-foreground/50">Fund with (USDC)</label>
             <input
               type="number"
               min="0"
               step="0.5"
               value={fund}
               onChange={(e) => setFund(e.target.value)}
-              className="mt-1 w-28 rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-[#7342E2]"
+              className="mt-1 w-28 rounded-xl border border-foreground/10 bg-card px-3 py-2 text-sm outline-none focus:border-[#7342E2]"
             />
           </div>
           <button

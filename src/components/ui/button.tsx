@@ -17,6 +17,8 @@ const buttonVariants = cva(
         default: 'bg-accent text-white hover:scale-[1.03] hover:brightness-110',
         // Secondary — cream/elevated pill (was var(--color-login-bg)).
         secondary: 'bg-secondary text-foreground hover:scale-[1.03]',
+        // Inverse — solid neutral that flips with the theme (was bg-ink text-white).
+        inverse: 'bg-foreground text-background hover:scale-[1.02]',
         // Outline — bordered, transparent fill.
         outline: 'border border-border bg-transparent text-foreground hover:bg-foreground/[0.04]',
         // Ghost — no chrome until hover.

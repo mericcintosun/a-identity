@@ -73,6 +73,15 @@
      the dark foreground/secondary for elements inside the landing wrapper. */
   --color-text: var(--foreground);
   --color-login-bg: var(--secondary);
+
+  /* Scope native-control theming (checkboxes, selects, scrollbars) to the dark
+     subtree instead of the whole document. */
+  color-scheme: dark;
+}
+
+/* Dark-mode chevron for native selects (the light-mode one is drawn in ink). */
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e7e9ec' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 }
 
 /* Bind the semantic tokens into Tailwind v4 as `bg-background`, `text-foreground`,

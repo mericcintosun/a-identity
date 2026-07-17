@@ -3,6 +3,7 @@ import { encodeFunctionData } from 'viem'
 import { CheckCircle2, ExternalLink, Lock, Zap } from 'lucide-react'
 
 import { apiFetch } from '../../lib/api'
+import { Button } from '../ui/button'
 import { getActiveInjectedProvider, getConnectedProvider } from '../../lib/wallets'
 
 const ERC20_TRANSFER = [
@@ -121,8 +122,8 @@ export default function X402Panel() {
           <Zap size={15} />
         </div>
         <div>
-          <h3 className="font-semibold text-ink">x402: pay-per-call API</h3>
-          <p className="text-xs text-ink/55">
+          <h3 className="font-semibold text-foreground">x402: pay-per-call API</h3>
+          <p className="text-xs text-foreground/55">
             A real HTTP 402 rail: the server asks for payment, you pay USDC on Arc, it verifies
             on-chain and serves. One payment unlocks one call.
           </p>
@@ -130,39 +131,34 @@ export default function X402Panel() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={call}
-          disabled={busy}
-          className="inline-flex items-center gap-2 rounded-full bg-[#7342E2] px-4 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
-        >
+        <Button type="button" size="sm" className="px-4 py-2.5 text-sm" onClick={call} disabled={busy}>
           <Lock size={14} />
           {label}
-        </button>
+        </Button>
         {req && phase !== 'done' && (
-          <span className="text-xs text-ink/50">
+          <span className="text-xs text-foreground/50">
             {priceUsdc} USDC to {req.payTo.slice(0, 8)}...{req.payTo.slice(-4)}
           </span>
         )}
       </div>
 
       {tx && phase === 'verifying' && (
-        <p className="mt-2 font-mono text-xs text-ink/45">paid tx {tx.slice(0, 12)}..., verifying on Arc</p>
+        <p className="mt-2 font-mono text-xs text-foreground/45">paid tx {tx.slice(0, 12)}..., verifying on Arc</p>
       )}
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       {resource && (
-        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-          <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-700">
+        <div className="mt-4 rounded-xl border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/10 p-4">
+          <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-300">
             <CheckCircle2 size={15} /> Unlocked: paid per request
           </div>
-          <div className="mt-2 grid gap-1 text-xs text-ink/70">
+          <div className="mt-2 grid gap-1 text-xs text-foreground/70">
             <div>
-              <span className="text-ink/45">Resource:</span> {resource.resource.title}
+              <span className="text-foreground/45">Resource:</span> {resource.resource.title}
             </div>
             <div>
-              <span className="text-ink/45">Live Arc block:</span> #{resource.resource.arcBlock ?? 'n/a'}
+              <span className="text-foreground/45">Live Arc block:</span> #{resource.resource.arcBlock ?? 'n/a'}
             </div>
             <a
               href={resource.explorerUrl}

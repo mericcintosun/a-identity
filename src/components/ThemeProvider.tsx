@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 
 type Theme = 'light' | 'dark'
 
@@ -53,15 +53,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  // Keep the tab's color-scheme hint in sync so form controls/scrollbars match.
-  useEffect(() => {
-    const root = document.documentElement
-    const prev = root.style.colorScheme
-    root.style.colorScheme = theme
-    return () => {
-      root.style.colorScheme = prev
-    }
-  }, [theme])
+  // Native controls / scrollbars follow `color-scheme`, which we scope to the
+  // `.dark` subtree in CSS (see index.css) so it stays landing/app-local rather
+  // than forcing the whole document dark.
 
   const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme])
 

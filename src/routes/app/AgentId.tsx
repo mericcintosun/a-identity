@@ -16,6 +16,7 @@ import { pickPrimaryAgent } from '../../lib/pickAgent'
 import { fetchPlatformAgents, invalidatePlatformAgents, subscribePlatformAgents } from '../../lib/platformAgents'
 import { BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { apiFetch, readJson, explainError } from '../../lib/api'
+import { Button } from '../../components/ui/button'
 
 type Stage = 'register' | 'verify' | 'live'
 
@@ -156,7 +157,7 @@ export default function AgentId() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Agent ID</h2>
-          <p className="mt-1 text-sm text-ink/55">
+          <p className="mt-1 text-sm text-foreground/55">
             Your agent's on-chain passport. ERC-8004 gives every agent a verifiable identity, so
             others can trust it before transacting.
           </p>
@@ -165,10 +166,10 @@ export default function AgentId() {
         <div
           className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
             !mcpOnline
-              ? 'bg-ink/8 text-ink/40'
+              ? 'bg-foreground/8 text-foreground/40'
               : realAgent
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-amber-100 text-amber-700'
+                ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                : 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300'
           }`}
         >
           {mcpOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
@@ -178,11 +179,11 @@ export default function AgentId() {
 
       {agents.length > 1 && (
         <div className="mt-5">
-          <label className="text-xs font-semibold text-ink/50">Agent</label>
+          <label className="text-xs font-semibold text-foreground/50">Agent</label>
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2.5 text-sm outline-none focus:border-accent"
+            className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-sm outline-none focus:border-accent"
           >
             {agents.map((a) => (
               <option key={a.id} value={a.id}>
@@ -195,7 +196,7 @@ export default function AgentId() {
 
       {/* Sample notice: no real agent yet → the card below is illustrative, not yours. */}
       {isSample && (
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/70 dark:bg-amber-500/10 p-4 text-sm text-amber-900">
           <ShieldQuestion size={18} className="mt-0.5 shrink-0" />
           <p>
             <span className="font-semibold">This is a real example agent</span> (ERC-8004 #849980 on
@@ -264,7 +265,7 @@ export default function AgentId() {
       </div>
 
       {/* Stage progress */}
-      <div className="mt-6 rounded-2xl border border-ink/10 bg-white p-6">
+      <div className="mt-6 rounded-2xl border border-foreground/10 bg-card p-6">
         <h3 className="mb-4 font-semibold">Registration progress</h3>
         <div className="flex items-start">
           {STAGES.map(({ key, label, desc }, i) => {
@@ -274,28 +275,28 @@ export default function AgentId() {
               <div key={key} className="flex flex-1 flex-col items-center">
                 <div className="flex w-full items-center">
                   {i > 0 && (
-                    <div className={`h-0.5 flex-1 ${done || active ? 'bg-accent' : 'bg-ink/15'}`} />
+                    <div className={`h-0.5 flex-1 ${done || active ? 'bg-accent' : 'bg-foreground/15'}`} />
                   )}
                   <div
                     className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 ${
                       done
                         ? 'border-accent bg-accent text-white'
                         : active
-                          ? 'border-accent bg-white text-accent'
-                          : 'border-ink/15 bg-white text-ink/25'
+                          ? 'border-accent bg-card text-accent'
+                          : 'border-foreground/15 bg-card text-foreground/25'
                     }`}
                   >
                     {done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
                   </div>
                   {i < STAGES.length - 1 && (
-                    <div className={`h-0.5 flex-1 ${done ? 'bg-accent' : 'bg-ink/15'}`} />
+                    <div className={`h-0.5 flex-1 ${done ? 'bg-accent' : 'bg-foreground/15'}`} />
                   )}
                 </div>
                 <div className="mt-2 text-center">
-                  <div className={`text-xs font-semibold ${done || active ? 'text-accent' : 'text-ink/35'}`}>
+                  <div className={`text-xs font-semibold ${done || active ? 'text-accent' : 'text-foreground/35'}`}>
                     {label}
                   </div>
-                  <div className="mt-0.5 hidden text-[11px] text-ink/45 sm:block">{desc}</div>
+                  <div className="mt-0.5 hidden text-[11px] text-foreground/45 sm:block">{desc}</div>
                 </div>
               </div>
             )
@@ -330,7 +331,7 @@ export default function AgentId() {
 
       {/* Source detail */}
       {(agentLoading || !mcpOnline) ? null : (
-        <p className="mt-2 text-xs text-ink/40">
+        <p className="mt-2 text-xs text-foreground/40">
           {mcpOnline
             ? `Identity resolved live on-chain (source: ${source ?? 'rpc'}). Reputation: settlement + validation + tenure, max 1000.`
             : 'Start the MCP server to read live on-chain data.'}
@@ -341,8 +342,8 @@ export default function AgentId() {
       <div className="mt-5 flex items-start gap-3 rounded-2xl border border-accent/20 bg-accent/[0.05] p-5">
         <ShieldQuestion size={20} className="mt-0.5 shrink-0 text-accent" />
         <div>
-          <p className="text-sm font-semibold text-ink">Human approval required for deployment</p>
-          <p className="mt-1 text-sm text-ink/65">
+          <p className="text-sm font-semibold text-foreground">Human approval required for deployment</p>
+          <p className="mt-1 text-sm text-foreground/65">
             Registering an ERC-8004 identity on-chain (Arc) requires your explicit approval. This
             card reads live from Arc's ERC-8004 registry. No mock data.
           </p>
@@ -350,7 +351,7 @@ export default function AgentId() {
       </div>
 
       {/* Register new agent */}
-      <div className="mt-4 rounded-2xl border border-ink/10 bg-white p-6">
+      <div className="mt-4 rounded-2xl border border-foreground/10 bg-card p-6">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Register a new agent</h3>
           <button
@@ -370,7 +371,7 @@ export default function AgentId() {
       </div>
 
       {/* Reputation milestones */}
-      <div className="mt-4 rounded-2xl border border-ink/10 bg-white p-6">
+      <div className="mt-4 rounded-2xl border border-foreground/10 bg-card p-6">
         <h3 className="mb-4 font-semibold">Reputation milestones</h3>
         <ul className="flex flex-col gap-3">
           {(() => {
@@ -392,20 +393,20 @@ export default function AgentId() {
             <li
               key={label}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
-                current ? 'border border-accent/25 bg-accent/[0.05]' : 'bg-cream/40'
+                current ? 'border border-accent/25 bg-accent/[0.05]' : 'bg-background/40'
               }`}
             >
               <div
                 className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${
-                  done ? 'bg-accent text-white' : 'bg-ink/10 text-ink/40'
+                  done ? 'bg-accent text-white' : 'bg-foreground/10 text-foreground/40'
                 }`}
               >
                 {done ? <CheckCircle2 size={14} /> : <Star size={14} />}
               </div>
               <div className="flex-1">
-                <span className="text-sm font-medium text-ink">{label}</span>
+                <span className="text-sm font-medium text-foreground">{label}</span>
               </div>
-              <span className="text-xs font-semibold text-ink/40">{threshold} pts</span>
+              <span className="text-xs font-semibold text-foreground/40">{threshold} pts</span>
             </li>
           ))}
         </ul>
@@ -429,16 +430,16 @@ function ReputationCard({
 }) {
   const pct = Math.round((value / max) * 100)
   return (
-    <div className="rounded-2xl border border-ink/10 bg-white p-5">
-      <div className="text-xs font-semibold text-ink/50">{label}</div>
+    <div className="rounded-2xl border border-foreground/10 bg-card p-5">
+      <div className="text-xs font-semibold text-foreground/50">{label}</div>
       <div
         className={`mt-2 text-2xl font-bold tracking-tight transition-opacity ${loading ? 'opacity-50' : ''}`}
         style={{ color }}
       >
         {value}
       </div>
-      <div className="text-xs text-ink/35">of {max}</div>
-      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink/8">
+      <div className="text-xs text-foreground/35">of {max}</div>
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-foreground/8">
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{ width: `${pct}%`, background: color }}
@@ -485,8 +486,8 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
   const [kyaNote, setKyaNote] = useState<string | null>(null)
 
   const input =
-    'w-full rounded-xl border border-ink/10 bg-cream/40 px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent'
-  const label = 'text-xs font-semibold text-ink/50'
+    'w-full rounded-xl border border-foreground/10 bg-background/40 px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent'
+  const label = 'text-xs font-semibold text-foreground/50'
 
   const toggleCap = (c: string) =>
     setCaps((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
@@ -662,11 +663,11 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
 
   if (done) {
     return (
-      <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6">
-        <div className="flex items-center gap-2 font-bold text-emerald-700">
+      <div className="mt-5 rounded-2xl border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/50 p-6">
+        <div className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 size={18} /> {name} is registered.
         </div>
-        <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/70">
+        <ul className="mt-3 flex flex-col gap-1.5 text-sm text-foreground/70">
           <li>Permissions set (daily cap, auto-approve).</li>
           {kya?.verified ? (
             <li>KYA verified: wallet control proven.</li>
@@ -704,7 +705,7 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
             >
               {anchorBusy ? 'Anchoring on Arc...' : 'Anchor on Arc (register on-chain)'}
             </button>
-            {anchorNote && <p className="mt-2 text-xs text-amber-700">{anchorNote}</p>}
+            {anchorNote && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{anchorNote}</p>}
           </div>
         )}
 
@@ -712,8 +713,8 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
         {wallet && (
           <div className="mt-4">
             {kya?.verified ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+              <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/10 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                   <BadgeCheck size={16} /> KYA verified: wallet control proven
                 </div>
                 {kya.onchainExplorer ? (
@@ -721,12 +722,12 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
                     href={kya.onchainExplorer}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-block break-all text-xs font-semibold text-emerald-700 hover:underline"
+                    className="mt-1 inline-block break-all text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline"
                   >
                     Attested on-chain: ERC-8004 ValidationRegistry (view tx)
                   </a>
                 ) : (
-                  <p className="mt-1 text-xs text-ink/45">Anchor on Arc to also record this on the ERC-8004 ValidationRegistry.</p>
+                  <p className="mt-1 text-xs text-foreground/45">Anchor on Arc to also record this on the ERC-8004 ValidationRegistry.</p>
                 )}
               </div>
             ) : (
@@ -735,31 +736,28 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
                   type="button"
                   onClick={proveKya}
                   disabled={kyaBusy}
-                  className="rounded-full border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+                  className="rounded-full border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-50 disabled:opacity-50"
                 >
                   {kyaBusy ? 'Proving wallet control...' : 'Prove wallet control (KYA)'}
                 </button>
-                <p className="mt-2 text-xs text-ink/45">
+                <p className="mt-2 text-xs text-foreground/45">
                   Signs a challenge with your agent's wallet key (in your browser)
                   {anchored ? ' and records it on the ERC-8004 ValidationRegistry.' : '. Anchor first for an on-chain attestation.'}
                 </p>
-                {kyaNote && <p className="mt-2 text-xs text-amber-700">{kyaNote}</p>}
+                {kyaNote && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{kyaNote}</p>}
               </>
             )}
           </div>
         )}
 
         <div className="mt-4 flex gap-3">
-          <a
-            href="/app/marketplace"
-            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white"
-          >
-            See it in Agent House
-          </a>
+          <Button asChild size="sm" className="text-sm">
+            <a href="/app/marketplace">See it in Agent House</a>
+          </Button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-ink/15 px-4 py-2 text-sm font-semibold text-ink/70"
+            className="rounded-full border border-foreground/15 px-4 py-2 text-sm font-semibold text-foreground/70"
           >
             Close
           </button>
@@ -777,7 +775,7 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
           <input className={input} placeholder="Agent name (e.g. My Trading Agent)" value={name} onChange={(e) => setName(e.target.value)} required />
           <div>
             <input className={input} placeholder="What does this agent do? (shown in Agent House)" value={desc} onChange={(e) => setDesc(e.target.value)} required minLength={20} />
-            <p className="mt-1 text-[11px] text-ink/45">
+            <p className="mt-1 text-[11px] text-foreground/45">
               At least 20 characters. Verified agents with a description appear in the Agent House showcase.
             </p>
           </div>
@@ -799,7 +797,7 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                 caps.includes(c)
                   ? 'bg-accent text-white'
-                  : 'border border-ink/15 text-ink/60 hover:bg-ink/5'
+                  : 'border border-foreground/15 text-foreground/60 hover:bg-foreground/5'
               }`}
             >
               {c}
@@ -813,20 +811,20 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
         <div className={label}>3. Permissions (set at KYA, like card limits)</div>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           <div>
-            <div className="mb-1 text-[11px] text-ink/45">Daily cap (USD)</div>
+            <div className="mb-1 text-[11px] text-foreground/45">Daily cap (USD)</div>
             <input className={input} type="number" min="0" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} />
           </div>
           <div>
-            <div className="mb-1 text-[11px] text-ink/45">Auto-approve under (USD)</div>
+            <div className="mb-1 text-[11px] text-foreground/45">Auto-approve under (USD)</div>
             <input className={input} type="number" min="0" step="0.1" value={autoApprove} onChange={(e) => setAutoApprove(e.target.value)} />
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm text-ink/70">
+          <label className="flex items-center gap-2 text-sm text-foreground/70">
             <input type="checkbox" checked={a2a} onChange={(e) => setA2a(e.target.checked)} className="accent-[#7342E2]" />
             Agent-to-agent payments
           </label>
-          <label className="flex items-center gap-2 text-sm text-ink/70">
+          <label className="flex items-center gap-2 text-sm text-foreground/70">
             <input type="checkbox" checked={a2h} onChange={(e) => setA2h(e.target.checked)} className="accent-[#7342E2]" />
             Agent-to-human payments
           </label>
@@ -848,12 +846,12 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
         ) : (
           <div className="mt-2 rounded-xl border border-[#2775CA]/25 bg-[#2775CA]/[0.04] p-4">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-[11px] font-bold text-ink/50">Address</div>
+              <div className="text-[11px] font-bold text-foreground/50">Address</div>
               <button type="button" onClick={copyAddress} className="text-[11px] font-semibold text-[#2775CA] hover:underline">
                 {copiedAddr ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <div className="break-all font-mono text-xs text-ink">{wallet.address}</div>
+            <div className="break-all font-mono text-xs text-foreground">{wallet.address}</div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <div className="text-[11px] font-bold text-red-600">
                 Private key (generated in your browser, the server never sees it)
@@ -883,13 +881,13 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
                 </button>
               </div>
             </div>
-            <div className="break-all font-mono text-xs text-ink/70">
+            <div className="break-all font-mono text-xs text-foreground/70">
               {showKey ? wallet.privateKey : '•'.repeat(48)}
             </div>
-            <p className="mt-1 text-[11px] text-ink/45">
+            <p className="mt-1 text-[11px] text-foreground/45">
               Save it now. It is shown once and never stored. Reveal only somewhere no one can see your screen.
             </p>
-            <label className="mt-2 flex items-start gap-2 text-[11px] font-medium text-ink/70">
+            <label className="mt-2 flex items-start gap-2 text-[11px] font-medium text-foreground/70">
               <input
                 type="checkbox"
                 checked={keySaved}
@@ -916,7 +914,7 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
                 {fundBusy ? 'Checking...' : 'I funded it, check balance'}
               </button>
               {fundBal != null && (
-                <span className={`text-[11px] font-semibold ${fundBal > 0 ? 'text-emerald-600' : 'text-ink/50'}`}>
+                <span className={`text-[11px] font-semibold ${fundBal > 0 ? 'text-emerald-600' : 'text-foreground/50'}`}>
                   {fundBal > 0 ? `Funded: ${fundBal.toFixed(4)} USDC` : 'Still 0 USDC, give the faucet a moment and check again'}
                 </span>
               )}
@@ -927,15 +925,15 @@ function RegisterForm({ onClose, onCreated }: { onClose: () => void; onCreated?:
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <button
+      <Button
         type="button"
+        size="lg"
         onClick={submit}
         disabled={submitBusy || (!!wallet && !keySaved)}
-        className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
       >
         {submitBusy ? 'Registering...' : 'Pass KYA and register on Arc testnet'}
-      </button>
-      <p className="text-xs text-ink/45">
+      </Button>
+      <p className="text-xs text-foreground/45">
         Registration writes to the A-Identity registry now; the on-chain anchor is queued and
         broadcast only after a human approves it.
       </p>

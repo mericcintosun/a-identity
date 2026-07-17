@@ -111,17 +111,17 @@ export default function Wallet() {
   return (
     <div className="mx-auto max-w-3xl">
       <h2 className="text-2xl font-bold tracking-tight">Wallet</h2>
-      <p className="mt-1 text-sm text-ink/55">
+      <p className="mt-1 text-sm text-foreground/55">
         Your agent's Arc wallet. Balance is read live from the Arc testnet; payments settle in
         real USDC. You set the limits in Permissions.
       </p>
 
       {error && (
-        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-sm text-ink/70">{error}</div>
+        <div className="mt-5 rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 p-4 text-sm text-foreground/70">{error}</div>
       )}
 
       {loaded && agents.length === 0 && !error && (
-        <div className="mt-5 rounded-2xl border border-dashed border-ink/15 bg-white p-8 text-center text-sm text-ink/55">
+        <div className="mt-5 rounded-2xl border border-dashed border-foreground/15 bg-card p-8 text-center text-sm text-foreground/55">
           No agents yet. Register one in Agent ID to get a wallet.
         </div>
       )}
@@ -130,11 +130,11 @@ export default function Wallet() {
         <>
           {agents.length > 1 && (
             <div className="mt-5">
-              <label className="text-xs font-semibold text-ink/50">Agent</label>
+              <label className="text-xs font-semibold text-foreground/50">Agent</label>
               <select
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-ink/10 bg-white px-3 py-2.5 text-sm outline-none focus:border-accent"
+                className="mt-1 w-full rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-sm outline-none focus:border-accent"
               >
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -217,22 +217,22 @@ export default function Wallet() {
               (Useful when the faucet funds EURC, or idle USDC is parked in USYC.) */}
           {agent.walletAddress && assets && (
             <div className="mt-4">
-              <div className="mb-2 text-xs font-semibold text-ink/50">Token balances on Arc</div>
+              <div className="mb-2 text-xs font-semibold text-foreground/50">Token balances on Arc</div>
               <div className="grid grid-cols-3 gap-2.5">
                 {([
                   { t: 'USDC', v: assets.usdcUsd },
                   { t: 'EURC', v: assets.eurcUsd },
                   { t: 'USYC', v: assets.usycUsd },
                 ] as const).map(({ t, v }) => (
-                  <div key={t} className="rounded-2xl border border-black/[0.06] bg-white px-4 py-3">
-                    <div className="text-xs font-semibold text-ink/55">{t}</div>
-                    <div className="mt-1 text-lg font-semibold tracking-tight text-ink tabular-nums">
+                  <div key={t} className="rounded-2xl border border-foreground/[0.06] bg-card px-4 py-3">
+                    <div className="text-xs font-semibold text-foreground/55">{t}</div>
+                    <div className="mt-1 text-lg font-semibold tracking-tight text-foreground tabular-nums">
                       ${v.toFixed(2)}
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="mt-1.5 text-[11px] text-ink/40">
+              <p className="mt-1.5 text-[11px] text-foreground/40">
                 Read live from Arc. USYC is yield-bearing — manage it in Treasury below.
               </p>
             </div>
@@ -241,7 +241,7 @@ export default function Wallet() {
           {/* Human-on-the-loop */}
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-accent/20 bg-accent/[0.05] p-4">
             <ShieldQuestion size={18} className="mt-0.5 shrink-0 text-accent" />
-            <p className="text-sm text-ink/70">
+            <p className="text-sm text-foreground/70">
               Payments run through the policy engine first. Above your limits, they pause for
               approval; nothing moves real USDC without it.
             </p>
@@ -254,16 +254,16 @@ export default function Wallet() {
               const total = tx.amountUsd * tx.count
               const settled = tx.status === 'executed_onchain'
               return (
-                <li key={tx.id} className="flex items-center gap-4 rounded-2xl border border-ink/10 bg-white p-4">
+                <li key={tx.id} className="flex items-center gap-4 rounded-2xl border border-foreground/10 bg-card p-4">
                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#7342E2] text-white">
                     <ArrowUpRight size={16} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-mono text-xs font-semibold text-ink">{short(tx.payee)}</div>
-                    <div className="truncate text-xs text-ink/45">{tx.policyNote}</div>
+                    <div className="truncate font-mono text-xs font-semibold text-foreground">{short(tx.payee)}</div>
+                    <div className="truncate text-xs text-foreground/45">{tx.policyNote}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold text-ink">
+                    <div className="text-sm font-bold text-foreground">
                       -{total < 0.01 ? total.toFixed(4) : total.toFixed(2)}{' '}
                       <span className="text-xs font-semibold text-[#2775CA]">USDC</span>
                     </div>
@@ -277,7 +277,7 @@ export default function Wallet() {
                         settled <ExternalLink size={9} />
                       </a>
                     ) : (
-                      <span className="text-[11px] font-semibold text-ink/40">{tx.status.replace(/_/g, ' ')}</span>
+                      <span className="text-[11px] font-semibold text-foreground/40">{tx.status.replace(/_/g, ' ')}</span>
                     )}
                   </div>
                 </li>
@@ -285,7 +285,7 @@ export default function Wallet() {
             })}
           </ul>
           {txs.length === 0 && (
-            <div className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/50 p-8 text-center text-sm text-ink/50">
+            <div className="mt-3 rounded-2xl border border-dashed border-foreground/15 bg-white/50 p-8 text-center text-sm text-foreground/50">
               No payments yet. Make one in Settlements.
             </div>
           )}

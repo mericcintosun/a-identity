@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Globe, CheckCircle2, ExternalLink, Loader2, ArrowRight, Zap } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
+import { Button } from '../ui/button'
 import { authHeaders } from '../../store/auth'
 
 type Result =
@@ -52,14 +53,14 @@ export default function GatewayPanel() {
   const minted = result?.executed && result.baseMint?.minted
 
   return (
-    <div className="mt-8 rounded-2xl border border-ink/10 bg-white p-6">
+    <div className="mt-8 rounded-2xl border border-foreground/10 bg-card p-6">
       <div className="flex items-start gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#1AAB7A]/10 text-[#1AAB7A]">
           <Globe size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-ink">Chain-abstracted USDC (Circle Gateway)</h3>
-          <p className="mt-0.5 text-sm text-ink/55">
+          <h3 className="font-semibold text-foreground">Chain-abstracted USDC (Circle Gateway)</h3>
+          <p className="mt-0.5 text-sm text-foreground/55">
             Your agent's USDC isn't stuck on one chain. One click moves it from Arc to Base Sepolia
             via Circle Gateway, minted on Base in under 500 ms, <b>gaslessly</b> (no wallet or gas there).
           </p>
@@ -67,9 +68,9 @@ export default function GatewayPanel() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <label className="text-xs font-semibold text-ink/50">Amount</label>
-        <div className="flex items-center gap-1 rounded-xl border border-ink/10 bg-cream/40 px-3 py-2">
-          <span className="text-sm text-ink/50">$</span>
+        <label className="text-xs font-semibold text-foreground/50">Amount</label>
+        <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-background/40 px-3 py-2">
+          <span className="text-sm text-foreground/50">$</span>
           <input
             type="number"
             min="0"
@@ -80,21 +81,16 @@ export default function GatewayPanel() {
           />
           <span className="text-xs font-semibold text-[#2775CA]">USDC</span>
         </div>
-        <button
-          type="button"
-          onClick={run}
-          disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
-        >
+        <Button type="button" variant="inverse" size="sm" className="text-sm" onClick={run} disabled={busy}>
           {busy ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
           {busy ? 'Moving Arc to Base' : 'Send USDC to Base (gasless)'}
-        </button>
+        </Button>
       </div>
 
-      {error && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-sm text-ink/70">{error}</div>}
+      {error && <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 p-3 text-sm text-foreground/70">{error}</div>}
 
       {result && result.executed === false && (
-        <div className="mt-4 rounded-xl border border-ink/10 bg-cream/40 p-3 text-sm text-ink/70">
+        <div className="mt-4 rounded-xl border border-foreground/10 bg-background/40 p-3 text-sm text-foreground/70">
           Prepared (no signer configured on the server): {result.reason}
         </div>
       )}
@@ -110,24 +106,24 @@ export default function GatewayPanel() {
             />
           )}
           {result.transfer.error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50/60 px-3 py-2 text-red-700">
+            <div className="rounded-lg border border-red-200 dark:border-red-500/25 bg-red-50/60 dark:bg-red-500/10 px-3 py-2 text-red-700 dark:text-red-300">
               Transfer failed: {result.transfer.error}
             </div>
           ) : (
             <Row
               label={`Forwarded ${result.amountUsd} USDC → ${result.transfer.destination}`}
               value={result.transfer.forwardingFee ? `fee ~$${result.transfer.forwardingFee}` : undefined}
-              badge={<span className="font-mono text-[10px] text-ink/40">{result.transfer.transferId?.slice(0, 8)}...</span>}
+              badge={<span className="font-mono text-[10px] text-foreground/40">{result.transfer.transferId?.slice(0, 8)}...</span>}
             />
           )}
           {result.baseMint && (
             <div
               className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
-                minted ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60'
+                minted ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/10' : 'border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10'
               }`}
             >
               {minted ? <Zap size={14} className="text-emerald-600" /> : <Loader2 size={14} className="animate-spin text-amber-600" />}
-              <span className="text-ink/75">
+              <span className="text-foreground/75">
                 {minted ? (
                   <>
                     Minted on Base Sepolia: balance {result.baseMint.beforeUsd} → <b>{result.baseMint.afterUsd}</b> USDC,
@@ -167,12 +163,12 @@ function Row({
   badge?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-ink/8 bg-cream/40 px-3 py-2">
+    <div className="flex items-center gap-2 rounded-lg border border-foreground/8 bg-background/40 px-3 py-2">
       <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />
-      <span className="text-ink/75">{label}</span>
+      <span className="text-foreground/75">{label}</span>
       {badge}
       <span className="ml-auto flex items-center gap-2">
-        {value && <span className="text-xs font-semibold text-ink/50">{value}</span>}
+        {value && <span className="text-xs font-semibold text-foreground/50">{value}</span>}
         {link && (
           <a
             href={link}

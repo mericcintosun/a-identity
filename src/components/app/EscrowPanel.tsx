@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Boxes, CheckCircle2, ExternalLink, Loader2, ArrowRight } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
 import { authHeaders } from '../../store/auth'
+import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 
 type Step = { step: string; txHash: string; explorerUrl: string }
 type Result =
@@ -47,14 +49,14 @@ export default function EscrowPanel() {
   const settled = result?.executed && result.status === 'Completed' && !result.failedAt
 
   return (
-    <div className="mt-8 rounded-2xl border border-ink/10 bg-white p-6">
+    <div className="mt-8 rounded-2xl border border-foreground/10 bg-card p-6">
       <div className="flex items-start gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#7342E2]/10 text-[#7342E2]">
           <Boxes size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-ink">Agent-to-agent escrow (ERC-8183)</h3>
-          <p className="mt-0.5 text-sm text-ink/55">
+          <h3 className="font-semibold text-foreground">Agent-to-agent escrow (ERC-8183)</h3>
+          <p className="mt-0.5 text-sm text-foreground/55">
             One click runs the full on-chain job: an agent hires an agent, USDC is held in escrow on
             Arc and released on delivery: create → fund → submit → complete, all real txs.
           </p>
@@ -62,9 +64,9 @@ export default function EscrowPanel() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <label className="text-xs font-semibold text-ink/50">Budget</label>
-        <div className="flex items-center gap-1 rounded-xl border border-ink/10 bg-cream/40 px-3 py-2">
-          <span className="text-sm text-ink/50">$</span>
+        <label className="text-xs font-semibold text-foreground/50">Budget</label>
+        <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-background/40 px-3 py-2">
+          <span className="text-sm text-foreground/50">$</span>
           <input
             type="number"
             min="0"
@@ -75,23 +77,25 @@ export default function EscrowPanel() {
           />
           <span className="text-xs font-semibold text-[#2775CA]">USDC</span>
         </div>
-        <button
+        <Button
           type="button"
+          variant="inverse"
+          size="sm"
+          className="text-sm"
           onClick={run}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
         >
           {busy ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
           {busy ? 'Running lifecycle' : 'Run escrow job'}
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-sm text-ink/70">{error}</div>
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-sm text-foreground/70 dark:border-amber-500/25 dark:bg-amber-500/10">{error}</div>
       )}
 
       {result && result.executed === false && (
-        <div className="mt-4 rounded-xl border border-ink/10 bg-cream/40 p-3 text-sm text-ink/70">
+        <div className="mt-4 rounded-xl border border-foreground/10 bg-background/40 p-3 text-sm text-foreground/70">
           Prepared (no signer configured on the server): {result.reason}
         </div>
       )}
@@ -99,17 +103,13 @@ export default function EscrowPanel() {
       {result && result.executed && (
         <div className="mt-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-ink/60">
-              Job <span className="font-mono font-semibold text-ink">#{result.jobId}</span> · ${result.budgetUsd} USDC
+            <span className="text-sm text-foreground/60">
+              Job <span className="font-mono font-semibold text-foreground">#{result.jobId}</span> · ${result.budgetUsd} USDC
             </span>
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                settled ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-              }`}
-            >
+            <Badge variant={settled ? 'success' : 'warning'}>
               {settled && <CheckCircle2 size={12} />}
               {result.status}
-            </span>
+            </Badge>
           </div>
 
           <ol className="mt-3 flex flex-col gap-1.5">
@@ -119,14 +119,14 @@ export default function EscrowPanel() {
               return (
                 <li
                   key={name}
-                  className="flex items-center gap-3 rounded-lg border border-ink/8 bg-cream/40 px-3 py-2 text-sm"
+                  className="flex items-center gap-3 rounded-lg border border-foreground/8 bg-background/40 px-3 py-2 text-sm"
                 >
                   <span
                     className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                      s ? 'bg-emerald-500' : failedHere ? 'bg-red-500' : 'bg-ink/20'
+                      s ? 'bg-emerald-500' : failedHere ? 'bg-red-500' : 'bg-foreground/20'
                     }`}
                   />
-                  <span className="font-mono text-xs text-ink/70">{name}</span>
+                  <span className="font-mono text-xs text-foreground/70">{name}</span>
                   <span className="ml-auto">
                     {s ? (
                       <a
@@ -140,7 +140,7 @@ export default function EscrowPanel() {
                     ) : failedHere ? (
                       <span className="text-[11px] font-semibold text-red-500">reverted</span>
                     ) : (
-                      <span className="text-[11px] text-ink/30">-</span>
+                      <span className="text-[11px] text-foreground/30">-</span>
                     )}
                   </span>
                 </li>

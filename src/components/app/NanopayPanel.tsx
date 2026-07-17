@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Gauge, CheckCircle2, ExternalLink, Loader2, Zap } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
+import { Button } from '../ui/button'
 import { authHeaders } from '../../store/auth'
 
 type Result =
@@ -57,14 +58,14 @@ export default function NanopayPanel() {
   const short = (a?: string) => (a ? `${a.slice(0, 6)}...${a.slice(-4)}` : '-')
 
   return (
-    <div className="mt-8 rounded-2xl border border-ink/10 bg-white p-6">
+    <div className="mt-8 rounded-2xl border border-foreground/10 bg-card p-6">
       <div className="flex items-start gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#7342E2]/10 text-[#7342E2]">
           <Gauge size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-ink">Gasless nanopayments (Circle Nanopayments)</h3>
-          <p className="mt-0.5 text-sm text-ink/55">
+          <h3 className="font-semibold text-foreground">Gasless nanopayments (Circle Nanopayments)</h3>
+          <p className="mt-0.5 text-sm text-foreground/55">
             The second x402 rail: the payer signs an <b>EIP-3009 authorization off-chain (zero gas)</b> and
             Circle Gateway settles it in a <b>batch</b>, making true sub-cent USDC payments economical for
             high-frequency agent traffic.
@@ -73,9 +74,9 @@ export default function NanopayPanel() {
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <label className="text-xs font-semibold text-ink/50">Amount</label>
-        <div className="flex items-center gap-1 rounded-xl border border-ink/10 bg-cream/40 px-3 py-2">
-          <span className="text-sm text-ink/50">$</span>
+        <label className="text-xs font-semibold text-foreground/50">Amount</label>
+        <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-background/40 px-3 py-2">
+          <span className="text-sm text-foreground/50">$</span>
           <input
             type="number"
             min="0"
@@ -86,24 +87,19 @@ export default function NanopayPanel() {
           />
           <span className="text-xs font-semibold text-[#7342E2]">USDC</span>
         </div>
-        <button
-          type="button"
-          onClick={run}
-          disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#7342E2] px-4 py-2 text-sm font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50"
-        >
+        <Button type="button" size="sm" className="text-sm" onClick={run} disabled={busy}>
           {busy ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
           {busy ? 'Signing & settling' : 'Pay gasless (nanopayment)'}
-        </button>
+        </Button>
       </div>
 
-      {error && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-sm text-ink/70">{error}</div>}
+      {error && <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 p-3 text-sm text-foreground/70">{error}</div>}
 
       {result && result.executed === false && (
-        <div className="mt-4 rounded-xl border border-ink/10 bg-cream/40 p-3 text-sm text-ink/70">
+        <div className="mt-4 rounded-xl border border-foreground/10 bg-background/40 p-3 text-sm text-foreground/70">
           Prepared (no signer configured on the server): {result.reason}
           {result.verifyingContract && (
-            <div className="mt-1 font-mono text-[11px] text-ink/45">GatewayWalletBatched: {result.verifyingContract}</div>
+            <div className="mt-1 font-mono text-[11px] text-foreground/45">GatewayWalletBatched: {result.verifyingContract}</div>
           )}
         </div>
       )}
@@ -121,11 +117,11 @@ export default function NanopayPanel() {
           <Row label={`Paid ${result.amountUsd} USDC → ${short(result.payTo)}`} value={`from Gateway balance`} />
           <div
             className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
-              settled ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60'
+              settled ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/60 dark:bg-emerald-500/10' : 'border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10'
             }`}
           >
             {settled ? <Zap size={14} className="text-emerald-600" /> : <Loader2 size={14} className="animate-spin text-amber-600" />}
-            <span className="text-ink/75">
+            <span className="text-foreground/75">
               {settled ? (
                 <>Settled through Circle Gateway, <b>batched on-chain</b>, gasless for buyer &amp; seller</>
               ) : (
@@ -133,7 +129,7 @@ export default function NanopayPanel() {
               )}
             </span>
             {settled && result.settle.transaction && (
-              <span className="ml-auto font-mono text-[10px] text-ink/40">batch {result.settle.transaction.slice(0, 8)}...</span>
+              <span className="ml-auto font-mono text-[10px] text-foreground/40">batch {result.settle.transaction.slice(0, 8)}...</span>
             )}
             {result.settle.explorerUrl && (
               <a
@@ -166,12 +162,12 @@ function Row({
   badge?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-ink/8 bg-cream/40 px-3 py-2">
+    <div className="flex items-center gap-2 rounded-lg border border-foreground/8 bg-background/40 px-3 py-2">
       <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />
-      <span className="text-ink/75">{label}</span>
+      <span className="text-foreground/75">{label}</span>
       {badge}
       <span className="ml-auto flex items-center gap-2">
-        {value && <span className="text-xs font-semibold text-ink/50">{value}</span>}
+        {value && <span className="text-xs font-semibold text-foreground/50">{value}</span>}
         {link && (
           <a
             href={link}
