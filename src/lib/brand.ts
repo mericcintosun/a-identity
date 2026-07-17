@@ -56,6 +56,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
     title: 'Developers',
     links: [
+      { label: 'OKX.AI ASP — Live Proof', href: 'https://a-identity-asp.onrender.com/proof', external: true },
       { label: 'SDK', href: `${DOCS_URL}/developers/sdk`, external: true },
       { label: 'CLI', href: `${DOCS_URL}/developers/cli`, external: true },
       { label: 'Agent Manifest', href: `${DOCS_URL}/developers/agent-manifest`, external: true },

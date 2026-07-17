@@ -117,6 +117,19 @@ async function main() {
     console.log(`[asp-gateway] ${SERVICE} listening on :${PORT}`)
     console.log(`[asp-gateway] payment: ${payment.mode} (${payment.reason})`)
   })
+
+  // Keep-warm: free-tier hosts (Render) idle-sleep after ~15 min without inbound
+  // traffic, which shows up as a cold-start/502 to a reviewer. When RENDER_EXTERNAL_URL
+  // is present, self-ping our own public /health every 10 min (an inbound request that
+  // resets the idle timer). Belt-and-suspenders with an external uptime pinger. No-op
+  // locally / in CI (the var is unset there).
+  const keepAliveUrl = process.env.RENDER_EXTERNAL_URL
+  if (keepAliveUrl) {
+    setInterval(() => {
+      fetch(`${keepAliveUrl}/health`).catch(() => {})
+    }, 10 * 60 * 1000)
+    console.log(`[asp-gateway] keep-warm self-ping every 10m -> ${keepAliveUrl}/health`)
+  }
 }
 
 main().catch((e) => {

@@ -36,7 +36,17 @@ export default function SiteFooter() {
             >
               /.well-known/ai-agent-manifest.json
             </a>{' '}
-            to discover identity, payment, and tool endpoints.
+            to discover identity, payment, and tool endpoints. Live on OKX.AI as an A2MCP ASP
+            (Agent #6271) — see the{' '}
+            <a
+              href="https://a-identity-asp.onrender.com/proof"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-accent underline-offset-2 hover:underline"
+            >
+              on-chain proof
+            </a>
+            .
           </p>
         </div>
 
