@@ -4,7 +4,7 @@
  * Everything here is REAL and independently checkable on-chain — no claims a
  * reviewer can't verify themselves:
  *   - the ASP identity registered on X Layer mainnet (Agent #6271),
- *   - four real x402 settlements on X Layer mainnet (one per paid tool),
+ *   - 83 real x402 settlements on X Layer mainnet (4 featured, one per paid tool),
  *   - the on-chain showcase agent the tools return real data for (Meridian #849980),
  *   - the engineering rigor behind the scores (deterministic, unit-tested engine).
  *
@@ -66,7 +66,7 @@ export const PROOF = {
   },
   // The rigor behind the numbers — deterministic and unit-tested, not an LLM guess.
   engineering: {
-    tests: 58,
+    tests: 74,
     deterministicReputation: true,
     liveOnchainReads: 'ERC-8004 IdentityRegistry + ValidationRegistry (KYA) on Circle Arc, read live via viem',
     standards: ['ERC-8004', 'x402'],

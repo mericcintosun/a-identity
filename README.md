@@ -40,8 +40,8 @@ Arc product below; four services sold pay-per-call via **x402 on X Layer mainnet
 **Live endpoint:** `https://a-identity-asp.onrender.com` — `POST /tools/<name>` (paid),
 or free `GET /proof`, `GET /methodology`, `GET /health`.
 
-**Real on-chain revenue (not a mock):** four real x402 settlements on X Layer mainnet,
-each independently verifiable on OKLink:
+**Real on-chain revenue (not a mock):** 83 real x402 settlements on X Layer mainnet — all
+listed at `GET /proof`. Four representative ones, each independently verifiable on OKLink:
 
 | Tool | Settlement tx |
 |---|---|
@@ -52,7 +52,7 @@ each independently verifiable on OKLink:
 
 **Backed by real data, not an LLM guess:** a live ERC-8004 showcase agent — Meridian
 `#849980`, reputation **539/1000**, KYA-verified. Scoring is **deterministic and
-unit-tested** (58 tests), reads on-chain live via viem, and is fully documented at
+unit-tested** (74 tests), reads on-chain live via viem, and is fully documented at
 `GET /methodology`. This is our answer to "surface your rigor" — every number is
 reproducible and every settlement is on-chain.
 

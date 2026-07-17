@@ -110,7 +110,7 @@ real settlement — the on-chain proof of the "fee per settlement" model.
 ## Verifiable on-chain proof (Arc testnet)
 
 - **Showcase agent "Meridian"** — ERC-8004 id **#849980**, KYA attested on-chain, policy vault,
-  reputation **536** from 3 real settlements. Anchor tx:
+  reputation **539** from 3 real settlements. Anchor tx:
   [`0x506b125f…`](https://testnet.arcscan.app/tx/0x506b125f3a0481667e3a00dcb86f48cbcaa35c643af963365e9389b06a8f8e54) ·
   KYA attestation: [`0x758ddbfa…`](https://testnet.arcscan.app/tx/0x758ddbfad38daeb772a37deb07e65339f13aeb393899fc7e1d2689c95adf0dad)
 - **Completed ERC-8183 escrow job #155504** — full lifecycle settled on Arc.
@@ -128,7 +128,7 @@ real settlement — the on-chain proof of the "fee per settlement" model.
   `/mcp` JSON-RPC for agents. Durable state via Postgres (`DATABASE_URL`), JSON-file fallback for dev.
 - **Auth** — Sign-In with Ethereum (wallet) + email magic link (Resend) are *verified*; a plain guest
   session is read-only. Agent ownership is bound to a verified identity.
-- **Tests / CI** — `node:test` unit (13) + a full E2E: **39 checks** green without a signer key, and
+- **Tests / CI** — `node:test` unit (74) + a full E2E: **39 checks** green without a signer key, and
   **55 with a funded `ARC_SIGNER_KEY`** (real Arc writes — incl. x402, ERC-8183 escrow, Gateway,
   **Nanopayments settle**, and **CCTP burn-and-mint**). Runs in GitHub Actions (no signer → 39).
 
