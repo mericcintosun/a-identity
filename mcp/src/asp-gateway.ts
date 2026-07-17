@@ -19,6 +19,7 @@ import { initState } from './platform.js'
 import { verifyAgent, reputationScore, riskCheck, agentPassport, type TxContext } from './asp/tools.js'
 import { applyOkxX402, type PaymentStatus } from './asp/payment.js'
 import { PROOF, METHODOLOGY } from './asp/proof.js'
+import { renderProofHtml } from './asp/proof-html.js'
 
 const SERVICE = 'A-Identity — Agent Trust Oracle'
 const PORT = Number(process.env.ASP_PORT ?? process.env.PORT ?? 4000)
@@ -84,7 +85,13 @@ async function main() {
 
   // Free, public, verifiable proof for the hackathon submission (real on-chain
   // settlements, the ASP identity, the deterministic scoring methodology).
-  app.get('/proof', (_req: Request, res: Response) => res.json(PROOF))
+  // Content-negotiated: a browser (a judge clicking the link) gets a styled HTML page;
+  // an agent/API caller gets JSON. /proof.json always returns JSON.
+  app.get('/proof', (req: Request, res: Response) => {
+    if (req.accepts(['json', 'html']) === 'html') res.type('html').send(renderProofHtml())
+    else res.json(PROOF)
+  })
+  app.get('/proof.json', (_req: Request, res: Response) => res.json(PROOF))
   app.get('/methodology', (_req: Request, res: Response) => res.json(METHODOLOGY))
 
   // The four paid tools.

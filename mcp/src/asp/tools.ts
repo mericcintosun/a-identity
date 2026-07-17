@@ -110,6 +110,17 @@ async function gather(agentId: string): Promise<Bundle> {
   return { agentId: q, platform, identity, tokenId, validation, reputation, onchainVerified, kyaVerified, kyaStatus, tenureDays }
 }
 
+/** Attached to every tool response so each paid call is self-documenting and points a
+ *  caller (or a reviewer) at the verifiable proof + the exact scoring methodology. */
+const TOOL_META = {
+  service: 'A-Identity Trust Oracle',
+  standard: 'ERC-8004',
+  network: 'X Layer mainnet (eip155:196)',
+  methodology: 'https://a-identity-asp.onrender.com/methodology',
+  proof: 'https://a-identity-asp.onrender.com/proof',
+  note: 'reputation is deterministic + unit-tested; identity/KYA read live on-chain (no LLM guess)',
+}
+
 // ── the four tools ────────────────────────────────────────────────────────────────
 
 /** verify_agent — ERC-8004 identity + KYA status for an agent. */
@@ -117,6 +128,7 @@ export async function verifyAgent(agentId: string) {
   const b = await gather(agentId)
   return {
     tool: 'verify_agent',
+    _meta: TOOL_META,
     agentId: b.agentId,
     verified: b.onchainVerified,
     kya_status: b.kyaStatus,
@@ -143,6 +155,7 @@ export async function reputationScore(agentId: string) {
   const b = await gather(agentId)
   return {
     tool: 'reputation_score',
+    _meta: TOOL_META,
     agentId: b.agentId,
     name: b.platform?.name ?? null,
     score: b.reputation.score,
@@ -166,6 +179,7 @@ export async function riskCheck(agentId: string, txContext: TxContext | null = n
   const r = assessRisk(signals, txContext)
   return {
     tool: 'risk_check',
+    _meta: TOOL_META,
     agentId: b.agentId,
     decision: r.decision,
     risk: r.risk,
@@ -184,6 +198,7 @@ export async function agentPassport(agentId: string) {
   )
   return {
     tool: 'agent_passport',
+    _meta: TOOL_META,
     agentId: b.agentId,
     name: b.platform?.name ?? null,
     standard: 'ERC-8004',
