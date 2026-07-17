@@ -135,12 +135,22 @@ export default function X402Panel() {
           <Lock size={14} />
           {label}
         </Button>
-        {req && phase !== 'done' && (
-          <span className="text-xs text-foreground/50">
-            {priceUsdc} USDC to {req.payTo.slice(0, 8)}...{req.payTo.slice(-4)}
-          </span>
-        )}
       </div>
+
+      {/* The 402 challenge is the whole point of the demo — surface it on-screen so the
+          expected red "402" the browser logs to the console reads as intentional, not a bug. */}
+      {req && phase !== 'done' && (
+        <div className="mt-3 rounded-xl border border-amber-300/60 bg-amber-50/70 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <div className="flex items-center gap-1.5 text-sm font-bold text-amber-700 dark:text-amber-300">
+            <Lock size={13} /> HTTP 402 · Payment Required
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-foreground/65">
+            The server answered with a real <b>402 challenge</b> — the paywall working as intended, not
+            an error. Pay <b>{priceUsdc} USDC</b> on Arc to {req.payTo.slice(0, 8)}...{req.payTo.slice(-4)}{' '}
+            and the call unlocks.
+          </p>
+        </div>
+      )}
 
       {tx && phase === 'verifying' && (
         <p className="mt-2 font-mono text-xs text-foreground/45">paid tx {tx.slice(0, 12)}..., verifying on Arc</p>
