@@ -30,6 +30,12 @@ transaction, an agent calls us to verify the counterparty. Same live engine as t
 Arc product below; four services sold pay-per-call via **x402 on X Layer mainnet**
 (`eip155:196`).
 
+**Demo (15s, silent):** a buyer agent calls `risk_check` on an unknown counterparty and gets `DENY` (don't pay), then hits the real x402 `402 Payment Required` challenge on X Layer mainnet.
+
+<video src="https://github.com/srabyanamrod/A-Identity/raw/main/okx-demo-risk-402.mp4" controls muted width="720"></video>
+
+▶️ [okx-demo-risk-402.mp4](./okx-demo-risk-402.mp4)
+
 | Tool | Price | What it returns |
 |---|---|---|
 | `verify_agent` | $0.001 | ERC-8004 on-chain identity + KYA status |
