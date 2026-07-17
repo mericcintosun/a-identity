@@ -114,6 +114,7 @@ export function renderProofHtml(): string {
     <div><b>${esc(p.asp.agentId)}</b><span>OKX.AI Agent</span></div>
     <div><b>${rev.totalSettlements}</b><span>real mainnet settlements</span></div>
     <div><b>$${rev.totalUsd}</b><span>on-chain revenue</span></div>
+    <div><b id="live-recv">—</b><span>received at payTo · live</span></div>
     <div><b>${TOOL_ORDER.length}</b><span>x402 services</span></div>
     <div><b>${p.engineering.tests}</b><span>unit tests</span></div>
   </div>
@@ -181,6 +182,11 @@ export function renderProofHtml(): string {
         if (count) count.textContent = n;
       });
     }
+    // Live on-chain stat: payTo's current USD₮0 balance (all received from ASP calls).
+    fetch('/stats').then(function (r) { return r.json(); }).then(function (s) {
+      var el = document.getElementById('live-recv');
+      if (el && s && s.payToReceivedUsdt0 != null) el.textContent = '$' + Number(s.payToReceivedUsdt0).toFixed(3);
+    }).catch(function () {});
   })();
 </script>
 </body>

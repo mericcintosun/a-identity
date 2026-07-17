@@ -7,6 +7,7 @@ import UseCases from '../components/sections/UseCases'
 import Positioning from '../components/sections/Positioning'
 import Vision from '../components/sections/Vision'
 import DeveloperExperience from '../components/sections/DeveloperExperience'
+import OkxAsp from '../components/sections/OkxAsp'
 import BlogTeaser from '../components/sections/BlogTeaser'
 import FAQ from '../components/sections/FAQ'
 import SiteFooter from '../components/sections/SiteFooter'
@@ -43,6 +44,7 @@ export default function Landing() {
       <Positioning />
       <Vision />
       <DeveloperExperience />
+      <OkxAsp />
       <BlogTeaser />
       <FAQ />
       <SiteFooter />

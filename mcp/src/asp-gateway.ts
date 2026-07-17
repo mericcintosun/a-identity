@@ -20,6 +20,7 @@ import { verifyAgent, reputationScore, riskCheck, agentPassport, type TxContext 
 import { applyOkxX402, type PaymentStatus } from './asp/payment.js'
 import { PROOF, METHODOLOGY } from './asp/proof.js'
 import { renderProofHtml } from './asp/proof-html.js'
+import { getLiveStats } from './asp/stats.js'
 
 const SERVICE = 'A-Identity — Agent Trust Oracle'
 const PORT = Number(process.env.ASP_PORT ?? process.env.PORT ?? 4000)
@@ -93,6 +94,8 @@ async function main() {
   })
   app.get('/proof.json', (_req: Request, res: Response) => res.json(PROOF))
   app.get('/methodology', (_req: Request, res: Response) => res.json(METHODOLOGY))
+  // Live on-chain stats (payTo's current USD₮0), so the /proof page reads "live".
+  app.get('/stats', async (_req: Request, res: Response) => res.json(await getLiveStats()))
 
   // The four paid tools.
   app.post('/tools/verify_agent', handle(async (req) => {

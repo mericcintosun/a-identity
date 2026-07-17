@@ -35,10 +35,30 @@ type Bundle = {
   tenureDays: number
 }
 
-const isAddress = (s: string) => /^0x[0-9a-fA-F]{40}$/.test(s)
-const asTokenId = (s: string): bigint | null => {
+export const isAddress = (s: string) => /^0x[0-9a-fA-F]{40}$/.test(s)
+export const asTokenId = (s: string): bigint | null => {
   const m = s.trim().match(/^#?(\d+)$/)
   return m ? BigInt(m[1]) : null
+}
+
+/** Hard cap on any single on-chain read behind a PAID tool call. */
+const RPC_TIMEOUT_MS = 6000
+
+/**
+ * Race a promise against a timeout so a paid tool call never hangs on a slow or
+ * unavailable RPC — it degrades gracefully to `fallback` and still responds fast.
+ * Also absorbs rejections (returns fallback) so the caller never sees an error from
+ * a best-effort on-chain read.
+ */
+async function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms)
+    if (typeof (timer as { unref?: () => void }).unref === 'function') (timer as { unref: () => void }).unref()
+  })
+  const result = await Promise.race([p.catch(() => fallback), timeout])
+  clearTimeout(timer!)
+  return result
 }
 
 /** Resolve every real signal we have for an agent, from platform state + the chain. */
@@ -52,28 +72,19 @@ async function gather(agentId: string): Promise<Bundle> {
     null
 
   // On-chain resolve. Prefer the platform agent's known token id; else the raw query.
+  // Timeout-guarded so a slow/unavailable RPC never leaves a paying caller hanging.
   const onchainQuery = platform?.onchainAgentId ?? q
   const provider = createIdentityProvider()
-  let identity: Bundle['identity'] = null
-  try {
-    identity = await provider.resolve(onchainQuery)
-  } catch {
-    identity = null
-  }
+  const identity: Bundle['identity'] = await withTimeout(provider.resolve(onchainQuery), RPC_TIMEOUT_MS, null)
 
   const tokenId =
     (platform?.onchainAgentId ? asTokenId(platform.onchainAgentId) : null) ??
     (identity ? BigInt(identity.tokenId) : asTokenId(q))
 
-  // On-chain KYA validation summary (real ValidationRegistry read), when a token id is known.
-  let validation: Bundle['validation'] = null
-  if (tokenId !== null) {
-    try {
-      validation = await readValidation(tokenId)
-    } catch {
-      validation = null
-    }
-  }
+  // On-chain KYA validation summary (real ValidationRegistry read), when a token id is
+  // known. Also timeout-guarded.
+  const validation: Bundle['validation'] =
+    tokenId !== null ? await withTimeout(readValidation(tokenId), RPC_TIMEOUT_MS, null) : null
 
   const onchainVerified = Boolean(identity) || platform?.onchain === 'registered'
 

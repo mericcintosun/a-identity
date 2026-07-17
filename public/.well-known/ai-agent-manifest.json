@@ -47,6 +47,25 @@
       "status": "preview"
     }
   },
+  "okx_ai_asp": {
+    "status": "live",
+    "marketplace": "OKX.AI",
+    "type": "A2MCP",
+    "agentId": "#6271",
+    "network": "X Layer mainnet (eip155:196)",
+    "settlement": "x402 pay-per-call in USD₮0",
+    "positioning": "the identity & reputation oracle for the agent economy",
+    "endpoint": "https://a-identity-asp.onrender.com",
+    "proof": "https://a-identity-asp.onrender.com/proof",
+    "methodology": "https://a-identity-asp.onrender.com/methodology",
+    "paid_tools": [
+      { "name": "verify_agent", "method": "POST /tools/verify_agent", "priceUsd": 0.001, "returns": "ERC-8004 identity + KYA status" },
+      { "name": "reputation_score", "method": "POST /tools/reputation_score", "priceUsd": 0.002, "returns": "deterministic 0-1000 reputation" },
+      { "name": "risk_check", "method": "POST /tools/risk_check", "priceUsd": 0.005, "returns": "pre-transaction ALLOW / WARN / DENY" },
+      { "name": "agent_passport", "method": "POST /tools/agent_passport", "priceUsd": 0.01, "returns": "full identity + KYA + reputation + risk" }
+    ],
+    "realOnchainRevenue": { "settlements": 83, "network": "X Layer mainnet (eip155:196)", "asset": "USD₮0" }
+  },
   "tools": [
     { "name": "resolve_agent", "kind": "read", "input": "query (CAIP-10 id, token id, address, domain)", "returns": "ERC-8004 identity (all chains)" },
     { "name": "get_reputation", "kind": "read", "input": "agentId (CAIP-10)", "returns": "deterministic score 0-1000 + breakdown" },
