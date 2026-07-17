@@ -17,7 +17,15 @@ export type LiveStats = {
   checkedAt: string
 }
 
+// Short in-memory cache: /stats is public and does an on-chain read, so cache the
+// result briefly to keep the endpoint fast and avoid hammering the RPC under repeated
+// (or hostile) traffic. Correct for a single instance; a scaled deploy would share it.
+let cache: { at: number; value: LiveStats } | null = null
+const CACHE_TTL_MS = 45_000
+
 export async function getLiveStats(): Promise<LiveStats> {
+  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.value
+
   const base = {
     network: 'X Layer mainnet (eip155:196)',
     payTo: PAY_TO,
@@ -35,8 +43,12 @@ export async function getLiveStats(): Promise<LiveStats> {
     })
     const j = (await res.json()) as { result?: string }
     const raw = BigInt(j.result ?? '0x0')
-    return { ...base, payToReceivedUsdt0: Number(raw) / 1_000_000 }
+    const value = { ...base, payToReceivedUsdt0: Number(raw) / 1_000_000 }
+    cache = { at: Date.now(), value }
+    return value
   } catch {
-    return { ...base, payToReceivedUsdt0: null }
+    const value = { ...base, payToReceivedUsdt0: null }
+    cache = { at: Date.now(), value }
+    return value
   }
 }

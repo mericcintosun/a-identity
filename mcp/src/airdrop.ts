@@ -29,8 +29,11 @@ import { MerkleAirdropAbi, MerkleAirdropBytecode } from './contracts/MerkleAirdr
 
 const USDC_DECIMALS = 6
 
-/** USD → USDC 6-decimal units ($1.00 → 1_000_000). */
-export const toUsdcUnits = (usd: number): bigint => BigInt(Math.round(usd * 10 ** USDC_DECIMALS))
+/** USD → USDC 6-decimal units ($1.00 → 1_000_000). Rejects negative / non-finite amounts. */
+export const toUsdcUnits = (usd: number): bigint => {
+  if (!Number.isFinite(usd) || usd < 0) throw new Error(`Invalid airdrop amount: ${usd}`)
+  return BigInt(Math.round(usd * 10 ** USDC_DECIMALS))
+}
 
 export type AirdropEntry = { account: `0x${string}`; amountUsd: number }
 export type Recipient = { index: number; account: `0x${string}`; amount: bigint; proof: Hex[] }
@@ -126,25 +129,35 @@ const pub = () => createPublicClient({ chain: arcChain, transport: http(ARC_RPC)
 const txUrl = (h: string) => `${ARC_EXPLORER}/tx/${h}`
 
 /**
- * Deploy the airdrop contract committing to the recipient list's Merkle root. Without a
- * signer key, returns the exact prepared deploy (token, root, constructor args); with a
+ * Deploy the airdrop contract committing to the recipient list's Merkle root. `owner` MUST
+ * be the shared 2/2 Gnosis Safe treasury — it becomes the on-chain owner (sweep authority),
+ * so the funded pool stays under 2/2 control, NOT under the single hot deployer key.
+ * Without a signer key, returns the exact prepared deploy (token, root, owner, args); with a
  * key, broadcasts and returns the deployed address.
  */
-export async function deployAirdrop(entries: AirdropEntry[], env: NodeJS.ProcessEnv = process.env) {
+export async function deployAirdrop(
+  entries: AirdropEntry[],
+  owner: `0x${string}`,
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(owner)) {
+    throw new Error('deployAirdrop: owner must be an address — pass the 2/2 Safe treasury, not the deployer key')
+  }
   const built = buildAirdrop(entries)
   const prepared = {
     token: CONTRACTS.usdc,
     merkleRoot: built.root,
+    owner,
     recipients: built.recipients.length,
     totalUsd: built.totalUsd,
-    constructorArgs: [CONTRACTS.usdc, built.root] as const,
+    constructorArgs: [CONTRACTS.usdc, built.root, owner] as const,
   }
   const signer = signerFor(env)
   if (!signer) return { executed: false as const, reason: NO_KEY, ...prepared }
   const hash = await signer.client.deployContract({
     abi: MerkleAirdropAbi,
     bytecode: MerkleAirdropBytecode as Hex,
-    args: [CONTRACTS.usdc as Hex, built.root],
+    args: [CONTRACTS.usdc as Hex, built.root, owner],
   })
   const receipt = await pub().waitForTransactionReceipt({ hash })
   return { executed: true as const, airdrop: receipt.contractAddress as string, txHash: hash, explorerUrl: txUrl(hash), ...prepared }

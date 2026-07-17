@@ -31,6 +31,8 @@ function requireAgentId(req: Request): { agentId: string } | { error: string } {
   if (typeof id !== 'string' || id.trim() === '') {
     return { error: 'Body must include a non-empty string "agentId" (platform id, ERC-8004 token id like "#849980", or owner address).' }
   }
+  // Bound the length so a giant numeric agentId can't force an O(n^2) BigInt parse (DoS).
+  if (id.length > 128) return { error: 'agentId too long (max 128 characters).' }
   return { agentId: id.trim() }
 }
 
@@ -45,7 +47,9 @@ function handle(fn: (req: Request) => Promise<unknown>) {
       }
       res.json(out)
     } catch (e) {
-      res.status(500).json({ error: e instanceof Error ? e.message : String(e) })
+      // Log the detail server-side; never reflect raw internals (RPC/URLs/addresses) to callers.
+      console.error('[asp] tool error:', e)
+      res.status(500).json({ error: 'Internal error' })
     }
   }
 }
@@ -72,7 +76,7 @@ async function main() {
   await initState()
 
   const app = express()
-  app.use(express.json())
+  app.use(express.json({ limit: '16kb' }))
 
   // Free discovery endpoints — never charged (payment middleware only guards POST /tools/*).
   const health = (payment: PaymentStatus) => (_req: Request, res: Response) =>

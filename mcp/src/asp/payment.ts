@@ -80,11 +80,14 @@ export async function applyOkxX402(app: Express): Promise<PaymentStatus> {
 
     return { ...base, enabled: true, mode: 'paid', reason: 'OKX x402 active on X Layer.' }
   } catch (e) {
+    // Log the detail server-side; keep the public reason (shown in /health) generic so a
+    // startup error string can never leak internals/creds through the service card.
+    console.error('[asp] OKX x402 init failed:', e)
     return {
       ...base,
       enabled: false,
       mode: 'free',
-      reason: `Free mode (OKX x402 failed to load): ${e instanceof Error ? e.message : String(e)}`,
+      reason: 'Free mode: OKX x402 layer unavailable.',
     }
   }
 }

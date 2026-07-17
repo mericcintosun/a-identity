@@ -38,7 +38,10 @@ type Bundle = {
 export const isAddress = (s: string) => /^0x[0-9a-fA-F]{40}$/.test(s)
 export const asTokenId = (s: string): bigint | null => {
   const m = s.trim().match(/^#?(\d+)$/)
-  return m ? BigInt(m[1]) : null
+  // A uint256 is at most 78 digits; cap here so a giant numeric string can't force an
+  // expensive BigInt parse (defense-in-depth with the gateway's length bound).
+  if (!m || m[1].length > 78) return null
+  return BigInt(m[1])
 }
 
 /** Hard cap on any single on-chain read behind a PAID tool call. */

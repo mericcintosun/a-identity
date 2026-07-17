@@ -38,9 +38,14 @@ contract MerkleAirdrop {
     error InvalidProof();
     error NotOwner();
     error TransferFailed();
+    error ZeroOwner();
 
-    constructor(address _token, bytes32 _merkleRoot) {
-        owner = msg.sender;
+    /// @param _owner The treasury that owns sweep — MUST be the shared 2/2 Gnosis Safe, NOT
+    /// the deployer key. Passing an explicit owner keeps the funded pool under 2/2 control
+    /// instead of the single hot key that broadcast the deploy.
+    constructor(address _token, bytes32 _merkleRoot, address _owner) {
+        if (_owner == address(0)) revert ZeroOwner();
+        owner = _owner;
         token = IERC20(_token);
         merkleRoot = _merkleRoot;
     }
