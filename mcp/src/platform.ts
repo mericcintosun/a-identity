@@ -338,37 +338,58 @@ export function listPlatformAgents(): PlatformAgent[] {
  * Deliberate + human-triggered from the UI, so it stays human-on-the-loop. Without a
  * signer key it returns the exact prepared call and leaves the agent queued.
  */
+/** Agent on-chain ops (anchor / vault deploy) in flight, so a client timeout-retry can't
+ *  fire a second real broadcast for the same agent. Process-local (single-instance deploy). */
+const inFlightAgentOps = new Set<string>()
+
 export async function anchorAgentOnchain(agentId: string, caller?: string) {
   const agent = state.agents.find((a) => a.id === agentId)
   if (!agent) return { error: 'Unknown agent' }
   if (!ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
-
-  const metadataUri =
-    'data:application/json,' +
-    encodeURIComponent(
-      JSON.stringify({ name: agent.name, category: agent.category, standard: 'ERC-8004', app: 'A-Identity' }),
-    )
-
-  const result = await registerAgentOnchain(metadataUri)
-
-  if (result.executed) {
-    agent.onchain = 'registered'
-    agent.onchainTx = result.txHash
-    agent.onchainExplorer = result.explorerUrl
-    agent.onchainAgentId = result.agentId
-    pushActivity(agent, `Anchored on Arc: ERC-8004 id ${result.agentId ?? '?'} (tx ${short(result.txHash)})`)
-    save(state)
+  // Idempotent: an already-anchored agent holds its ERC-8004 id — never register a duplicate.
+  if (agent.onchain === 'registered' && agent.onchainTx) {
+    return {
+      agent: {
+        id: agent.id, onchain: agent.onchain, onchainTx: agent.onchainTx,
+        onchainExplorer: agent.onchainExplorer, onchainAgentId: agent.onchainAgentId,
+      },
+      result: { executed: false, reason: 'Agent is already anchored on-chain', alreadyAnchored: true },
+    }
   }
+  // Guard a concurrent double-broadcast (e.g. a client retrying after a timeout).
+  const opKey = `anchor:${agentId}`
+  if (inFlightAgentOps.has(opKey)) return { error: 'This agent is already being anchored on-chain' }
+  inFlightAgentOps.add(opKey)
+  try {
+    const metadataUri =
+      'data:application/json,' +
+      encodeURIComponent(
+        JSON.stringify({ name: agent.name, category: agent.category, standard: 'ERC-8004', app: 'A-Identity' }),
+      )
 
-  return {
-    agent: {
-      id: agent.id,
-      onchain: agent.onchain,
-      onchainTx: agent.onchainTx,
-      onchainExplorer: agent.onchainExplorer,
-      onchainAgentId: agent.onchainAgentId,
-    },
-    result,
+    const result = await registerAgentOnchain(metadataUri)
+
+    if (result.executed) {
+      agent.onchain = 'registered'
+      agent.onchainTx = result.txHash
+      agent.onchainExplorer = result.explorerUrl
+      agent.onchainAgentId = result.agentId
+      pushActivity(agent, `Anchored on Arc: ERC-8004 id ${result.agentId ?? '?'} (tx ${short(result.txHash)})`)
+      save(state)
+    }
+
+    return {
+      agent: {
+        id: agent.id,
+        onchain: agent.onchain,
+        onchainTx: agent.onchainTx,
+        onchainExplorer: agent.onchainExplorer,
+        onchainAgentId: agent.onchainAgentId,
+      },
+      result,
+    }
+  } finally {
+    inFlightAgentOps.delete(opKey)
   }
 }
 
@@ -483,10 +504,6 @@ export async function getAgentKya(agentId: string) {
  * through the vault (chain-enforced), with the server engine as the pre-check.
  * Owner-only; env-gated behind ARC_SIGNER_KEY.
  */
-/** Agent on-chain ops (vault deploy) in flight, so a client timeout-retry can't fire a
- *  second real deploy + funding for the same agent. Process-local (single-instance deploy). */
-const inFlightAgentOps = new Set<string>()
-
 export async function provisionAgentVault(
   agentId: string,
   opts: { fundUsd?: number; caller?: string; ownerAddress?: string } = {},

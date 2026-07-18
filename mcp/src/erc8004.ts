@@ -123,20 +123,27 @@ export class RpcIdentityProvider implements IdentityProvider {
   ): Promise<AgentIdentity | null> {
     try {
       const client = createPublicClient({ transport: httpTransport(chain.rpcUrl) })
-      const [owner, tokenUri] = await Promise.all([
-        client.readContract({
-          address: chain.registry,
-          abi: ERC721_ABI,
-          functionName: 'ownerOf',
-          args: [tokenId],
-        }) as Promise<`0x${string}`>,
-        client.readContract({
+      // ownerOf is the identity's existence proof (reverts if the token doesn't exist).
+      // tokenURI is best-effort metadata: some ERC-8004 tokens revert / return nothing for
+      // it, and that must NOT make an existing agent unresolvable (this is what hid the
+      // Meridian #849980 showcase from /api/agent).
+      const owner = (await client.readContract({
+        address: chain.registry,
+        abi: ERC721_ABI,
+        functionName: 'ownerOf',
+        args: [tokenId],
+      })) as `0x${string}`
+      let tokenUri = ''
+      try {
+        tokenUri = (await client.readContract({
           address: chain.registry,
           abi: ERC721_ABI,
           functionName: 'tokenURI',
           args: [tokenId],
-        }) as Promise<string>,
-      ])
+        })) as string
+      } catch {
+        /* tokenURI unavailable — resolve from on-chain ownership alone */
+      }
 
       // Fetch registration JSON from tokenURI (display metadata only).
       let domain = ''
@@ -190,26 +197,38 @@ export class RpcIdentityProvider implements IdentityProvider {
         args: [address],
       }) as bigint
       if (balance === 0n) return null
-      // ERC-721 enumerable not guaranteed; try token IDs 1-200 heuristically
-      const total = await client.readContract({
+      // The registry isn't enumerable on Arc (totalSupply reverts), and token ids are large
+      // (e.g. #849980), so a 1..N scan can't find them. Instead read the Transfer(to=address)
+      // logs — `to` is indexed, so this is a cheap filter — and return the newest token this
+      // address still owns (it may have transferred some out since).
+      const logs = await client.getLogs({
         address: chain.registry,
-        abi: ERC721_ABI,
-        functionName: 'totalSupply',
-        args: [],
-      }) as bigint
-      const limit = Number(total < 200n ? total : 200n)
-      for (let i = 1; i <= limit; i++) {
+        event: {
+          type: 'event',
+          name: 'Transfer',
+          inputs: [
+            { name: 'from', type: 'address', indexed: true },
+            { name: 'to', type: 'address', indexed: true },
+            { name: 'tokenId', type: 'uint256', indexed: true },
+          ],
+        },
+        args: { to: address },
+        fromBlock: 0n,
+        toBlock: 'latest',
+      })
+      const tokenIds = [...new Set(logs.map((l) => (l.args as { tokenId?: bigint }).tokenId).filter((t): t is bigint => t !== undefined))].reverse()
+      for (const tokenId of tokenIds) {
         try {
           const owner = await client.readContract({
             address: chain.registry,
             abi: ERC721_ABI,
             functionName: 'ownerOf',
-            args: [BigInt(i)],
+            args: [tokenId],
           }) as `0x${string}`
           if (owner.toLowerCase() === address.toLowerCase()) {
-            return this._readToken(createPublicClient, httpTransport, chain, BigInt(i))
+            return this._readToken(createPublicClient, httpTransport, chain, tokenId)
           }
-        } catch { /* token may not exist */ }
+        } catch { /* burned / moved since the transfer */ }
       }
       return null
     } catch {
