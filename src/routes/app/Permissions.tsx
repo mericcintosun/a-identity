@@ -598,8 +598,20 @@ type VaultState = {
   frozen?: boolean
   spentTodayUsd?: number
   balanceUsd?: number
+  sessionKeyExpiry?: number
+  sessionKeyExpired?: boolean
   explorer?: string
   error?: string
+}
+
+/** Human-readable "expires in ~Xh Ym" for a UNIX-seconds expiry. */
+function untilLabel(expiryUnix?: number): string {
+  if (!expiryUnix) return ''
+  const secs = expiryUnix - Math.floor(Date.now() / 1000)
+  if (secs <= 0) return 'expired'
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  return h > 0 ? `~${h}h ${m}m left` : `~${m}m left`
 }
 
 /**
@@ -612,6 +624,8 @@ function VaultPanel({ agentId }: { agentId: string }) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [fund, setFund] = useState('2')
+  const [sessionHours, setSessionHours] = useState('1')
+  const [busyKey, setBusyKey] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -657,7 +671,29 @@ function VaultPanel({ agentId }: { agentId: string }) {
     }
   }
 
+  const setSessionKey = async (opts: { durationHours?: number; revoke?: boolean }) => {
+    setBusyKey(true)
+    setErr(null)
+    try {
+      const res = await apiFetch('/api/agents/session-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ agentId, ...opts }),
+        timeoutMs: 60_000,
+      })
+      const j = await readJson<{ error?: string; ownerGated?: boolean; reason?: string }>(res)
+      if (!res.ok) { setErr(explainError(res.status, j.error)); return }
+      if (j.ownerGated) setErr(j.reason ?? 'The vault owner must sign this from their own wallet.')
+      await load()
+    } catch {
+      setErr('Could not update the session key (the backend may be waking up, try again).')
+    } finally {
+      setBusyKey(false)
+    }
+  }
+
   const has = !!vault?.vaultAddress
+  const keyActive = has && (vault?.sessionKeyExpiry ?? 0) > 0 && !vault?.sessionKeyExpired
 
   return (
     <section className="mt-4 overflow-hidden rounded-2xl border border-[#7342E2]/25 bg-gradient-to-b from-[#7342E2]/[0.06] to-card p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:p-7">
@@ -707,6 +743,57 @@ function VaultPanel({ agentId }: { agentId: string }) {
           <p className="text-[11px] text-foreground/45">
             The contract enforces the same limits set above. Address payments now settle through it.
           </p>
+
+          {/* Session key: a time-bounded spend authority the human grants the agent. */}
+          <div className="mt-2 rounded-xl border border-foreground/10 bg-background/40 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-semibold text-foreground/70">Session key (bounded authority)</div>
+              {keyActive ? (
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                  active · {untilLabel(vault!.sessionKeyExpiry)}
+                </span>
+              ) : vault!.sessionKeyExpired ? (
+                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-300">expired</span>
+              ) : (
+                <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-bold text-foreground/50">no time limit</span>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-foreground/45">
+              Grant the agent a spend authority scoped to the cap/allowlist above and a <b>time limit</b>.
+              When it expires, the agent's on-chain payments revert until you extend or re-grant it.
+            </p>
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <div>
+                <label className="text-[10px] font-semibold text-foreground/50">Valid for (hours)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={sessionHours}
+                  onChange={(e) => setSessionHours(e.target.value)}
+                  className="mt-1 w-24 rounded-lg border border-foreground/10 bg-card px-3 py-1.5 text-sm outline-none focus:border-[#7342E2]"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setSessionKey({ durationHours: Math.max(0, Number(sessionHours) || 0) })}
+                disabled={busyKey}
+                className="rounded-full bg-[#7342E2] px-3 py-1.5 text-xs font-semibold text-white hover:scale-[1.02] disabled:opacity-50"
+              >
+                {busyKey ? 'Signing…' : keyActive ? 'Extend / re-grant' : 'Grant session key'}
+              </button>
+              {keyActive && (
+                <button
+                  type="button"
+                  onClick={() => setSessionKey({ revoke: true })}
+                  disabled={busyKey}
+                  className="rounded-full border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-500/30 dark:hover:bg-red-500/10"
+                >
+                  Revoke now
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-end gap-3">

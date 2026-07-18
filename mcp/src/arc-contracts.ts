@@ -127,6 +127,11 @@ export const policySetPolicy = (
 export const policySetFrozen = (vault: string, frozen: boolean, env: NodeJS.ProcessEnv = process.env) =>
   arc.policySetFrozen(vault, frozen, env)
 
+/** Owner grants / extends / revokes the agent's session key (UNIX expiry in seconds;
+ *  future = grant/extend, now/past = revoke, 0 = no time bound). */
+export const policySetSessionExpiry = (vault: string, expiryUnix: number, env: NodeJS.ProcessEnv = process.env) =>
+  arc.policySetSessionExpiry(vault, expiryUnix, env)
+
 /** Owner adds/removes a payee from the on-chain allowlist. */
 export const policySetAllowed = (vault: string, payee: string, ok: boolean, env: NodeJS.ProcessEnv = process.env) =>
   arc.policySetAllowed(vault, payee, ok, env)

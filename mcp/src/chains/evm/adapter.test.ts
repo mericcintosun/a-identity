@@ -72,6 +72,13 @@ test('without a signer, policyPay reports no-key (not reverted)', async () => {
   if (res.executed === false) assert.equal(res.reverted, false)
 })
 
+test('without a signer, policySetSessionExpiry reports no-key (not reverted)', async () => {
+  const arc = createEvmAdapter(ARC_CHAIN)
+  const res = await arc.policySetSessionExpiry('0x2222222222222222222222222222222222222222', 1784411598, NO_SIGNER)
+  assert.equal(res.executed, false)
+  if (res.executed === false) assert.equal(res.reverted, false)
+})
+
 test('without a signer, runEscrowDemo returns the prepared lifecycle', async () => {
   const arc = createEvmAdapter(ARC_CHAIN)
   const res = await arc.runEscrowDemo({}, NO_SIGNER)

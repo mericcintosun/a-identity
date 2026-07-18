@@ -512,6 +512,10 @@ export function createEvmAdapter(chain: ChainDescriptor) {
   ) => vaultWrite(vault, 'setPolicy', [usdcUnits(chain, input.dailyCapUsd), usdcUnits(chain, input.autoApproveUsd), input.allowlistEnabled], env)
   const policySetFrozen = (vault: string, frozen: boolean, env: NodeJS.ProcessEnv = process.env) =>
     vaultWrite(vault, 'setFrozen', [frozen], env)
+  /** Grant / extend / revoke the agent's session key by setting the UNIX expiry (seconds).
+   *  A future time grants/extends; `now` (or a past time) revokes; 0 = no time bound. */
+  const policySetSessionExpiry = (vault: string, expiryUnix: number, env: NodeJS.ProcessEnv = process.env) =>
+    vaultWrite(vault, 'setSessionKeyExpiry', [BigInt(Math.max(0, Math.floor(expiryUnix)))], env)
   const policySetAllowed = (vault: string, payee: string, ok: boolean, env: NodeJS.ProcessEnv = process.env) =>
     vaultWrite(vault, 'setAllowed', [payee as Hex, ok], env)
   const policyWithdraw = (vault: string, to: string, amountUsd: number, env: NodeJS.ProcessEnv = process.env) =>
@@ -525,6 +529,11 @@ export function createEvmAdapter(chain: ChainDescriptor) {
       read('owner'), read('operator'), read('dailyCap'), read('autoApproveMax'),
       read('frozen'), read('allowlistEnabled'), read('spentToday'), read('balance'),
     ])
+    // sessionKeyExpiry is newer than the original vault; a vault deployed with the OLD
+    // bytecode has no such getter, so read it tolerantly (defaults to 0 = no time bound)
+    // instead of breaking the whole vault read for pre-existing agents.
+    const sessionKeyExpiry = await read('sessionKeyExpiry').catch(() => 0n)
+    const expiry = Number(sessionKeyExpiry as bigint)
     return {
       vault,
       owner: owner as string,
@@ -535,6 +544,9 @@ export function createEvmAdapter(chain: ChainDescriptor) {
       allowlistEnabled: allowlistEnabled as boolean,
       spentTodayUsd: fromUsdcUnits(chain, spentToday as bigint),
       balanceUsd: fromUsdcUnits(chain, balance as bigint),
+      // Session key: the UNIX expiry (0 = no time bound) + whether it's currently expired.
+      sessionKeyExpiry: expiry,
+      sessionKeyExpired: expiry !== 0 && Math.floor(Date.now() / 1000) > expiry,
       explorer: addressUrl(chain, vault),
     }
   }
@@ -616,6 +628,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     policySetPolicy,
     policySetFrozen,
     policySetAllowed,
+    policySetSessionExpiry,
     policyWithdraw,
     readVault,
     recordValidation,

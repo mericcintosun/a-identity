@@ -198,6 +198,22 @@ is attested on Arc's real **ERC-8004 ValidationRegistry** (`validationRequest` +
 `validationResponse`=100, tag `"kya"`, readable via `getSummary`). Honest by design: an
 operator/wallet-proof attestation, not a third-party audit.
 
+### Session key — bounded authority with a time limit
+
+An agent's on-chain policy vault can be granted a **session key**: the `operator` (the agent's
+signer) is authorized by the human `owner`, scoped by the spend cap and payee allowlist and — now
+— by **time**. The owner grants the key for a duration; the agent acts on its own within those
+bounds; when the key **expires**, its on-chain `pay` reverts (`SessionKeyExpired`) until the owner
+extends, re-grants, or revokes it (`ownerPay` overrides are never time-bound). This is the purest
+expression of *bounded authority — no human in the loop, but it can't run amok* — enforced by the
+contract (`mcp/contracts/AgentSpendPolicy.sol` `sessionKeyExpiry` / `setSessionKeyExpiry`), not a
+server. Grant it from **Permissions → On-chain Policy Vault → Session key**.
+
+Try it: `cd mcp && node --env-file=.env scripts/test-session.mjs` runs the full lifecycle on real
+Arc testnet — grant → pay within the window → the key expires → the agent's pay reverts → the owner
+extends → pays again → revoke → reverts. (The real-ERC-4337 / Pimlico-bundler session key is the
+next phase.)
+
 ### Circle Agent Wallet — hosted wallet-layer screening
 
 An agent can also be given a **Circle Agent Wallet** (Developer-Controlled, on ARC-TESTNET):

@@ -21,7 +21,7 @@ import { randomBytes } from 'node:crypto'
 import {
   registerAgentOnchain, payUsdcOnchain, payUsdcWithMemoOnchain, ARC_EXPLORER,
   deployPolicyVault, policyPay, policyOwnerPay, readPolicyVault,
-  policySetPolicy, policySetFrozen, policySetAllowed,
+  policySetPolicy, policySetFrozen, policySetAllowed, policySetSessionExpiry,
   recordValidationOnchain, readValidation,
 } from './arc-contracts.js'
 import { createAgentWallet, circlePay, readCircleWallet } from './circle-agent.js'
@@ -599,6 +599,43 @@ export async function getAgentVault(agentId: string) {
   return { vaultAddress: agent.vaultAddress, ...live }
 }
 
+/**
+ * Grant / extend / revoke the agent's on-chain SESSION KEY: set the UNIX time after which
+ * the agent's `pay` reverts (SessionKeyExpired). Owner-only on-chain; the server can sign it
+ * only when it is the vault owner (owner==operator) — otherwise it's ownerGated (the human
+ * signs from their own wallet), mirroring syncVaultPolicy. Revoke sets the expiry to now.
+ */
+export async function grantAgentSessionKey(
+  agentId: string,
+  input: { durationHours?: number; expiryUnix?: number; revoke?: boolean },
+  caller?: string,
+): Promise<{ granted: boolean; reason?: string; ownerGated?: boolean; sessionKeyExpiry?: number; expiresInSeconds?: number; txHash?: string; explorerUrl?: string }> {
+  const agent = state.agents.find((a) => a.id === agentId)
+  if (!agent) return { granted: false, reason: 'Unknown agent' }
+  if (!ownsAgent(agent, caller)) return { granted: false, reason: 'Forbidden: not the agent owner' }
+  if (!agent.vaultAddress) return { granted: false, reason: 'Agent has no on-chain vault. Provision a vault first.' }
+
+  const now = Math.floor(Date.now() / 1000)
+  let expiry: number
+  if (input.revoke) expiry = now
+  else if (typeof input.expiryUnix === 'number' && input.expiryUnix >= 0) expiry = Math.floor(input.expiryUnix)
+  else if (typeof input.durationHours === 'number' && input.durationHours > 0) expiry = now + Math.floor(input.durationHours * 3600)
+  else return { granted: false, reason: 'Provide durationHours (>0), an expiryUnix, or revoke:true.' }
+
+  const res = await policySetSessionExpiry(agent.vaultAddress, expiry)
+  if (res.executed) {
+    pushActivity(agent, input.revoke
+      ? `Session key revoked on-chain (tx ${short(res.txHash)})`
+      : `Session key granted, expires ${new Date(expiry * 1000).toISOString()} (tx ${short(res.txHash)})`)
+    save(state)
+    return { granted: true, sessionKeyExpiry: expiry, expiresInSeconds: input.revoke ? 0 : Math.max(0, expiry - now), txHash: res.txHash, explorerUrl: res.explorerUrl }
+  }
+  if (res.reverted && res.reason === 'NotOwner') {
+    return { granted: false, ownerGated: true, sessionKeyExpiry: expiry, reason: 'The vault owner must sign this from their own wallet (owner ≠ operator).' }
+  }
+  return { granted: false, reason: res.reverted ? res.reason : (res.reason ?? 'no signer configured') }
+}
+
 export type VaultSyncResult = {
   synced: boolean
   reason?: string
@@ -926,7 +963,7 @@ export function agentReputation(agentId: string) {
 /** AgentSpendPolicy error names that are authoritative policy rejections (vs an
  *  infra error, which we fall back on rather than treat as a "no"). */
 const VAULT_POLICY_ERRORS = new Set([
-  'IsFrozen', 'PayeeNotAllowed', 'AboveAutoApprove', 'DailyCapExceeded', 'ZeroAddress', 'TransferFailed',
+  'IsFrozen', 'SessionKeyExpired', 'PayeeNotAllowed', 'AboveAutoApprove', 'DailyCapExceeded', 'ZeroAddress', 'TransferFailed',
 ])
 
 export function createInstruction(input: {

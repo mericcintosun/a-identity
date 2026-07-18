@@ -13,9 +13,16 @@ pragma solidity ^0.8.24;
 ///
 /// Rules enforced by `pay`:
 ///   - `frozen`            — when true, the agent cannot spend at all
+///   - `sessionKeyExpiry`  — the agent (session key) may only pay until this UNIX time (0 = no expiry)
 ///   - `allowlistEnabled`  — when true, the payee must be on the allowlist
 ///   - `autoApproveMax`    — a single agent payment above this is rejected (0 = no ceiling)
 ///   - `dailyCap`          — cumulative agent spend per UTC day is capped (0 = no cap)
+///
+/// The `operator` is the agent's SESSION KEY: a scoped signer the human owner grants,
+/// bounded by the cap/allowlist and — via `sessionKeyExpiry` — by time. When the key
+/// expires the agent's `pay` reverts on-chain; the human can extend it, revoke it (set the
+/// expiry to now), or settle over it with `ownerPay`. This is the bounded-authority,
+/// no-human-in-the-loop-but-cannot-run-amok primitive, enforced by the contract.
 ///
 /// All amounts are in USDC's 6-decimal ERC-20 units (e.g. $1.00 = 1_000_000),
 /// matching the `payUsdcOnchain` convention in the backend. USDC on Arc is the
@@ -41,6 +48,10 @@ contract AgentSpendPolicy {
     bool public frozen;
     /// @notice When true, `pay` requires the payee to be on the allowlist.
     bool public allowlistEnabled;
+    /// @notice UNIX time after which the agent (session key) can no longer `pay`.
+    /// 0 = no expiry (unbounded, backward-compatible). The owner override (`ownerPay`)
+    /// is never time-bound; the owner can extend, or revoke by setting this to `now`.
+    uint256 public sessionKeyExpiry;
 
     /// @notice UTC-day index => units spent by the agent that day.
     mapping(uint256 => uint256) public spentOnDay;
@@ -52,11 +63,13 @@ contract AgentSpendPolicy {
     event FrozenSet(bool frozen);
     event AllowlistSet(address indexed payee, bool allowed);
     event OperatorSet(address indexed operator);
+    event SessionKeyExpirySet(uint256 expiry);
     event Withdrawn(address indexed to, uint256 amount);
 
     error NotOwner();
     error NotOperator();
     error IsFrozen();
+    error SessionKeyExpired();
     error PayeeNotAllowed();
     error AboveAutoApprove();
     error DailyCapExceeded();
@@ -108,6 +121,7 @@ contract AgentSpendPolicy {
     function pay(address to, uint256 amount) external onlyOperator {
         if (to == address(0)) revert ZeroAddress();
         if (frozen) revert IsFrozen();
+        if (sessionKeyExpiry != 0 && block.timestamp > sessionKeyExpiry) revert SessionKeyExpired();
         if (allowlistEnabled && !allowed[to]) revert PayeeNotAllowed();
         if (autoApproveMax != 0 && amount > autoApproveMax) revert AboveAutoApprove();
         uint256 d = today();
@@ -145,6 +159,14 @@ contract AgentSpendPolicy {
     function setOperator(address _operator) external onlyOwner {
         operator = _operator;
         emit OperatorSet(_operator);
+    }
+
+    /// @notice Grant / extend / revoke the agent's session key by setting the UNIX time
+    /// after which its `pay` reverts. Future time = grant/extend; `block.timestamp` (or a
+    /// past time) = revoke now; 0 = no time bound. Owner-only; `ownerPay` is never affected.
+    function setSessionKeyExpiry(uint256 _expiry) external onlyOwner {
+        sessionKeyExpiry = _expiry;
+        emit SessionKeyExpirySet(_expiry);
     }
 
     function setFrozen(bool _frozen) external onlyOwner {

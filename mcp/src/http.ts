@@ -39,6 +39,7 @@ import {
   updateAgentPermissions,
   provisionAgentVault,
   getAgentVault,
+  grantAgentSessionKey,
   provisionCircleWallet,
   getAgentCircleWallet,
   startKyaChallenge,
@@ -768,6 +769,22 @@ const server = http.createServer(async (req, res) => {
     // fundUsd is deposited from the shared server signer — cap it like the other demo spends.
     const r = await provisionAgentVault(body.agentId, { fundUsd: cappedDemoUsd(body.fundUsd), caller: callerId, ownerAddress: body.ownerAddress })
     if ('error' in r && typeof r.error === 'string') { sendJson(res, errStatus(r.error), r); return }
+    sendJson(res, 200, r)
+    return
+  }
+  // Grant / extend / revoke the agent's on-chain SESSION KEY (a time-bounded spend
+  // authority on the vault). Owner-only; env-gated. Body: { agentId, durationHours | revoke }.
+  if (req.method === 'POST' && url.pathname === '/api/agents/session-key') {
+    const body = (await readBody(req).catch(() => null)) as { agentId?: string; durationHours?: number; expiryUnix?: number; revoke?: boolean } | null
+    if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
+    // Bound the duration so a caller can't set a nonsensical far-future expiry (max ~30 days).
+    const durationHours = typeof body.durationHours === 'number' && Number.isFinite(body.durationHours)
+      ? Math.min(Math.max(body.durationHours, 0), 24 * 30)
+      : undefined
+    const r = await grantAgentSessionKey(body.agentId, { durationHours, expiryUnix: body.expiryUnix, revoke: body.revoke === true }, callerId)
+    if (r.reason && !r.granted && !r.ownerGated && (r.reason.startsWith('Forbidden') || r.reason.startsWith('Unknown'))) {
+      sendJson(res, errStatus(r.reason), r); return
+    }
     sendJson(res, 200, r)
     return
   }
