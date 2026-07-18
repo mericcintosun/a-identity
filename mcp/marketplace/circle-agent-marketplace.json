@@ -3,7 +3,7 @@
   "name": "A-Identity — Agent Trust Oracle",
   "slug": "a-identity-trust-oracle",
   "positioning": "The identity & reputation oracle for the agent economy.",
-  "description": "Before one AI agent pays another, it calls A-Identity to verify the counterparty. Four pay-per-call x402 tools over a live on-chain engine: ERC-8004 identity + KYA, a deterministic 0–1000 reputation score from real on-chain settlements, and a pre-transaction ALLOW / WARN / DENY risk verdict. Every number is reproducible and every settlement is on-chain.",
+  "description": "Before one AI agent pays another, it calls A-Identity to verify the counterparty. Four pay-per-call x402 tools over a live on-chain engine: ERC-8004 identity + KYA, a deterministic 0-1000 reputation score from real on-chain settlements, and a pre-transaction ALLOW / WARN / DENY risk verdict. Every number is reproducible and every settlement is on-chain.",
   "type": "x402",
   "url": "https://a-identity-asp.onrender.com",
   "provider": {
@@ -33,14 +33,14 @@
       "endpoint": "/tools/verify_agent",
       "price": "$0.001",
       "description": "Verify an AI agent's identity: ERC-8004 on-chain registration + KYA (wallet-control) status.",
-      "input": { "agentId": "string — platform id, ERC-8004 token id (e.g. \"#849980\"), or owner 0x address" }
+      "input": { "agentId": "string. A platform id, an ERC-8004 token id (e.g. \"#849980\"), or an owner 0x address" }
     },
     {
       "name": "reputation_score",
       "method": "POST",
       "endpoint": "/tools/reputation_score",
       "price": "$0.002",
-      "description": "Deterministic 0–1000 reputation score computed from real on-chain settlements, KYA, and tenure.",
+      "description": "Deterministic 0-1000 reputation score computed from real on-chain settlements, KYA, and tenure.",
       "input": { "agentId": "string" }
     },
     {
