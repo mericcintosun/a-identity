@@ -17,7 +17,7 @@ import { CHAIN_CONFIG } from './data.js'
 import { createIdentityProvider } from './erc8004.js'
 import { getArcStatus } from './arc.js'
 import { getCircleStatus } from './circle.js'
-import { readArcContracts, registerAgentOnchain, createJobOnchain, runEscrowJobDemo, readMemosOnchain, rejectJobOnchain, claimJobRefundOnchain, readJobOnchain } from './arc-contracts.js'
+import { readArcContracts, registerAgentOnchain, createJobOnchain, runEscrowJobDemo, readMemosOnchain, rejectJobOnchain, claimJobRefundOnchain, readJobOnchain, payUsdcBatchOnchain } from './arc-contracts.js'
 import {
   agentPolicy,
   agentReputation,
@@ -675,6 +675,26 @@ const server = http.createServer(async (req, res) => {
       amountUsd: cappedDemoUsd(body?.amountUsd, 0.05),
       budgetUsd: cappedDemoUsd(body?.budgetUsd, MAX_DEMO_USD),
     }))
+    return
+  }
+
+  // ── Batched settlement (bonus E): settle N USDC transfers ATOMICALLY in one Arc tx via
+  //    Multicall3From (EOA preserved). Demonstrates Arc-native batching / high-frequency
+  //    agent payments. Env-gated; prepared without a key; demo amounts/count are capped.
+  if (req.method === 'POST' && url.pathname === '/api/arc/batch-demo') {
+    const body = (await readBody(req).catch(() => null)) as { count?: number; amountUsd?: number } | null
+    const count = Number.isFinite(body?.count) ? Math.min(Math.max(Math.floor(body!.count!), 1), 5) : 3
+    const amountUsd = cappedDemoUsd(body?.amountUsd, 0.05) ?? 0.01
+    // Distinct demo payees, so the batch shows "one Arc tx, many recipients".
+    const demoPayees = [
+      '0x000000000000000000000000000000000000dEaD',
+      '0x000000000000000000000000000000000000bEEF',
+      '0x0000000000000000000000000000000000000A11',
+      '0x0000000000000000000000000000000000000B22',
+      '0x0000000000000000000000000000000000000C33',
+    ]
+    const payments = Array.from({ length: count }, (_, i) => ({ to: demoPayees[i % demoPayees.length], amountUsd }))
+    sendJson(res, 200, await payUsdcBatchOnchain(payments))
     return
   }
 

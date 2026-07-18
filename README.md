@@ -155,6 +155,20 @@ Try it: `cd mcp && node --env-file=.env scripts/test-memo.mjs` settles $0.01 thr
 precompile on real Arc testnet, then reads the emitted event back by its `memoId` to prove the
 reason is provably on-chain. Read it live: `GET /api/arc/memos?memoId=<0x…>` (or `?sender=<0x…>`).
 
+### Batched settlement in one Arc tx — Multicall3From
+
+An agent can pay a whole burst of USDC transfers in a single, all-or-nothing Arc transaction
+through the predeployed `Multicall3From` precompile (`0x522f…`): `aggregate3(...)` routes each
+transfer via `CallFrom`, so the wallet stays `msg.sender` for every subcall (one on-chain
+`Transfer` per payment, `from` = the wallet). This is Arc-native batching for high-frequency
+agent payments. `allowFailure=false`, so the batch is atomic.
+→ `mcp/src/chains/evm/adapter.ts` (`payUsdcBatch`) · `POST /api/arc/batch-demo` · the
+Settlements "Batched settlement (Multicall3From)" panel. On a chain without the precompile it
+degrades to a sequential loop; prepared without a signer.
+
+Try it: `cd mcp && node --env-file=.env scripts/test-batch.mjs` settles three USDC transfers in
+one tx and verifies the three `Transfer` events, each with `from` set to your wallet.
+
 ### Dispute-safe agent commerce — ERC-8183 escrow refunds
 
 When an agent hires another through the **ERC-8183 escrow**, the money isn't a blind prepay: the

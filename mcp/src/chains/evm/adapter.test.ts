@@ -125,6 +125,31 @@ test('without a signer, claimJobRefund returns the exact prepared claimRefund ca
   }
 })
 
+test('without a signer, payUsdcBatch returns the prepared Multicall3From call (Arc)', async () => {
+  const arc = createEvmAdapter(ARC_CHAIN)
+  const res = await arc.payUsdcBatch([
+    { to: '0x1111111111111111111111111111111111111111', amountUsd: 0.01 },
+    { to: '0x2222222222222222222222222222222222222222', amountUsd: 0.02 },
+  ], NO_SIGNER)
+  assert.equal(res.executed, false)
+  assert.ok('contract' in res) // prepared, not a revert
+  if (res.executed === false && 'contract' in res) {
+    assert.equal(res.contract, '0x522fAf9A91c41c443c66765030741e4AaCe147D0')
+    assert.match(res.function as string, /^aggregate3/)
+  }
+})
+
+test('on a chain without Multicall3From, payUsdcBatch prepares a sequential transfer loop', async () => {
+  const base = getChainById('base')! // no contracts.multicall3From
+  const adapter = createEvmAdapter(base)
+  const res = await adapter.payUsdcBatch([{ to: '0x1111111111111111111111111111111111111111', amountUsd: 0.01 }], NO_SIGNER)
+  assert.equal(res.executed, false)
+  if (res.executed === false && 'contract' in res) {
+    assert.equal((res.contract as string).toLowerCase(), base.contracts.usdc!.toLowerCase())
+    assert.match(res.function as string, /^transfer/)
+  }
+})
+
 test('the adapter constructs for a planned EVM chain (Base)', () => {
   const base = getChainById('base')!
   const adapter = createEvmAdapter(base)

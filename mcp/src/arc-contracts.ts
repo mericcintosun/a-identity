@@ -102,6 +102,13 @@ export const readMemosOnchain = (
   env: NodeJS.ProcessEnv = process.env,
 ) => arc.readMemos(filter, env)
 
+/** Settle many USDC transfers atomically in ONE Arc tx via Multicall3From (EOA preserved).
+ *  Falls back to a sequential loop on a chain without the precompile; prepared without a key. */
+export const payUsdcBatchOnchain = (
+  payments: { to: string; amountUsd: number }[],
+  env: NodeJS.ProcessEnv = process.env,
+) => arc.payUsdcBatch(payments, env)
+
 /** Deploy an AgentSpendPolicy vault for an agent (owner=human, operator=agent signer). */
 export const deployPolicyVault = (
   input: { owner?: string; operator?: string; dailyCapUsd: number; autoApproveUsd: number },

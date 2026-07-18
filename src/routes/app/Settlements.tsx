@@ -4,6 +4,7 @@ import { authHeaders } from '../../store/auth'
 import AutopilotPanel from '../../components/app/AutopilotPanel'
 import TrustOraclePanel from '../../components/app/TrustOraclePanel'
 import SessionKeyPanel from '../../components/app/SessionKeyPanel'
+import BatchPanel from '../../components/app/BatchPanel'
 import X402Panel from '../../components/app/X402Panel'
 import NanopayPanel from '../../components/app/NanopayPanel'
 import EscrowPanel from '../../components/app/EscrowPanel'
@@ -366,6 +367,7 @@ export default function Settlements() {
       <AutopilotPanel />
       <TrustOraclePanel />
       <SessionKeyPanel />
+      <BatchPanel />
       <X402Panel />
       <NanopayPanel />
       <EscrowPanel />

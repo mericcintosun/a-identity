@@ -28,6 +28,9 @@ export interface ChainContracts {
    *  only on chains that ship it (Arc). Absent → settlements fall back to a bare
    *  USDC transfer with no memo. */
   memo?: string
+  /** Arc's predeployed `Multicall3From` precompile: batches many contract calls into
+   *  one tx, EOA preserved via `CallFrom`. Present only on chains that ship it (Arc). */
+  multicall3From?: string
 }
 
 /**

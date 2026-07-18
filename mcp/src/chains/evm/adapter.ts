@@ -28,7 +28,7 @@ import {
   txUrl,
   addressUrl,
 } from './client.js'
-import { IDENTITY_ABI, ERC20_ABI, COMMERCE_ABI, VALIDATION_ABI, MEMO_ABI, JOB_STATUS, ZERO_ADDRESS, ZERO_HASH } from './abis.js'
+import { IDENTITY_ABI, ERC20_ABI, COMMERCE_ABI, VALIDATION_ABI, MEMO_ABI, MULTICALL3_FROM_ABI, JOB_STATUS, ZERO_ADDRESS, ZERO_HASH } from './abis.js'
 import { encodeMemo, decodeMemo, type MemoInput } from './memo.js'
 import { AgentSpendPolicyAbi, AgentSpendPolicyBytecode } from '../../contracts/AgentSpendPolicy.js'
 
@@ -50,6 +50,8 @@ export function createEvmAdapter(chain: ChainDescriptor) {
   // Arc-only: the predeployed Memo precompile. Undefined on chains that don't ship it,
   // in which case memo-wrapped settlement cleanly degrades to a bare USDC transfer.
   const memoContract = c.memo as Hex | undefined
+  // Arc-only: the predeployed Multicall3From precompile (batched transactions).
+  const multicall3From = c.multicall3From as Hex | undefined
 
   const publicClient = (env: NodeJS.ProcessEnv) => evmPublicClient(chain, env)
   const walletClient = (env: NodeJS.ProcessEnv) => evmWalletClient(chain, env)
@@ -462,6 +464,59 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     return { supported: true, contract: memoContract, fromBlock: fromBlock.toString(), toBlock: latest.toString(), memos }
   }
 
+  // ── batched settlement: Arc `Multicall3From` precompile ─────────────────────────
+  /**
+   * Settle many USDC transfers ATOMICALLY in one Arc tx via `Multicall3From.aggregate3`,
+   * each subcall routed through `CallFrom` so our EOA stays `msg.sender` (one USDC
+   * `Transfer` per payment, `from` = the signer). `allowFailure=false`, so a batch is
+   * all-or-nothing. Additive + credential-gated: no `contracts.multicall3From` on this
+   * chain → falls back to a sequential loop of bare transfers; no signer → prepared. Hardened
+   * like payUsdcWithMemo (try/catch + receipt.status, never a false "settled").
+   */
+  async function payUsdcBatch(
+    payments: { to: string; amountUsd: number }[],
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<Prepared | (Executed & { count: number; totalUsd: number }) | { executed: false; reverted: true; reason: string }> {
+    const clean = payments.filter((p) => p && typeof p.to === 'string' && Number.isFinite(p.amountUsd) && p.amountUsd > 0)
+    const totalUsd = clean.reduce((s, p) => s + p.amountUsd, 0)
+    const { encodeFunctionData } = await import('viem')
+    const calls = clean.map((p) => ({
+      target: usdc,
+      allowFailure: false,
+      callData: encodeFunctionData({ abi: ERC20_ABI, functionName: 'transfer', args: [p.to as Hex, usdcUnits(chain, p.amountUsd)] }),
+    }))
+    const signer = await walletClient(env)
+    if (!signer) {
+      return {
+        executed: false,
+        contract: multicall3From ?? usdc,
+        function: multicall3From ? 'aggregate3((address target, bool allowFailure, bytes callData)[])' : 'transfer(address to, uint256 amount) [x' + clean.length + ']',
+        args: [calls],
+        reason: `No ${chain.signerEnvVar ?? 'signer'} set. This settles ${clean.length} USDC transfers ${multicall3From ? 'atomically in one Arc tx (Multicall3From)' : 'sequentially'}. Fund a wallet and export the key to broadcast.`,
+      }
+    }
+    if (clean.length === 0) return { executed: false, reverted: true, reason: 'no valid payments in the batch' }
+    const client = await publicClient(env)
+    try {
+      // No Multicall3From on this chain → fall back to a sequential loop of transfers.
+      if (!multicall3From) {
+        let last: Hex = '0x' as Hex
+        for (const p of clean) {
+          last = await signer.client.writeContract({ address: usdc, abi: ERC20_ABI, functionName: 'transfer', args: [p.to as Hex, usdcUnits(chain, p.amountUsd)] })
+          const r = await client.waitForTransactionReceipt({ hash: last })
+          if (r.status !== 'success') return { executed: false, reverted: true, reason: `a transfer reverted (tx ${last})` }
+        }
+        return { executed: true, txHash: last, explorerUrl: tx(last), count: clean.length, totalUsd }
+      }
+      const hash = await signer.client.writeContract({ address: multicall3From, abi: MULTICALL3_FROM_ABI, functionName: 'aggregate3', args: [calls] })
+      const receipt = await client.waitForTransactionReceipt({ hash })
+      if (receipt.status !== 'success') return { executed: false, reverted: true, reason: `batch settlement reverted on-chain (tx ${hash})` }
+      return { executed: true, txHash: hash, explorerUrl: tx(hash), count: clean.length, totalUsd }
+    } catch (err) {
+      return { executed: false, reverted: true, reason: await revertReason(err) }
+    }
+  }
+
   // ── on-chain spend policy vault (AgentSpendPolicy) ──────────────────────────────
   async function deployVault(
     input: { owner?: string; operator?: string; dailyCapUsd: number; autoApproveUsd: number },
@@ -621,6 +676,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     readJob,
     payUsdc,
     payUsdcWithMemo,
+    payUsdcBatch,
     readMemos,
     deployVault,
     policyPay,

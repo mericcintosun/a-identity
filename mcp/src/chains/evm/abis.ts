@@ -130,5 +130,26 @@ export const MEMO_ABI = [
   ] },
 ] as const
 
+/**
+ * Arc `Multicall3From` precompile (batched transactions). `aggregate3(Call3[])` runs many
+ * subcalls in ONE Arc tx, each routed through `CallFrom` so the EOA stays `msg.sender`
+ * (a batch of USDC transfers emits one `Transfer` per subcall, `from` = the caller's wallet).
+ * Arc-specific: only wired for chains whose descriptor carries a `contracts.multicall3From`.
+ */
+export const MULTICALL3_FROM_ABI = [
+  { type: 'function', name: 'aggregate3', stateMutability: 'payable', inputs: [
+    { name: 'calls', type: 'tuple[]', components: [
+      { name: 'target', type: 'address' },
+      { name: 'allowFailure', type: 'bool' },
+      { name: 'callData', type: 'bytes' },
+    ] },
+  ], outputs: [
+    { name: 'returnData', type: 'tuple[]', components: [
+      { name: 'success', type: 'bool' },
+      { name: 'returnData', type: 'bytes' },
+    ] },
+  ] },
+] as const
+
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
 export const ZERO_HASH = ('0x' + '0'.repeat(64)) as `0x${string}`
