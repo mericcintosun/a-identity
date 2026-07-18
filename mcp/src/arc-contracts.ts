@@ -57,11 +57,27 @@ export const createJobOnchain = (
   env: NodeJS.ProcessEnv = process.env,
 ) => arc.createJob(input, env)
 
-/** Run the FULL ERC-8183 escrow lifecycle in one shot (6 real txs). Prepared without a key. */
+/**
+ * Run the FULL ERC-8183 escrow lifecycle in one shot (6 real txs). Prepared without a key.
+ * `outcome: 'complete'` (default) releases the escrow to the provider on delivery;
+ * `outcome: 'refund'` disputes the deliverable and refunds the client (buyer protection).
+ */
 export const runEscrowJobDemo = (
-  input: { budgetUsd?: number; description?: string } = {},
+  input: { budgetUsd?: number; description?: string; outcome?: 'complete' | 'refund' } = {},
   env: NodeJS.ProcessEnv = process.env,
 ) => arc.runEscrowDemo(input, env)
+
+/** Evaluator disputes a job: rejects the deliverable, refunding the client on-chain. */
+export const rejectJobOnchain = (jobId: bigint, reason: string, env: NodeJS.ProcessEnv = process.env) =>
+  arc.rejectJob(jobId, reason, env)
+
+/** Reclaim escrow for the client after a job's deadline (expiry refund). */
+export const claimJobRefundOnchain = (jobId: bigint, env: NodeJS.ProcessEnv = process.env) =>
+  arc.claimJobRefund(jobId, env)
+
+/** Read a job's live on-chain state (status, parties, budget). No key needed. */
+export const readJobOnchain = (jobId: bigint, env: NodeJS.ProcessEnv = process.env) =>
+  arc.readJob(jobId, env)
 
 /** Settle a payment in real USDC on Arc (ERC-20 transfer). Prepared without a key. */
 export const payUsdcOnchain = (to: string, amountUsd: number, env: NodeJS.ProcessEnv = process.env) =>

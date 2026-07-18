@@ -46,6 +46,16 @@ export const COMMERCE_ABI = [
   { type: 'function', name: 'complete', stateMutability: 'nonpayable', inputs: [
     { name: 'jobId', type: 'uint256' }, { name: 'reason', type: 'bytes32' }, { name: 'optParams', type: 'bytes' },
   ], outputs: [] },
+  // Refund/dispute path: the evaluator rejects a Funded/Submitted deliverable and the
+  // escrowed budget is refunded to the client in the same tx (buyer protection).
+  { type: 'function', name: 'reject', stateMutability: 'nonpayable', inputs: [
+    { name: 'jobId', type: 'uint256' }, { name: 'reason', type: 'bytes32' }, { name: 'optParams', type: 'bytes' },
+  ], outputs: [] },
+  // Expiry reclaim: after the deadline passes on a Funded/Submitted job, the escrow is
+  // returned to the client (callable by anyone — the provider never delivered).
+  { type: 'function', name: 'claimRefund', stateMutability: 'nonpayable', inputs: [
+    { name: 'jobId', type: 'uint256' },
+  ], outputs: [] },
   { type: 'function', name: 'getJob', stateMutability: 'view', inputs: [{ name: 'jobId', type: 'uint256' }], outputs: [
     { type: 'tuple', components: [
       { name: 'id', type: 'uint256' }, { name: 'client', type: 'address' }, { name: 'provider', type: 'address' },
@@ -57,6 +67,12 @@ export const COMMERCE_ABI = [
     { name: 'jobId', type: 'uint256', indexed: true }, { name: 'client', type: 'address', indexed: true },
     { name: 'provider', type: 'address', indexed: true }, { name: 'evaluator', type: 'address', indexed: false },
     { name: 'expiredAt', type: 'uint256', indexed: false }, { name: 'hook', type: 'address', indexed: false },
+  ] },
+  { type: 'event', name: 'JobRejected', inputs: [
+    { name: 'jobId', type: 'uint256', indexed: true }, { name: 'by', type: 'address', indexed: true }, { name: 'reason', type: 'bytes32', indexed: false },
+  ] },
+  { type: 'event', name: 'Refunded', inputs: [
+    { name: 'jobId', type: 'uint256', indexed: true }, { name: 'client', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false },
   ] },
 ] as const
 

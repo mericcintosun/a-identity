@@ -78,7 +78,41 @@ test('without a signer, runEscrowDemo returns the prepared lifecycle', async () 
   assert.equal(res.executed, false)
   if (res.executed === false) {
     assert.equal(res.contract, '0x0747EEf0706327138c69792bF28Cd525089e4583')
+    assert.equal(res.outcome, 'complete')
     assert.deepEqual(res.lifecycle, ['createJob', 'setBudget', 'approve(USDC)', 'fund', 'submit', 'complete'])
+  }
+})
+
+test('runEscrowDemo with outcome=refund prepares a lifecycle that ends in reject', async () => {
+  const arc = createEvmAdapter(ARC_CHAIN)
+  const res = await arc.runEscrowDemo({ outcome: 'refund' }, NO_SIGNER)
+  assert.equal(res.executed, false)
+  if (res.executed === false) {
+    assert.equal(res.outcome, 'refund')
+    assert.deepEqual(res.lifecycle, ['createJob', 'setBudget', 'approve(USDC)', 'fund', 'submit', 'reject'])
+  }
+})
+
+test('without a signer, rejectJob returns the exact prepared reject call', async () => {
+  const arc = createEvmAdapter(ARC_CHAIN)
+  const res = await arc.rejectJob(42n, 'bad deliverable', NO_SIGNER)
+  assert.equal(res.executed, false)
+  if (res.executed === false) {
+    assert.equal(res.contract, '0x0747EEf0706327138c69792bF28Cd525089e4583')
+    assert.equal(res.function, 'reject(uint256 jobId, bytes32 reason, bytes optParams)')
+    assert.equal(res.args[0], '42')
+    assert.match(res.args[1] as string, /^0x[0-9a-f]{64}$/) // reason hash
+  }
+})
+
+test('without a signer, claimJobRefund returns the exact prepared claimRefund call', async () => {
+  const arc = createEvmAdapter(ARC_CHAIN)
+  const res = await arc.claimJobRefund(42n, NO_SIGNER)
+  assert.equal(res.executed, false)
+  if (res.executed === false) {
+    assert.equal(res.contract, '0x0747EEf0706327138c69792bF28Cd525089e4583')
+    assert.equal(res.function, 'claimRefund(uint256 jobId)')
+    assert.deepEqual(res.args, ['42'])
   }
 })
 

@@ -17,7 +17,7 @@ import { CHAIN_CONFIG } from './data.js'
 import { createIdentityProvider } from './erc8004.js'
 import { getArcStatus } from './arc.js'
 import { getCircleStatus } from './circle.js'
-import { readArcContracts, registerAgentOnchain, createJobOnchain, runEscrowJobDemo, readMemosOnchain } from './arc-contracts.js'
+import { readArcContracts, registerAgentOnchain, createJobOnchain, runEscrowJobDemo, readMemosOnchain, rejectJobOnchain, claimJobRefundOnchain, readJobOnchain } from './arc-contracts.js'
 import {
   agentPolicy,
   agentReputation,
@@ -214,6 +214,15 @@ function clampUsd(v: unknown, max: number, fallback: number): number {
 const MAX_DEMO_USD = 5
 function cappedDemoUsd(v: unknown, max = MAX_DEMO_USD): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(0, v)) : undefined
+}
+
+/** Parse a caller-supplied ERC-8183 jobId (string or number) into a non-negative bigint,
+ *  or null if it isn't a valid non-negative integer. Bounds the value so a malformed id
+ *  can't reach the chain layer. */
+function jobIdFromInput(v: unknown): bigint | null {
+  if (typeof v === 'number') return Number.isInteger(v) && v >= 0 ? BigInt(v) : null
+  if (typeof v === 'string' && /^\d+$/.test(v.trim())) return BigInt(v.trim())
+  return null
 }
 
 function sendJson(res: http.ServerResponse, status: number, body: unknown) {
@@ -590,10 +599,37 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
-  // ── One-click ERC-8183 escrow lifecycle demo (create→…→complete, real txs) ────
+  // ── One-click ERC-8183 lifecycle demo: complete (release) OR refund (dispute) ──
   if (req.method === 'POST' && url.pathname === '/api/arc/job-demo') {
-    const body = (await readBody(req).catch(() => null)) as { budgetUsd?: number; description?: string } | null
-    sendJson(res, 200, await runEscrowJobDemo({ budgetUsd: body?.budgetUsd, description: body?.description }))
+    const body = (await readBody(req).catch(() => null)) as { budgetUsd?: number; description?: string; outcome?: string } | null
+    const outcome = body?.outcome === 'refund' ? 'refund' : 'complete'
+    sendJson(res, 200, await runEscrowJobDemo({ budgetUsd: body?.budgetUsd, description: body?.description, outcome }))
+    return
+  }
+
+  // ── Dispute a job: the evaluator rejects the deliverable → client refunded on-chain ─
+  if (req.method === 'POST' && url.pathname === '/api/arc/job/dispute') {
+    const body = (await readBody(req).catch(() => null)) as { jobId?: string | number; reason?: string } | null
+    const jobId = jobIdFromInput(body?.jobId)
+    if (jobId === null) { sendJson(res, 400, { error: 'jobId (non-negative integer) required' }); return }
+    sendJson(res, 200, await rejectJobOnchain(jobId, typeof body?.reason === 'string' ? body.reason.slice(0, 200) : 'disputed'))
+    return
+  }
+
+  // ── Reclaim escrow for the client after a job's deadline (expiry refund) ──────
+  if (req.method === 'POST' && url.pathname === '/api/arc/job/claim-refund') {
+    const body = (await readBody(req).catch(() => null)) as { jobId?: string | number } | null
+    const jobId = jobIdFromInput(body?.jobId)
+    if (jobId === null) { sendJson(res, 400, { error: 'jobId (non-negative integer) required' }); return }
+    sendJson(res, 200, await claimJobRefundOnchain(jobId))
+    return
+  }
+
+  // ── Live on-chain job state (status, parties, budget) — public read ──────────
+  if (req.method === 'GET' && url.pathname === '/api/arc/job') {
+    const jobId = jobIdFromInput(url.searchParams.get('jobId'))
+    if (jobId === null) { sendJson(res, 400, { error: 'jobId (non-negative integer) required' }); return }
+    sendJson(res, 200, await readJobOnchain(jobId))
     return
   }
 

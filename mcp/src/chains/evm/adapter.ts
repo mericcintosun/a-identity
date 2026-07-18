@@ -156,32 +156,41 @@ export function createEvmAdapter(chain: ChainDescriptor) {
   }
 
   async function runEscrowDemo(
-    input: { budgetUsd?: number; description?: string } = {},
+    input: { budgetUsd?: number; description?: string; outcome?: 'complete' | 'refund' } = {},
     env: NodeJS.ProcessEnv = process.env,
   ): Promise<
-    | { executed: false; reason: string; contract: string; lifecycle: string[] }
+    | { executed: false; reason: string; contract: string; lifecycle: string[]; outcome: 'complete' | 'refund' }
     | {
         executed: true
         jobId: string
         budgetUsd: number
+        outcome: 'complete' | 'refund'
         steps: { step: string; txHash: string; explorerUrl: string }[]
         status: string
+        refundedUsd?: number
         failedAt?: string
         reason?: string
       }
   > {
     const budgetUsd = input.budgetUsd ?? 0.05
+    const outcome = input.outcome ?? 'complete'
     const description =
       input.description ??
-      'A-Identity ERC-8183 escrow demo: an agent hires an agent, USDC is held in escrow, released on delivery.'
-    const lifecycle = ['createJob', 'setBudget', 'approve(USDC)', 'fund', 'submit', 'complete']
+      (outcome === 'refund'
+        ? 'A-Identity ERC-8183 refund demo: an agent hires an agent, the deliverable is disputed, and the escrowed USDC is refunded to the client.'
+        : 'A-Identity ERC-8183 escrow demo: an agent hires an agent, USDC is held in escrow, released on delivery.')
+    // Happy path ends in `complete` (provider paid); dispute path ends in `reject`
+    // (client refunded in the same tx).
+    const finalStep = outcome === 'refund' ? 'reject' : 'complete'
+    const lifecycle = ['createJob', 'setBudget', 'approve(USDC)', 'fund', 'submit', finalStep]
     const signer = await walletClient(env)
     if (!signer) {
       return {
         executed: false,
-        reason: `No ${chain.signerEnvVar ?? 'signer'} set. With a funded key this broadcasts the full ERC-8183 escrow lifecycle (6 real txs).`,
+        reason: `No ${chain.signerEnvVar ?? 'signer'} set. With a funded key this broadcasts the full ERC-8183 ${outcome === 'refund' ? 'refund/dispute' : 'escrow'} lifecycle (6 real txs).`,
         contract: agenticCommerce,
         lifecycle,
+        outcome,
       }
     }
     const { keccak256, toHex, parseEventLogs } = await import('viem')
@@ -207,18 +216,99 @@ export function createEvmAdapter(chain: ChainDescriptor) {
       const logs = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'JobCreated', logs: receipt.logs })
       const jobId = (logs[0]?.args as { jobId?: bigint })?.jobId
       if (jobId === undefined)
-        return { executed: true, jobId: '?', budgetUsd, steps, status: 'Unknown', failedAt: 'createJob', reason: 'could not parse jobId from JobCreated' }
+        return { executed: true, jobId: '?', budgetUsd, outcome, steps, status: 'Unknown', failedAt: 'createJob', reason: 'could not parse jobId from JobCreated' }
 
       await record('setBudget', await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'setBudget', args: [jobId, budget, empty] }))
       await record('approve(USDC)', await signer.client.writeContract({ address: usdc, abi: ERC20_ABI, functionName: 'approve', args: [agenticCommerce, budget] }))
       await record('fund', await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'fund', args: [jobId, empty] }))
       await record('submit', await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'submit', args: [jobId, keccak256(toHex(`a-identity:deliverable:${jobId}`)), empty] }))
-      await record('complete', await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'complete', args: [jobId, keccak256(toHex(`a-identity:approved:${jobId}`)), empty] }))
 
+      if (outcome === 'refund') {
+        // Dispute path: the evaluator rejects the submitted deliverable; the escrowed
+        // budget is refunded to the client in the SAME tx (buyer protection).
+        const rejectHash = await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'reject', args: [jobId, keccak256(toHex(`a-identity:disputed:${jobId}`)), empty] })
+        const rejectReceipt = await client.waitForTransactionReceipt({ hash: rejectHash })
+        steps.push({ step: 'reject', txHash: rejectHash, explorerUrl: tx(rejectHash) })
+        const refundLogs = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'Refunded', logs: rejectReceipt.logs })
+        const refunded = (refundLogs[0]?.args as { amount?: bigint })?.amount
+        const job = (await client.readContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'getJob', args: [jobId] })) as { status: number }
+        return { executed: true, jobId: jobId.toString(), budgetUsd, outcome, steps, status: JOB_STATUS[Number(job.status)] ?? String(job.status), refundedUsd: refunded !== undefined ? fromUsdcUnits(chain, refunded) : undefined }
+      }
+
+      await record('complete', await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'complete', args: [jobId, keccak256(toHex(`a-identity:approved:${jobId}`)), empty] }))
       const job = (await client.readContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'getJob', args: [jobId] })) as { status: number }
-      return { executed: true, jobId: jobId.toString(), budgetUsd, steps, status: JOB_STATUS[Number(job.status)] ?? String(job.status) }
+      return { executed: true, jobId: jobId.toString(), budgetUsd, outcome, steps, status: JOB_STATUS[Number(job.status)] ?? String(job.status) }
     } catch (err) {
-      return { executed: true, jobId: steps.length ? '(partial)' : '?', budgetUsd, steps, status: 'Reverted', failedAt: lifecycle[steps.length] ?? '?', reason: await revertReason(err) }
+      return { executed: true, jobId: steps.length ? '(partial)' : '?', budgetUsd, outcome, steps, status: 'Reverted', failedAt: lifecycle[steps.length] ?? '?', reason: await revertReason(err) }
+    }
+  }
+
+  // ── ERC-8183 dispute / refund helpers (granular, per-job) ───────────────────────
+  /** Evaluator rejects a Funded/Submitted deliverable → the escrowed USDC is refunded to
+   *  the client in the SAME tx (buyer protection). Prepared without a key. */
+  async function rejectJob(jobId: bigint, reason: string, env: NodeJS.ProcessEnv = process.env): Promise<Prepared | (Executed & { refundedUsd?: number })> {
+    const { keccak256, toHex, parseEventLogs } = await import('viem')
+    const reasonHash = keccak256(toHex(`a-identity:dispute:${jobId.toString()}:${reason}`))
+    const signer = await walletClient(env)
+    if (!signer) {
+      return {
+        executed: false,
+        contract: agenticCommerce,
+        function: 'reject(uint256 jobId, bytes32 reason, bytes optParams)',
+        args: [jobId.toString(), reasonHash],
+        reason: `No ${chain.signerEnvVar ?? 'signer'} set. The evaluator rejects the deliverable; the escrowed USDC is refunded to the client in the same tx.`,
+      }
+    }
+    const client = await publicClient(env)
+    const hash = await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'reject', args: [jobId, reasonHash, '0x'] })
+    const receipt = await client.waitForTransactionReceipt({ hash })
+    const logs = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'Refunded', logs: receipt.logs })
+    const refunded = (logs[0]?.args as { amount?: bigint })?.amount
+    return { executed: true, txHash: hash, explorerUrl: tx(hash), refundedUsd: refunded !== undefined ? fromUsdcUnits(chain, refunded) : undefined }
+  }
+
+  /** After the deadline, anyone reclaims the escrow for the client (Funded/Submitted →
+   *  Expired). Prepared without a key. */
+  async function claimJobRefund(jobId: bigint, env: NodeJS.ProcessEnv = process.env): Promise<Prepared | (Executed & { refundedUsd?: number })> {
+    const { parseEventLogs } = await import('viem')
+    const signer = await walletClient(env)
+    if (!signer) {
+      return {
+        executed: false,
+        contract: agenticCommerce,
+        function: 'claimRefund(uint256 jobId)',
+        args: [jobId.toString()],
+        reason: `No ${chain.signerEnvVar ?? 'signer'} set. After the job's deadline, this returns the escrowed USDC to the client.`,
+      }
+    }
+    const client = await publicClient(env)
+    const hash = await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'claimRefund', args: [jobId] })
+    const receipt = await client.waitForTransactionReceipt({ hash })
+    const logs = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'Refunded', logs: receipt.logs })
+    const refunded = (logs[0]?.args as { amount?: bigint })?.amount
+    return { executed: true, txHash: hash, explorerUrl: tx(hash), refundedUsd: refunded !== undefined ? fromUsdcUnits(chain, refunded) : undefined }
+  }
+
+  /** Read a job's live on-chain state (status, parties, budget). No key needed. */
+  async function readJob(jobId: bigint, env: NodeJS.ProcessEnv = process.env) {
+    const client = await publicClient(env)
+    try {
+      const job = (await client.readContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'getJob', args: [jobId] })) as {
+        client: string; provider: string; evaluator: string; description: string; budget: bigint; expiredAt: bigint; status: number; hook: string
+      }
+      return {
+        jobId: jobId.toString(),
+        client: job.client,
+        provider: job.provider,
+        evaluator: job.evaluator,
+        description: job.description,
+        budgetUsd: fromUsdcUnits(chain, job.budget),
+        expiredAt: Number(job.expiredAt),
+        status: JOB_STATUS[Number(job.status)] ?? String(job.status),
+        explorer: addressUrl(chain, agenticCommerce),
+      }
+    } catch (e) {
+      return { jobId: jobId.toString(), error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -482,6 +572,9 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     registerAgent,
     createJob,
     runEscrowDemo,
+    rejectJob,
+    claimJobRefund,
+    readJob,
     payUsdc,
     payUsdcWithMemo,
     readMemos,

@@ -155,6 +155,25 @@ Try it: `cd mcp && node --env-file=.env scripts/test-memo.mjs` settles $0.01 thr
 precompile on real Arc testnet, then reads the emitted event back by its `memoId` to prove the
 reason is provably on-chain. Read it live: `GET /api/arc/memos?memoId=<0x…>` (or `?sender=<0x…>`).
 
+### Dispute-safe agent commerce — ERC-8183 escrow refunds
+
+When an agent hires another through the **ERC-8183 escrow**, the money isn't a blind prepay: the
+budget is held in escrow and only released to the provider **on delivery**. If the deliverable is
+disputed, the **evaluator rejects it and the escrowed USDC is refunded to the client in the same
+transaction** (`reject` → `Refunded`) — buyer protection, on-chain. A second safety net,
+`claimRefund`, lets the client reclaim the escrow after the job's deadline passes (an expiry
+refund). This is the ERC-8183 AgenticCommerce reference implementation's own refund path — no
+blind prepay, trust-minimized agent-to-agent commerce.
+
+- **Backend:** `mcp/src/chains/evm/adapter.ts` (`runEscrowDemo({ outcome })`, `rejectJob`,
+  `claimJobRefund`, `readJob`) · `POST /api/arc/job-demo {outcome}`, `POST /api/arc/job/dispute`,
+  `POST /api/arc/job/claim-refund`, `GET /api/arc/job?jobId=`.
+- **Frontend:** the Settlements → "Agent-to-agent escrow" panel has a **Dispute & refund** button
+  that runs the full reject lifecycle and shows the client being refunded.
+
+Try it: `cd mcp && node --env-file=.env scripts/test-refund.mjs` runs the full dispute lifecycle
+(create → fund → submit → reject) on real Arc testnet and proves the client is refunded on-chain.
+
 ### Know Your Agent (KYA) — a real check, not a stamp
 
 An agent is no longer marked `verified` for free. It must **prove control of its wallet** by
