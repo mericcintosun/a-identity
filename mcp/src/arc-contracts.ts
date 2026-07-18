@@ -13,6 +13,9 @@
  * explicitly asks to execute. Gas is paid in USDC (~0.006 USDC per tx).
  */
 import { ARC_CHAIN, createEvmAdapter, resolveRpcUrls } from './chains/index.js'
+import type { MemoInput } from './chains/evm/memo.js'
+
+export type { MemoInput } from './chains/evm/memo.js'
 
 /** The Arc adapter — the same engine any EVM chain uses, bound to the Arc descriptor. */
 const arc = createEvmAdapter(ARC_CHAIN)
@@ -63,6 +66,25 @@ export const runEscrowJobDemo = (
 /** Settle a payment in real USDC on Arc (ERC-20 transfer). Prepared without a key. */
 export const payUsdcOnchain = (to: string, amountUsd: number, env: NodeJS.ProcessEnv = process.env) =>
   arc.payUsdc(to, amountUsd, env)
+
+/**
+ * Settle real USDC on Arc THROUGH the Memo precompile, attaching an on-chain audit
+ * trail of why the agent paid ({agentId, instructionId, service, policyDecision}).
+ * Falls back to a bare transfer on a chain without a Memo precompile; prepared without
+ * a key. Keeps the `{ executed, txHash, explorerUrl, memoId, memo }` shape.
+ */
+export const payUsdcWithMemoOnchain = (
+  to: string,
+  amountUsd: number,
+  memo: MemoInput,
+  env: NodeJS.ProcessEnv = process.env,
+) => arc.payUsdcWithMemo(to, amountUsd, memo, env)
+
+/** Read the on-chain Memo audit trail (by indexed memoId/sender, block-bounded). */
+export const readMemosOnchain = (
+  filter: { sender?: string; memoId?: string; fromBlock?: bigint; maxBlocks?: number } = {},
+  env: NodeJS.ProcessEnv = process.env,
+) => arc.readMemos(filter, env)
 
 /** Deploy an AgentSpendPolicy vault for an agent (owner=human, operator=agent signer). */
 export const deployPolicyVault = (

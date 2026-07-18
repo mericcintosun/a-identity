@@ -23,6 +23,11 @@ export interface ChainContracts {
    *  usually absent (there is no single shared address). Present only if a chain
    *  uses a factory/template address. */
   spendVault?: string
+  /** Arc's predeployed `Memo` precompile: wraps a contract call, preserves the EOA
+   *  as `msg.sender` via `CallFrom`, and emits an on-chain audit-trail event. Present
+   *  only on chains that ship it (Arc). Absent → settlements fall back to a bare
+   *  USDC transfer with no memo. */
+  memo?: string
 }
 
 /**
@@ -90,6 +95,11 @@ export type Executed = {
   txHash: string
   explorerUrl: string
   agentId?: string
+  /** Set when the settlement was wrapped through Arc's `Memo` precompile: the
+   *  indexed `memoId` (keccak of the instruction ref) and the decoded reason payload
+   *  emitted on-chain. Absent on a bare transfer. */
+  memoId?: string
+  memo?: string
 }
 
 export type VaultDeployed = {

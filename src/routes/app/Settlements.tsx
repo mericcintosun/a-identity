@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowUpRight, CheckCircle2, Clock, ExternalLink, Link2, Send, ShieldQuestion, Wallet } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, Clock, ExternalLink, Link2, Receipt, Send, ShieldQuestion, Wallet } from 'lucide-react'
 import { authHeaders } from '../../store/auth'
 import AutopilotPanel from '../../components/app/AutopilotPanel'
 import X402Panel from '../../components/app/X402Panel'
@@ -34,6 +34,10 @@ type Instruction = {
   txHash?: string
   explorerUrl?: string
   enforcedBy?: 'server' | 'circle-agent-stack' | 'onchain-vault'
+  /** On-chain Memo audit trail (Arc Memo precompile): the indexed memoId and the
+   *  decoded "why" payload emitted alongside the USDC transfer. */
+  memoId?: string
+  memoReason?: string
   createdAt: string
 }
 
@@ -256,6 +260,11 @@ export default function Settlements() {
                           <Wallet size={10} /> Circle Agent Wallet
                         </span>
                       )}
+                      {ix.memoId && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                          <Receipt size={10} /> Memo audit
+                        </span>
+                      )}
                     </div>
                     {ix.status !== 'executed_simulated' && ix.policyNote && (
                       <div
@@ -266,6 +275,23 @@ export default function Settlements() {
                         }`}
                       >
                         {ix.policyNote}
+                      </div>
+                    )}
+                    {ix.memoId && (
+                      <div className="mt-1 flex items-start gap-1.5 rounded-lg bg-emerald-500/8 px-2 py-1 text-[11px]">
+                        <Receipt size={12} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <div className="min-w-0">
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">On-chain reason</span>
+                          <span className="text-foreground/50"> · why this agent paid, written to Arc via the Memo precompile</span>
+                          {ix.memoReason && (
+                            <div className="mt-0.5 truncate font-mono text-foreground/70" title={ix.memoReason}>
+                              {ix.memoReason}
+                            </div>
+                          )}
+                          <div className="truncate font-mono text-[10px] text-foreground/40" title={ix.memoId}>
+                            memoId {short(ix.memoId)}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -306,7 +332,7 @@ export default function Settlements() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-semibold text-[#2775CA] hover:underline"
                     >
-                      View on arcscan <ExternalLink size={11} />
+                      {ix.memoId ? 'View memo on arcscan' : 'View on arcscan'} <ExternalLink size={11} />
                     </a>
                   )}
                   {ix.status === 'executed_simulated' && (

@@ -19,7 +19,7 @@ import { loadState, saveState as save } from './storage.js'
 import { ARC_TESTNET } from './arc.js'
 import { randomBytes } from 'node:crypto'
 import {
-  registerAgentOnchain, payUsdcOnchain, ARC_EXPLORER,
+  registerAgentOnchain, payUsdcOnchain, payUsdcWithMemoOnchain, ARC_EXPLORER,
   deployPolicyVault, policyPay, policyOwnerPay, readPolicyVault,
   policySetPolicy, policySetFrozen, policySetAllowed,
   recordValidationOnchain, readValidation,
@@ -130,6 +130,11 @@ export type Instruction = {
   /** Which layer settled or blocked this: our server pre-check, Circle's hosted
    *  policy engine (Agent Wallet), or the trustless on-chain vault. */
   enforcedBy?: 'server' | 'circle-agent-stack' | 'onchain-vault'
+  /** Set when the settlement was wrapped through Arc's `Memo` precompile: the indexed
+   *  on-chain memo id (recomputable from the instruction id) and the decoded reason
+   *  payload emitted on-chain. Lets the UI link to an auditable "why" on arcscan. */
+  memoId?: string
+  memoReason?: string
   createdAt: string
 }
 
@@ -1135,15 +1140,28 @@ export async function executeInstruction(ixId: string, caller?: string): Promise
   }
 
   // Direct settlement when we have a resolved Arc address and a signer is configured.
+  // The server signer is an EOA, so this path (unlike the vault, a smart contract) can
+  // route the transfer through Arc's `Memo` precompile — attaching an on-chain,
+  // indexable audit trail of WHY the agent paid. On a chain without a Memo precompile,
+  // payUsdcWithMemoOnchain degrades cleanly to a bare transfer.
   if (settleTo) {
-    const res = await payUsdcOnchain(settleTo, total)
+    const res = await payUsdcWithMemoOnchain(settleTo, total, {
+      agentId: ix.agentId,
+      instructionId: ix.id,
+      service: ix.type,
+      policyDecision: ix.status,
+    })
     if (res.executed) {
       ix.status = 'executed_onchain'
       ix.txHash = res.txHash
       ix.explorerUrl = res.explorerUrl
       ix.enforcedBy = 'server'
-      ix.policyNote = `Settled ${fmt(total)} USDC on Arc.`
-      if (agent) pushActivity(agent, `Settled ${total.toFixed(4)} USDC on Arc to ${short(settleTo)} (tx ${short(res.txHash)})`)
+      ix.memoId = res.memoId
+      ix.memoReason = res.memo
+      ix.policyNote = res.memoId
+        ? `Settled ${fmt(total)} USDC on Arc with an on-chain Memo audit trail (why: ${ix.type}, ${short(res.memoId)}).`
+        : `Settled ${fmt(total)} USDC on Arc.`
+      if (agent) pushActivity(agent, `Settled ${total.toFixed(4)} USDC on Arc to ${short(settleTo)} (tx ${short(res.txHash)})${res.memoId ? ` · memo ${short(res.memoId)}` : ''}`)
       save(state)
       return ix
     }

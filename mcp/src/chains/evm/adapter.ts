@@ -28,7 +28,8 @@ import {
   txUrl,
   addressUrl,
 } from './client.js'
-import { IDENTITY_ABI, ERC20_ABI, COMMERCE_ABI, VALIDATION_ABI, JOB_STATUS, ZERO_ADDRESS, ZERO_HASH } from './abis.js'
+import { IDENTITY_ABI, ERC20_ABI, COMMERCE_ABI, VALIDATION_ABI, MEMO_ABI, JOB_STATUS, ZERO_ADDRESS, ZERO_HASH } from './abis.js'
+import { encodeMemo, decodeMemo, type MemoInput } from './memo.js'
 import { AgentSpendPolicyAbi, AgentSpendPolicyBytecode } from '../../contracts/AgentSpendPolicy.js'
 
 type Hex = `0x${string}`
@@ -46,6 +47,9 @@ export function createEvmAdapter(chain: ChainDescriptor) {
   const validationRegistry = c.validationRegistry as Hex
   const agenticCommerce = c.agenticCommerce as Hex
   const usdc = c.usdc as Hex
+  // Arc-only: the predeployed Memo precompile. Undefined on chains that don't ship it,
+  // in which case memo-wrapped settlement cleanly degrades to a bare USDC transfer.
+  const memoContract = c.memo as Hex | undefined
 
   const publicClient = (env: NodeJS.ProcessEnv) => evmPublicClient(chain, env)
   const walletClient = (env: NodeJS.ProcessEnv) => evmWalletClient(chain, env)
@@ -241,6 +245,101 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     return { executed: true, txHash: hash, explorerUrl: tx(hash) }
   }
 
+  // ── memo-wrapped settlement: Arc `Memo` precompile ──────────────────────────────
+  /**
+   * Settle USDC through the Memo precompile so the payment carries an on-chain,
+   * indexable audit trail of WHY it happened (agent, instruction, service, decision).
+   * `Memo.memo(usdc, transferCalldata, memoId, memoBytes)` routes the inner transfer via
+   * `CallFrom`, preserving our EOA signer as `msg.sender` — the USDC still moves from the
+   * signer exactly like `payUsdc`, plus a `Memo` event. Additive + credential-gated:
+   *   - no `contracts.memo` on this chain → clean fallback to a bare `payUsdc`.
+   *   - no signer → the exact prepared Memo call (same honesty contract as every write).
+   * Result keeps the `{ executed, txHash, explorerUrl }` shape (+ memoId/memo) so
+   * `executeInstruction` stays uniform.
+   */
+  async function payUsdcWithMemo(
+    to: string,
+    amountUsd: number,
+    memoInput: MemoInput,
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<Prepared | Executed> {
+    if (!memoContract) return payUsdc(to, amountUsd, env)
+    const amount = usdcUnits(chain, amountUsd)
+    const { memoId, memoBytes, reason } = encodeMemo(memoInput)
+    const { encodeFunctionData } = await import('viem')
+    const transferData = encodeFunctionData({ abi: ERC20_ABI, functionName: 'transfer', args: [to as Hex, amount] })
+    const signer = await walletClient(env)
+    if (!signer) {
+      return {
+        executed: false,
+        contract: memoContract,
+        function: 'memo(address target, bytes data, bytes32 memoId, bytes memoData)',
+        args: [usdc, transferData, memoId, memoBytes],
+        reason: `No ${chain.signerEnvVar ?? 'signer'} set. This is the exact Memo-wrapped USDC transfer (on-chain reason: ${reason}). Fund a wallet and export the key to broadcast.`,
+      }
+    }
+    const client = await publicClient(env)
+    const hash = await signer.client.writeContract({
+      address: memoContract,
+      abi: MEMO_ABI,
+      functionName: 'memo',
+      args: [usdc, transferData, memoId, memoBytes],
+    })
+    await client.waitForTransactionReceipt({ hash })
+    return { executed: true, txHash: hash, explorerUrl: tx(hash), memoId, memo: reason }
+  }
+
+  /**
+   * Read the on-chain Memo audit trail, filtered by the indexed `memoId` and/or `sender`.
+   * Bounded by a block window (DoS guard): defaults to the last `maxBlocks` blocks unless
+   * an explicit `fromBlock` is given. Returns [] (supported:false) on a chain with no Memo
+   * precompile. This is the "the reason is provably on-chain" verification read.
+   */
+  async function readMemos(
+    filter: { sender?: string; memoId?: string; fromBlock?: bigint; maxBlocks?: number } = {},
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<{
+    supported: boolean
+    contract?: string
+    fromBlock?: string
+    toBlock?: string
+    memos: { txHash: string; blockNumber: string; sender: string; target: string; memoId: string; memo: string; explorerUrl: string }[]
+  }> {
+    if (!memoContract) return { supported: false, memos: [] }
+    const { parseAbiItem } = await import('viem')
+    const client = await publicClient(env)
+    const latest = await client.getBlockNumber()
+    // Cap the scan window so a caller can't ask for an unbounded getLogs. 5k default, 50k ceiling.
+    const window = BigInt(Math.min(Math.max(filter.maxBlocks ?? 5000, 1), 50000))
+    const fromBlock = filter.fromBlock ?? (latest > window ? latest - window : 0n)
+    const event = parseAbiItem(
+      'event Memo(address indexed sender,address indexed target,bytes32 callDataHash,bytes32 indexed memoId,bytes memo,uint256 memoIndex)',
+    )
+    const args: Record<string, unknown> = {}
+    if (filter.sender) args.sender = filter.sender as Hex
+    if (filter.memoId) args.memoId = filter.memoId as Hex
+    const logs = await client.getLogs({
+      address: memoContract,
+      event,
+      args: args as never,
+      fromBlock,
+      toBlock: latest,
+    })
+    const memos = logs.map((l) => {
+      const a = l.args as { sender?: string; target?: string; memoId?: string; memo?: string }
+      return {
+        txHash: l.transactionHash ?? '',
+        blockNumber: (l.blockNumber ?? 0n).toString(),
+        sender: a.sender ?? '',
+        target: a.target ?? '',
+        memoId: a.memoId ?? '',
+        memo: decodeMemo(a.memo ?? '0x'),
+        explorerUrl: tx(l.transactionHash ?? ''),
+      }
+    })
+    return { supported: true, contract: memoContract, fromBlock: fromBlock.toString(), toBlock: latest.toString(), memos }
+  }
+
   // ── on-chain spend policy vault (AgentSpendPolicy) ──────────────────────────────
   async function deployVault(
     input: { owner?: string; operator?: string; dailyCapUsd: number; autoApproveUsd: number },
@@ -384,6 +483,8 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     createJob,
     runEscrowDemo,
     payUsdc,
+    payUsdcWithMemo,
+    readMemos,
     deployVault,
     policyPay,
     policyOwnerPay,

@@ -40,6 +40,7 @@ export const CHAINS: ChainDescriptor[] = [
       validationRegistry: '0x8004Cb1BF31DAf7788923b405b754f57acEB4272',
       agenticCommerce: '0x0747EEf0706327138c69792bF28Cd525089e4583',
       usdc: '0x3600000000000000000000000000000000000000',
+      memo: '0x5294E9927c3306DcBaDb03fe70b92e01cCede505', // Arc predeployed Memo precompile (transaction memos)
     },
     confirmations: 1, // deterministic sub-second finality
     stablecoins: ['USDC', 'EURC', 'USYC'],

@@ -17,7 +17,7 @@ import { CHAIN_CONFIG } from './data.js'
 import { createIdentityProvider } from './erc8004.js'
 import { getArcStatus } from './arc.js'
 import { getCircleStatus } from './circle.js'
-import { readArcContracts, registerAgentOnchain, createJobOnchain, runEscrowJobDemo } from './arc-contracts.js'
+import { readArcContracts, registerAgentOnchain, createJobOnchain, runEscrowJobDemo, readMemosOnchain } from './arc-contracts.js'
 import {
   agentPolicy,
   agentReputation,
@@ -545,6 +545,26 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/arc/contracts') {
     const data = await readArcContracts()
     sendJson(res, data.reachable ? 200 : 503, data)
+    return
+  }
+
+  // ── REST /api/arc/memos: the on-chain "why" audit trail (Arc Memo precompile) ──
+  // Public read of the Memo event log, filtered by the indexed memoId and/or sender,
+  // block-bounded (DoS guard: maxBlocks is clamped in the adapter). Proves that an
+  // agent settlement's reason is provably on-chain and indexable, not a server log.
+  if (req.method === 'GET' && url.pathname === '/api/arc/memos') {
+    const memoId = url.searchParams.get('memoId') ?? undefined
+    const sender = url.searchParams.get('sender') ?? undefined
+    if (memoId && !/^0x[0-9a-fA-F]{64}$/.test(memoId)) { sendJson(res, 400, { error: 'memoId must be a 32-byte 0x hash' }); return }
+    if (sender && !/^0x[0-9a-fA-F]{40}$/.test(sender)) { sendJson(res, 400, { error: 'sender must be a 0x address' }); return }
+    const maxParam = Number(url.searchParams.get('maxBlocks'))
+    const maxBlocks = Number.isFinite(maxParam) && maxParam > 0 ? maxParam : undefined
+    try {
+      const data = await readMemosOnchain({ memoId, sender, maxBlocks })
+      sendJson(res, 200, data)
+    } catch (err) {
+      sendJson(res, 502, { supported: true, memos: [], error: err instanceof Error ? err.message : String(err) })
+    }
     return
   }
 

@@ -82,5 +82,31 @@ export const VALIDATION_ABI = [
   { type: 'function', name: 'getAgentValidations', stateMutability: 'view', inputs: [{ name: 'agentId', type: 'uint256' }], outputs: [{ name: 'requestHashes', type: 'bytes32[]' }] },
 ] as const
 
+/**
+ * Arc `Memo` precompile (transaction memos). `memo(target, data, memoId, memoData)`
+ * wraps a contract call, preserves the EOA as `msg.sender` via the `CallFrom`
+ * precompile, and emits an on-chain audit-trail event indexable by `memoId`/`sender`.
+ * Arc-specific: only wired for chains whose descriptor carries a `contracts.memo`.
+ */
+export const MEMO_ABI = [
+  { type: 'function', name: 'memo', stateMutability: 'nonpayable', inputs: [
+    { name: 'target', type: 'address' },
+    { name: 'data', type: 'bytes' },
+    { name: 'memoId', type: 'bytes32' },
+    { name: 'memoData', type: 'bytes' },
+  ], outputs: [] },
+  { type: 'event', name: 'BeforeMemo', inputs: [
+    { name: 'memoIndex', type: 'uint256', indexed: true },
+  ] },
+  { type: 'event', name: 'Memo', inputs: [
+    { name: 'sender', type: 'address', indexed: true },
+    { name: 'target', type: 'address', indexed: true },
+    { name: 'callDataHash', type: 'bytes32', indexed: false },
+    { name: 'memoId', type: 'bytes32', indexed: true },
+    { name: 'memo', type: 'bytes', indexed: false },
+    { name: 'memoIndex', type: 'uint256', indexed: false },
+  ] },
+] as const
+
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const
 export const ZERO_HASH = ('0x' + '0'.repeat(64)) as `0x${string}`

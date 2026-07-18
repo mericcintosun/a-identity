@@ -138,6 +138,23 @@ Try it: `cd mcp && node --env-file=.env scripts/test-vault.mjs` (needs a funded
 `ARC_SIGNER_KEY`) deploys a vault and plays pay / over-limit-revert / freeze / cap out on
 real Arc testnet — or use the **Permissions → On-chain policy vault** panel in the app.
 
+### On-chain reason for every payment — Arc `Memo` precompile
+
+Every direct USDC settlement is routed through Arc's predeployed **`Memo` precompile**
+(`0x5294…`), so each agent payment carries an **on-chain, indexable audit trail of *why* it
+happened** — `{agentId, instructionId, service, policyDecision}` — emitted as a `Memo` event on
+arcscan, not a server log. `Memo.memo(usdc, transferCalldata, memoId, memoBytes)` routes the
+transfer via the `CallFrom` precompile, so the paying wallet stays `msg.sender` (the USDC still
+moves exactly as a bare transfer, plus the reason). The `memoId` is a deterministic keccak of the
+instruction, so anyone can look the payment up by `memoId` without the tx hash. Additive and
+credential-gated: on a chain without a `Memo` precompile it degrades to a plain transfer; the
+smart-account vault path stays un-memoed (an SCA can't call the precompile). The Settlements
+screen shows the reason and links to the memo on arcscan.
+
+Try it: `cd mcp && node --env-file=.env scripts/test-memo.mjs` settles $0.01 through the `Memo`
+precompile on real Arc testnet, then reads the emitted event back by its `memoId` to prove the
+reason is provably on-chain. Read it live: `GET /api/arc/memos?memoId=<0x…>` (or `?sender=<0x…>`).
+
 ### Know Your Agent (KYA) — a real check, not a stamp
 
 An agent is no longer marked `verified` for free. It must **prove control of its wallet** by
