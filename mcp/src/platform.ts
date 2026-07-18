@@ -22,11 +22,16 @@ import {
   registerAgentOnchain, payUsdcOnchain, payUsdcWithMemoOnchain, ARC_EXPLORER,
   deployPolicyVault, policyPay, policyOwnerPay, readPolicyVault,
   policySetPolicy, policySetFrozen, policySetAllowed, policySetSessionExpiry,
-  recordValidationOnchain, readValidation,
+  recordValidationOnchain, readValidation, runEscrowJobDemo,
 } from './arc-contracts.js'
 import { createAgentWallet, circlePay, readCircleWallet } from './circle-agent.js'
 import { previewTreasury, startAutoYield, type TreasuryPreview, type TreasuryExecution } from './treasury.js'
 import { computeAgentReputation } from './reputation.js'
+import {
+  type Task, type TaskStatus, type Review,
+  canTransition, normalizePriceUsd, normalizeDeadlineHours, deadlineFrom,
+  sanitizeRating, aggregateRating,
+} from './marketplace.js'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -142,11 +147,12 @@ type State = {
   agents: PlatformAgent[]
   wallets: Wallet[]
   instructions: Instruction[]
+  tasks: Task[]
 }
 
 // ── persistence ───────────────────────────────────────────────────────────────
 
-const state: State = { agents: [], wallets: [], instructions: [] }
+const state: State = { agents: [], wallets: [], instructions: [], tasks: [] }
 
 /**
  * Load persisted state (Postgres via DATABASE_URL, else the local JSON file) into
@@ -158,6 +164,7 @@ export async function initState() {
     state.agents = loaded.agents ?? []
     state.wallets = loaded.wallets ?? []
     state.instructions = loaded.instructions ?? []
+    state.tasks = loaded.tasks ?? []
   }
 }
 
@@ -1318,6 +1325,233 @@ export function marketplace(viewer?: string, includeAll = false) {
     totalAll: state.agents.length,
     showingAll: includeAll,
   }
+}
+
+// ── marketplace tasks: hire a verified worker, escrow-settled on release ───────────
+//
+// A client hires a KYA-verified agent for a service; the task runs off-chain through its
+// lifecycle (funded -> delivered -> released | refunded) and SETTLES on-chain via the existing
+// ERC-8183 escrow (runEscrowJobDemo) at release/dispute. Honest by design: 'onchain' settlement
+// carries a real tx only with a signer key; without one it settles 'simulated' (no fake tx).
+// In this build the platform signer drives the ERC-8183 escrow roles (create/fund/submit/
+// complete); worker-signed, multi-party settlement is the roadmap. The escrow lifecycle IS real
+// on Arc, so every task carries a real jobId + tx.
+
+/** Testnet signer safety: the shared server key funds the escrow, so cap a task's on-chain
+ *  settlement (mirrors MAX_DEMO_USD on the HTTP demo endpoints). */
+const MARKETPLACE_MAX_TASK_USD = 5
+
+function transitionTask(task: Task, to: TaskStatus): boolean {
+  if (!canTransition(task.status, to)) return false
+  task.status = to
+  task.updatedAt = new Date().toISOString()
+  return true
+}
+
+/**
+ * Hire a verified worker agent. Trusted-marketplace rule: only a KYA-verified agent can be
+ * hired. Creates a task in 'funded' (the client commits; the ERC-8183 escrow settles on
+ * release). The price is clamped to the testnet settlement cap so the shared signer is safe.
+ */
+export function hireAgent(input: {
+  agentId: string
+  service: string
+  priceUsd: number
+  description?: string
+  deadlineHours?: number
+  client?: string
+}): Task | { error: string } {
+  if (!input.client) return { error: 'Forbidden: sign in with a verified session to hire' }
+  const agent = state.agents.find((a) => a.id === input.agentId)
+  if (!agent) return { error: 'Unknown agent' }
+  if (agent.kya !== 'verified') return { error: 'Only KYA-verified agents can be hired (the trusted-marketplace rule)' }
+  const service = String(input.service ?? '').slice(0, 200).trim()
+  if (!service) return { error: 'service required' }
+  // The service must be one the agent actually offers (when it lists any).
+  if (agent.services.length > 0 && !agent.services.some((s) => s.name === service)) {
+    return { error: `Agent does not offer service "${service}"` }
+  }
+  const priceUsd = Math.min(normalizePriceUsd(input.priceUsd), MARKETPLACE_MAX_TASK_USD)
+  if (priceUsd <= 0) return { error: 'priceUsd must be a positive number' }
+  const now = new Date().toISOString()
+  const task: Task = {
+    id: id('task'),
+    client: input.client,
+    agentId: agent.id,
+    service,
+    priceUsd,
+    description: String(input.description ?? '').slice(0, 2000),
+    status: 'funded',
+    createdAt: now,
+    updatedAt: now,
+    deadlineAt: deadlineFrom(now, normalizeDeadlineHours(input.deadlineHours)),
+  }
+  state.tasks.push(task)
+  pushActivity(agent, `Hired for "${service}" ($${priceUsd.toFixed(2)}); escrow committed (task ${task.id})`)
+  save(state)
+  return task
+}
+
+/** The hired agent's owner delivers a result. funded -> delivered. */
+export function deliverTask(taskId: string, deliverable: string, caller?: string): Task | { error: string } {
+  const task = state.tasks.find((t) => t.id === taskId)
+  if (!task) return { error: 'Unknown task' }
+  const agent = state.agents.find((a) => a.id === task.agentId)
+  if (!agent || !ownsAgent(agent, caller)) return { error: 'Forbidden: only the hired agent owner can deliver' }
+  if (!canTransition(task.status, 'delivered')) return { error: `Cannot deliver from status ${task.status}` }
+  task.deliverable = String(deliverable ?? '').slice(0, 5000)
+  transitionTask(task, 'delivered')
+  pushActivity(agent, `Delivered task ${task.id}`)
+  save(state)
+  return task
+}
+
+/**
+ * The client approves and RELEASES the escrow: runs the real ERC-8183 lifecycle
+ * (createJob -> fund -> submit -> complete), paying the worker. With a signer key it is a
+ * real on-chain settlement (jobId + tx); without one it settles 'simulated' (honest, no
+ * fake tx). An optional review is recorded. delivered | funded -> released.
+ */
+export async function releaseTask(
+  taskId: string,
+  input: { rating?: number; review?: string } = {},
+  caller?: string,
+): Promise<Task | { error: string }> {
+  const task = state.tasks.find((t) => t.id === taskId)
+  if (!task) return { error: 'Unknown task' }
+  if (task.client !== caller) return { error: 'Forbidden: only the hiring client can release' }
+  if (!canTransition(task.status, 'released')) return { error: `Cannot release from status ${task.status}` }
+  const agent = state.agents.find((a) => a.id === task.agentId)
+
+  const escrow = await runEscrowJobDemo({
+    budgetUsd: task.priceUsd,
+    description: `A-Identity marketplace task ${task.id}: ${task.service}`,
+    outcome: 'complete',
+  })
+  if (escrow.executed) {
+    // executed:true can still be a partial/failed lifecycle (failedAt set, status 'Reverted'):
+    // never mark a task released off a broken settlement. Honesty over optimism.
+    if (escrow.failedAt || escrow.status === 'Reverted')
+      return { error: `On-chain escrow did not complete (${escrow.failedAt ?? escrow.status}): ${escrow.reason ?? 'reverted'}` }
+    const done = escrow.steps.find((s) => s.step === 'complete') ?? escrow.steps[escrow.steps.length - 1]
+    task.jobId = escrow.jobId
+    task.releaseTx = done?.txHash
+    task.escrowExplorer = done?.explorerUrl
+    task.settlement = 'onchain'
+  } else {
+    task.settlement = 'simulated'
+  }
+  if (input.rating !== undefined || (typeof input.review === 'string' && input.review.trim())) {
+    task.review = {
+      by: caller!,
+      rating: sanitizeRating(input.rating ?? 5),
+      text: String(input.review ?? '').slice(0, 1000),
+      at: new Date().toISOString(),
+    }
+  }
+  transitionTask(task, 'released')
+  if (agent)
+    pushActivity(
+      agent,
+      task.settlement === 'onchain'
+        ? `Task ${task.id} released: escrow paid on-chain (ERC-8183 job ${task.jobId ?? '?'}, tx ${short(task.releaseTx ?? '')})`
+        : `Task ${task.id} released (simulated settlement; no signer key)`,
+    )
+  save(state)
+  return task
+}
+
+/**
+ * The client disputes the deliverable: runs the real ERC-8183 refund lifecycle (the escrow
+ * is refunded to the client in the same reject tx). Real on-chain with a key, 'simulated'
+ * without. funded | delivered -> refunded (buyer protection).
+ */
+export async function disputeTask(taskId: string, reason: string, caller?: string): Promise<Task | { error: string }> {
+  const task = state.tasks.find((t) => t.id === taskId)
+  if (!task) return { error: 'Unknown task' }
+  if (task.client !== caller) return { error: 'Forbidden: only the hiring client can dispute' }
+  if (!canTransition(task.status, 'refunded')) return { error: `Cannot dispute from status ${task.status}` }
+  const agent = state.agents.find((a) => a.id === task.agentId)
+
+  const escrow = await runEscrowJobDemo({
+    budgetUsd: task.priceUsd,
+    description: `A-Identity marketplace dispute ${task.id}: ${String(reason ?? '').slice(0, 200)}`,
+    outcome: 'refund',
+  })
+  if (escrow.executed) {
+    if (escrow.failedAt || escrow.status === 'Reverted')
+      return { error: `On-chain refund did not complete (${escrow.failedAt ?? escrow.status}): ${escrow.reason ?? 'reverted'}` }
+    const rej = escrow.steps.find((s) => s.step === 'reject') ?? escrow.steps[escrow.steps.length - 1]
+    task.jobId = escrow.jobId
+    task.refundTx = rej?.txHash
+    task.escrowExplorer = rej?.explorerUrl
+    task.settlement = 'onchain'
+  } else {
+    task.settlement = 'simulated'
+  }
+  transitionTask(task, 'refunded')
+  if (agent)
+    pushActivity(
+      agent,
+      task.settlement === 'onchain'
+        ? `Task ${task.id} disputed: escrow refunded to client on-chain (tx ${short(task.refundTx ?? '')})`
+        : `Task ${task.id} disputed (simulated refund; no signer key)`,
+    )
+  save(state)
+  return task
+}
+
+/** Read one task; only a party to it (the client or the hired agent's owner) may read. */
+export function getTask(taskId: string, caller?: string): Task | { error: string } {
+  const task = state.tasks.find((t) => t.id === taskId)
+  if (!task) return { error: 'Unknown task' }
+  const agent = state.agents.find((a) => a.id === task.agentId)
+  const isParty = task.client === caller || (agent ? ownsAgent(agent, caller) : false)
+  if (!isParty) return { error: 'Forbidden: not a party to this task' }
+  return task
+}
+
+/** Tasks a client has opened (the "my hires" view). */
+export function listTasksForClient(caller?: string): Task[] {
+  return caller ? state.tasks.filter((t) => t.client === caller) : []
+}
+
+/** Tasks assigned to an agent (the worker "my jobs" view). Owner-only. */
+export function listTasksForAgent(agentId: string, caller?: string): Task[] | { error: string } {
+  const agent = state.agents.find((a) => a.id === agentId)
+  if (!agent) return { error: 'Unknown agent' }
+  if (!ownsAgent(agent, caller)) return { error: 'Forbidden: not the agent owner' }
+  return state.tasks.filter((t) => t.agentId === agentId)
+}
+
+/**
+ * The public service catalog (the card grid): every verified showcase agent's services with
+ * an aggregated rating + review count + completed-task count from real tasks. Best-rated first.
+ */
+export function marketplaceCatalog() {
+  const services = state.agents.filter(isShowcase).flatMap((agent) =>
+    agent.services.map((svc) => {
+      const svcTasks = state.tasks.filter((t) => t.agentId === agent.id && t.service === svc.name)
+      const reviews = svcTasks.map((t) => t.review).filter((r): r is Review => !!r)
+      const rating = aggregateRating(reviews)
+      return {
+        agentId: agent.id,
+        agentName: agent.name,
+        category: agent.category,
+        kya: agent.kya,
+        onchain: agent.onchain,
+        walletAddress: agent.walletAddress,
+        service: svc.name,
+        priceUsd: svc.priceUsd,
+        unit: svc.unit,
+        rating: rating.average,
+        reviews: rating.count,
+        completed: svcTasks.filter((t) => t.status === 'released').length,
+      }
+    }),
+  )
+  services.sort((a, b) => b.rating - a.rating || b.reviews - a.reviews || b.completed - a.completed)
+  return { services, total: services.length }
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

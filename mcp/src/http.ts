@@ -48,6 +48,14 @@ import {
   getAgentTreasury,
   startAgentAutoYield,
   stopAgentAutoYield,
+  hireAgent,
+  deliverTask,
+  releaseTask,
+  disputeTask,
+  getTask,
+  listTasksForClient,
+  listTasksForAgent,
+  marketplaceCatalog,
   type InstructionType,
 } from './platform.js'
 import { issueToken, verifyToken, isVerified } from './auth.js'
@@ -155,6 +163,9 @@ function rateBudget(method: string, pathname: string): { bucket: string; max: nu
   if (pathname === '/api/auth/magic/request') return { bucket: 'magic', max: 5, windowMs: 60_000 }
   // Expensive on-chain demo runs (each spends gas / moves real testnet value).
   if (pathname === '/api/arc/agent-run' || (pathname.startsWith('/api/arc/') && pathname.endsWith('-demo')))
+    return { bucket: 'demo', max: 8, windowMs: 60_000 }
+  // Marketplace release/dispute run a real ERC-8183 escrow lifecycle from the shared signer.
+  if (pathname === '/api/marketplace/release' || pathname === '/api/marketplace/dispute')
     return { bucket: 'demo', max: 8, windowMs: 60_000 }
   return null
 }
@@ -990,6 +1001,71 @@ const server = http.createServer(async (req, res) => {
     if (!body?.agentId || !body?.follower) { sendJson(res, 400, { error: 'agentId and follower required' }); return }
     const r = followAgent(body.agentId, body.follower)
     sendJson(res, 'error' in r ? 404 : 200, r)
+    return
+  }
+
+  // ── Marketplace tasks: hire a verified worker; escrow settles on release ─────
+  // Public service catalog (the card grid): verified agents' services + ratings.
+  if (req.method === 'GET' && url.pathname === '/api/marketplace/catalog') {
+    sendJson(res, 200, marketplaceCatalog())
+    return
+  }
+  // Hire a verified agent for a service → creates a task (escrow committed). Verified-only.
+  if (req.method === 'POST' && url.pathname === '/api/marketplace/hire') {
+    const body = (await readBody(req).catch(() => null)) as
+      | { agentId?: string; service?: string; priceUsd?: number; description?: string; deadlineHours?: number }
+      | null
+    if (!body?.agentId || !body?.service) { sendJson(res, 400, { error: 'agentId and service required' }); return }
+    if (!validAmount(body.priceUsd, 1000)) { sendJson(res, 400, { error: 'priceUsd must be a finite number between 0 and 1000' }); return }
+    const t = hireAgent({
+      agentId: body.agentId, service: body.service, priceUsd: body.priceUsd,
+      description: body.description, deadlineHours: body.deadlineHours, client: callerId,
+    })
+    sendJson(res, 'error' in t ? errStatus(t.error) : 201, t)
+    return
+  }
+  // The hired worker delivers a result. funded → delivered.
+  if (req.method === 'POST' && url.pathname === '/api/marketplace/deliver') {
+    const body = (await readBody(req).catch(() => null)) as { taskId?: string; deliverable?: string } | null
+    if (!body?.taskId) { sendJson(res, 400, { error: 'taskId required' }); return }
+    const t = deliverTask(body.taskId, typeof body.deliverable === 'string' ? body.deliverable : '', callerId)
+    sendJson(res, 'error' in t ? errStatus(t.error) : 200, t)
+    return
+  }
+  // The client releases the escrow (real ERC-8183 settlement) + optional review.
+  if (req.method === 'POST' && url.pathname === '/api/marketplace/release') {
+    const body = (await readBody(req).catch(() => null)) as { taskId?: string; rating?: number; review?: string } | null
+    if (!body?.taskId) { sendJson(res, 400, { error: 'taskId required' }); return }
+    const t = await releaseTask(body.taskId, { rating: body.rating, review: body.review }, callerId)
+    sendJson(res, 'error' in t ? errStatus(t.error) : 200, t)
+    return
+  }
+  // The client disputes → real ERC-8183 refund to the client.
+  if (req.method === 'POST' && url.pathname === '/api/marketplace/dispute') {
+    const body = (await readBody(req).catch(() => null)) as { taskId?: string; reason?: string } | null
+    if (!body?.taskId) { sendJson(res, 400, { error: 'taskId required' }); return }
+    const t = await disputeTask(body.taskId, typeof body.reason === 'string' ? body.reason : 'disputed', callerId)
+    sendJson(res, 'error' in t ? errStatus(t.error) : 200, t)
+    return
+  }
+  // One task (party-scoped: the client or the hired agent's owner).
+  if (req.method === 'GET' && url.pathname === '/api/marketplace/task') {
+    const taskId = url.searchParams.get('taskId') ?? ''
+    if (!taskId) { sendJson(res, 400, { error: 'taskId required' }); return }
+    const t = getTask(taskId, callerId)
+    sendJson(res, 'error' in t ? errStatus(t.error) : 200, t)
+    return
+  }
+  // Tasks: an owned agent's jobs (?agentId=, owner-only) or the caller's own hires.
+  if (req.method === 'GET' && url.pathname === '/api/marketplace/tasks') {
+    const agentId = url.searchParams.get('agentId') ?? undefined
+    if (agentId) {
+      const r = listTasksForAgent(agentId, callerId)
+      if ('error' in r) { sendJson(res, errStatus(r.error), r); return }
+      sendJson(res, 200, { tasks: r })
+    } else {
+      sendJson(res, 200, { tasks: listTasksForClient(callerId) })
+    }
     return
   }
 
