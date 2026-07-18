@@ -201,7 +201,8 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     const empty = '0x' as const
     const steps: { step: string; txHash: string; explorerUrl: string }[] = []
     const record = async (step: string, hash: Hex) => {
-      await client.waitForTransactionReceipt({ hash })
+      const receipt = await client.waitForTransactionReceipt({ hash })
+      if (receipt.status !== 'success') throw new Error(`${step} reverted on-chain`)
       steps.push({ step, txHash: hash, explorerUrl: tx(hash) })
     }
 
@@ -228,6 +229,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
         // budget is refunded to the client in the SAME tx (buyer protection).
         const rejectHash = await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'reject', args: [jobId, keccak256(toHex(`a-identity:disputed:${jobId}`)), empty] })
         const rejectReceipt = await client.waitForTransactionReceipt({ hash: rejectHash })
+        if (rejectReceipt.status !== 'success') throw new Error('reject reverted on-chain')
         steps.push({ step: 'reject', txHash: rejectHash, explorerUrl: tx(rejectHash) })
         const refundLogs = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'Refunded', logs: rejectReceipt.logs })
         const refunded = (refundLogs[0]?.args as { amount?: bigint })?.amount
@@ -244,10 +246,22 @@ export function createEvmAdapter(chain: ChainDescriptor) {
   }
 
   // ── ERC-8183 dispute / refund helpers (granular, per-job) ───────────────────────
+  type RefundResult = Prepared | (Executed & { refundedUsd?: number }) | { executed: false; reverted: true; reason: string }
+
+  /** Parse the Refunded amount (client-refund) from a receipt's logs, in USD. */
+  async function refundedUsdFrom(logs: unknown[]): Promise<number | undefined> {
+    const { parseEventLogs } = await import('viem')
+    const parsed = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'Refunded', logs: logs as never })
+    const refunded = (parsed[0]?.args as { amount?: bigint })?.amount
+    return refunded !== undefined ? fromUsdcUnits(chain, refunded) : undefined
+  }
+
   /** Evaluator rejects a Funded/Submitted deliverable → the escrowed USDC is refunded to
-   *  the client in the SAME tx (buyer protection). Prepared without a key. */
-  async function rejectJob(jobId: bigint, reason: string, env: NodeJS.ProcessEnv = process.env): Promise<Prepared | (Executed & { refundedUsd?: number })> {
-    const { keccak256, toHex, parseEventLogs } = await import('viem')
+   *  the client in the SAME tx (buyer protection). Prepared without a key. Simulates first
+   *  (like the vault) so an unauthorized / wrong-status dispute reverts OFF-chain — a clean
+   *  reason, no gas burned from the shared signer. */
+  async function rejectJob(jobId: bigint, reason: string, env: NodeJS.ProcessEnv = process.env): Promise<RefundResult> {
+    const { keccak256, toHex } = await import('viem')
     const reasonHash = keccak256(toHex(`a-identity:dispute:${jobId.toString()}:${reason}`))
     const signer = await walletClient(env)
     if (!signer) {
@@ -260,17 +274,20 @@ export function createEvmAdapter(chain: ChainDescriptor) {
       }
     }
     const client = await publicClient(env)
-    const hash = await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'reject', args: [jobId, reasonHash, '0x'] })
-    const receipt = await client.waitForTransactionReceipt({ hash })
-    const logs = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'Refunded', logs: receipt.logs })
-    const refunded = (logs[0]?.args as { amount?: bigint })?.amount
-    return { executed: true, txHash: hash, explorerUrl: tx(hash), refundedUsd: refunded !== undefined ? fromUsdcUnits(chain, refunded) : undefined }
+    try {
+      const { request } = await client.simulateContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'reject', args: [jobId, reasonHash, '0x'], account: signer.account })
+      const hash = await signer.client.writeContract(request as never)
+      const receipt = await client.waitForTransactionReceipt({ hash })
+      return { executed: true, txHash: hash, explorerUrl: tx(hash), refundedUsd: await refundedUsdFrom(receipt.logs) }
+    } catch (err) {
+      return { executed: false, reverted: true, reason: await revertReason(err) }
+    }
   }
 
   /** After the deadline, anyone reclaims the escrow for the client (Funded/Submitted →
-   *  Expired). Prepared without a key. */
-  async function claimJobRefund(jobId: bigint, env: NodeJS.ProcessEnv = process.env): Promise<Prepared | (Executed & { refundedUsd?: number })> {
-    const { parseEventLogs } = await import('viem')
+   *  Expired). Prepared without a key. Simulates first so a not-yet-expired / wrong-status
+   *  claim reverts OFF-chain (no gas burned). */
+  async function claimJobRefund(jobId: bigint, env: NodeJS.ProcessEnv = process.env): Promise<RefundResult> {
     const signer = await walletClient(env)
     if (!signer) {
       return {
@@ -282,11 +299,14 @@ export function createEvmAdapter(chain: ChainDescriptor) {
       }
     }
     const client = await publicClient(env)
-    const hash = await signer.client.writeContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'claimRefund', args: [jobId] })
-    const receipt = await client.waitForTransactionReceipt({ hash })
-    const logs = parseEventLogs({ abi: COMMERCE_ABI, eventName: 'Refunded', logs: receipt.logs })
-    const refunded = (logs[0]?.args as { amount?: bigint })?.amount
-    return { executed: true, txHash: hash, explorerUrl: tx(hash), refundedUsd: refunded !== undefined ? fromUsdcUnits(chain, refunded) : undefined }
+    try {
+      const { request } = await client.simulateContract({ address: agenticCommerce, abi: COMMERCE_ABI, functionName: 'claimRefund', args: [jobId], account: signer.account })
+      const hash = await signer.client.writeContract(request as never)
+      const receipt = await client.waitForTransactionReceipt({ hash })
+      return { executed: true, txHash: hash, explorerUrl: tx(hash), refundedUsd: await refundedUsdFrom(receipt.logs) }
+    } catch (err) {
+      return { executed: false, reverted: true, reason: await revertReason(err) }
+    }
   }
 
   /** Read a job's live on-chain state (status, parties, budget). No key needed. */
@@ -352,7 +372,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     amountUsd: number,
     memoInput: MemoInput,
     env: NodeJS.ProcessEnv = process.env,
-  ): Promise<Prepared | Executed> {
+  ): Promise<Prepared | Executed | { executed: false; reverted: true; reason: string }> {
     if (!memoContract) return payUsdc(to, amountUsd, env)
     const amount = usdcUnits(chain, amountUsd)
     const { memoId, memoBytes, reason } = encodeMemo(memoInput)
@@ -368,15 +388,27 @@ export function createEvmAdapter(chain: ChainDescriptor) {
         reason: `No ${chain.signerEnvVar ?? 'signer'} set. This is the exact Memo-wrapped USDC transfer (on-chain reason: ${reason}). Fund a wallet and export the key to broadcast.`,
       }
     }
+    // NOTE: we deliberately do NOT simulateContract here. The Memo precompile rejects
+    // STATICCALL (eth_call) — "static execution is rejected" — so a normal simulate would
+    // falsely revert. writeContract's own gas estimation still catches an insufficient
+    // balance / bad call BEFORE broadcast (caught below); we then verify receipt.status so a
+    // mined-but-reverted tx is never reported as settled (honesty: no false executed_onchain).
     const client = await publicClient(env)
-    const hash = await signer.client.writeContract({
-      address: memoContract,
-      abi: MEMO_ABI,
-      functionName: 'memo',
-      args: [usdc, transferData, memoId, memoBytes],
-    })
-    await client.waitForTransactionReceipt({ hash })
-    return { executed: true, txHash: hash, explorerUrl: tx(hash), memoId, memo: reason }
+    try {
+      const hash = await signer.client.writeContract({
+        address: memoContract,
+        abi: MEMO_ABI,
+        functionName: 'memo',
+        args: [usdc, transferData, memoId, memoBytes],
+      })
+      const receipt = await client.waitForTransactionReceipt({ hash })
+      if (receipt.status !== 'success') {
+        return { executed: false, reverted: true, reason: `Memo settlement reverted on-chain (tx ${hash})` }
+      }
+      return { executed: true, txHash: hash, explorerUrl: tx(hash), memoId, memo: reason }
+    } catch (err) {
+      return { executed: false, reverted: true, reason: await revertReason(err) }
+    }
   }
 
   /**

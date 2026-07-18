@@ -74,6 +74,12 @@ export const COMMERCE_ABI = [
   { type: 'event', name: 'Refunded', inputs: [
     { name: 'jobId', type: 'uint256', indexed: true }, { name: 'client', type: 'address', indexed: true }, { name: 'amount', type: 'uint256', indexed: false },
   ] },
+  // Typed errors — so a reverted dispute/claim decodes to a name (WrongStatus,
+  // Unauthorized, …) instead of a raw 4-byte selector.
+  { type: 'error', name: 'InvalidJob', inputs: [] },
+  { type: 'error', name: 'Unauthorized', inputs: [] },
+  { type: 'error', name: 'WrongStatus', inputs: [] },
+  { type: 'error', name: 'ProviderNotSet', inputs: [] },
 ] as const
 
 /** ERC-8183 job status enum → label. */

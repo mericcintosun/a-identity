@@ -1165,6 +1165,16 @@ export async function executeInstruction(ixId: string, caller?: string): Promise
       save(state)
       return ix
     }
+    // The settlement was BROADCAST but reverted on-chain (e.g. insufficient balance) — never
+    // mark it executed. Kick it back to the human, exactly like an on-chain policy rejection.
+    if ('reverted' in res && res.reverted) {
+      ix.status = 'pending_approval'
+      ix.enforcedBy = 'server'
+      ix.policyNote = `On-chain settlement reverted (${res.reason}); a human must intervene.`
+      if (agent) pushActivity(agent, `Settlement reverted on Arc to ${short(settleTo)}: ${res.reason}`)
+      save(state)
+      return ix
+    }
     ix.policyNote = 'No signer configured; settlement simulated.'
   }
 

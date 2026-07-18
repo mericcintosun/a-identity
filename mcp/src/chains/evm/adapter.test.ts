@@ -97,7 +97,8 @@ test('without a signer, rejectJob returns the exact prepared reject call', async
   const arc = createEvmAdapter(ARC_CHAIN)
   const res = await arc.rejectJob(42n, 'bad deliverable', NO_SIGNER)
   assert.equal(res.executed, false)
-  if (res.executed === false) {
+  assert.ok('contract' in res) // prepared (not a revert) without a signer
+  if (res.executed === false && 'contract' in res) {
     assert.equal(res.contract, '0x0747EEf0706327138c69792bF28Cd525089e4583')
     assert.equal(res.function, 'reject(uint256 jobId, bytes32 reason, bytes optParams)')
     assert.equal(res.args[0], '42')
@@ -109,7 +110,8 @@ test('without a signer, claimJobRefund returns the exact prepared claimRefund ca
   const arc = createEvmAdapter(ARC_CHAIN)
   const res = await arc.claimJobRefund(42n, NO_SIGNER)
   assert.equal(res.executed, false)
-  if (res.executed === false) {
+  assert.ok('contract' in res) // prepared (not a revert) without a signer
+  if (res.executed === false && 'contract' in res) {
     assert.equal(res.contract, '0x0747EEf0706327138c69792bF28Cd525089e4583')
     assert.equal(res.function, 'claimRefund(uint256 jobId)')
     assert.deepEqual(res.args, ['42'])

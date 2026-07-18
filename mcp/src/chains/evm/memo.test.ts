@@ -44,7 +44,8 @@ test('without a signer, payUsdcWithMemo returns the exact prepared Memo call (Ar
   const arc = createEvmAdapter(ARC_CHAIN)
   const res = await arc.payUsdcWithMemo('0x1111111111111111111111111111111111111111', 0.05, SAMPLE, NO_SIGNER)
   assert.equal(res.executed, false)
-  if (res.executed === false) {
+  assert.ok('contract' in res) // prepared (not a revert) without a signer
+  if (res.executed === false && 'contract' in res) {
     // Wrapped through the Arc Memo precompile, not a bare USDC transfer.
     assert.equal(res.contract, '0x5294E9927c3306DcBaDb03fe70b92e01cCede505')
     assert.equal(res.function, 'memo(address target, bytes data, bytes32 memoId, bytes memoData)')
@@ -60,7 +61,8 @@ test('on a chain without a Memo precompile, payUsdcWithMemo degrades to a bare t
   const adapter = createEvmAdapter(base)
   const res = await adapter.payUsdcWithMemo('0x1111111111111111111111111111111111111111', 0.05, SAMPLE, NO_SIGNER)
   assert.equal(res.executed, false)
-  if (res.executed === false) {
+  assert.ok('contract' in res) // prepared fallback (not a revert) without a signer
+  if (res.executed === false && 'contract' in res) {
     // Falls back to payUsdc's prepared USDC transfer — no memo wrapper.
     assert.equal((res.contract as string).toLowerCase(), base.contracts.usdc!.toLowerCase())
     assert.equal(res.function, 'transfer(address to, uint256 amount)')
