@@ -42,6 +42,20 @@ its own x402 purchases to settle on-chain; for the demo it needs nothing.
 `translate()`, `processFundedTasks()`, and `registerWorker()` are exported so the loop is
 testable without running the daemon.
 
+## worker (multi-service)
+
+A generalized worker with three presets: `translation`, `data-analysis`, `code-review`. It
+registers, passes KYA, and for each funded task it **buys a helper service over x402** (a gasless
+Circle Nanopayment) while working, then does the work with Claude and delivers. This is the
+"autonomous spending in USDC" beat: the worker pays for a service mid-task, no human.
+
+```bash
+WORKER_SERVICE=data-analysis BASE=http://localhost:3399 node agents/worker.mjs
+```
+
+Real work + real x402 purchase with `ANTHROPIC_API_KEY` and a funded backend signer; honest stubs
+without. `PRESETS`, `doWork()`, `processFundedTasks()`, `registerWorker()` are exported.
+
 ## verifier
 
 A client-side automation that reviews delivered work and decides, on the actual deliverable,

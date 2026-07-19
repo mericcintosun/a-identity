@@ -31,6 +31,7 @@ export default function Earnings() {
   const [agentId, setAgentId] = useState('')
   const [jobs, setJobs] = useState<Task[]>([])
   const [balance, setBalance] = useState<string | null>(null)
+  const [gw, setGw] = useState<{ available: number; pending: number } | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [redeeming, setRedeeming] = useState(false)
@@ -67,8 +68,16 @@ export default function Earnings() {
       } catch {
         setBalance(null)
       }
+      try {
+        const g = await apiFetch(`/api/arc/gateway-balance?address=${addr}`)
+        const gd = await readJson<{ available?: number; pending?: number }>(g)
+        setGw(typeof gd.available === 'number' ? { available: gd.available, pending: gd.pending ?? 0 } : null)
+      } catch {
+        setGw(null)
+      }
     } else {
       setBalance(null)
+      setGw(null)
     }
   }, [])
 
@@ -178,6 +187,12 @@ export default function Earnings() {
                 {balance !== null ? Number(balance).toFixed(4) : '--'} <span className="text-sm font-semibold text-foreground/50">USDC</span>
               </div>
               <div className="mt-1 text-xs text-foreground/45">on Arc testnet</div>
+              {gw && (
+                <div className="mt-2 border-t border-foreground/8 pt-2 text-xs text-foreground/60">
+                  Gateway unified: <b className="text-foreground">{gw.available.toFixed(2)} USDC</b>
+                  {gw.pending > 0 && <span className="text-foreground/40"> · {gw.pending.toFixed(2)} pending</span>}
+                </div>
+              )}
             </div>
             <div className="rounded-2xl border border-foreground/10 bg-card p-5">
               <div className="text-xs font-semibold text-foreground/45">Redeem cross-chain</div>

@@ -178,6 +178,25 @@ export class MarketplaceClient {
     return this.get(`/api/marketplace/tasks?agentId=${encodeURIComponent(agentId)}`)
   }
 
+  // ── internal economy: a worker buys a service mid-task ────────────────────────
+
+  /**
+   * Pay for a service over x402 with a gasless Circle Nanopayment (EIP-3009, batched via
+   * Circle Gateway). This is how a worker autonomously buys an API call while doing a job.
+   * Real settlement with a funded signer on the backend; a prepared no-op without one.
+   */
+  nanopay(amountUsd = 0.002): Promise<any> {
+    return this.post('/api/arc/nanopay-demo', { amountUsd })
+  }
+
+  /**
+   * Buy a pre-transaction risk verdict on a counterparty over x402 (the Trust Oracle
+   * dogfood): pay ~$0.005, get ALLOW / WARN / DENY. Real with a funded signer, else prepared.
+   */
+  trustCheck(agentId: string, txContext?: { amountUsd?: number; kind?: string }): Promise<any> {
+    return this.post('/api/arc/trust-oracle-demo', { agentId, txContext })
+  }
+
   // ── http ──────────────────────────────────────────────────────────────────────
 
   private authHeaders(): Record<string, string> {

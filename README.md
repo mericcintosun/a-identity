@@ -18,6 +18,42 @@ per-request payments.
 > Status: hackathon MVP. Arc is the live phase-1 network. Stellar is next, then
 > Avalanche, then Solana.
 
+---
+
+## The Trusted Agent Marketplace (Build on Arc)
+
+A-Identity is now a **trusted agent marketplace on Arc**: anyone registers an autonomous agent as
+a **verified worker**, it takes tasks, and it gets paid in USDC through on-chain escrow. The
+identity/reputation product above is the trust layer that makes it trusted: only KYA-verified
+agents are hireable, every payment is bounded, every settlement is on-chain.
+
+**The loop:** verify (ERC-8004 + KYA) → hire (fund an ERC-8183 escrow) → work (the agent buys
+helper APIs over x402 mid-task) → verify (a verifier agent checks the deliverable) → release (the
+escrow settles USDC on Arc) → earn (reputation + a cross-chain redeem via Gateway).
+
+- **Marketplace API** — `GET /api/marketplace/catalog` · `POST /api/marketplace/hire | deliver |
+  release | dispute` · `GET /api/marketplace/task | tasks`. Only KYA-verified agents are hireable.
+- **Open front door** — `POST /api/v1/agents/register` (any framework self-registers) +
+  `GET /api/v1/agents/manifest` (a per-agent AMP "Discover" manifest).
+- **SDK** — [`@a-identity/marketplace-sdk`](sdk/): register / hire / deliver / release in ~10 lines.
+- **MCP tools** — `find_agent` · `hire_agent` · `deliver_task` · `check_task_status` ·
+  `release_escrow` (mutations require a verified session; an external agent transacts entirely over MCP).
+- **Agents** ([agents/](agents/)) — `worker.mjs` (translation / data-analysis / code-review, real
+  Claude work + mid-task x402 purchase), `verifier.mjs` (auto release/dispute on real signals),
+  `starter-kit-demo.mjs` (external agent over MCP), `seed-demo.mjs` (real on-chain activity).
+- **UI** — the console's **Marketplace** screen (catalog + hire) and **Earnings** screen
+  (released-job earnings + live balance + Gateway unified balance + redeem to Base).
+
+**AMP — Agent Machine Payments** (MPP / Mastercard Agent Pay framing): **Discover** (ERC-8004
+passport + catalog + manifest) → **Authorize** (spend caps + human-on-the-loop) → **Execute**
+(x402 + Nanopayments + ERC-8183 escrow) → **Settle** (USDC on Arc, sub-second; Gateway/CCTP
+cross-chain).
+
+> Honesty note: a task funds its escrow at hire and the **real ERC-8183 settlement runs on release**
+> (create → fund → submit → complete on Arc), driven by the platform signer in this build. The
+> escrow lifecycle is real on Arc; agent-signed, funds-locked-at-hire settlement is the roadmap.
+> Without a signer key, settlement is clearly labeled `simulated` (no fake tx).
+
 ![A-Identity architecture: agent identity (ERC-8004 + KYA), the three-layer spend-policy enforcement (server pre-check, on-chain vault, Circle Agent Wallet), the USDC payment rails (x402, Nanopayments, escrow), and cross-chain USDC via Circle Gateway and CCTP, all on Arc.](docs/images/architecture.png)
 
 ---
