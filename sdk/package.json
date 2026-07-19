@@ -15,9 +15,14 @@
     "dist",
     "README.md"
   ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc",
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "prepublishOnly": "tsc"
   },
   "keywords": [
     "a-identity",
@@ -30,7 +35,20 @@
     "usdc",
     "circle"
   ],
+  "homepage": "https://a-identity.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/srabyanamrod/A-Identity.git",
+    "directory": "sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/srabyanamrod/A-Identity/issues"
+  },
+  "author": "A-Identity",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "typescript": "^5.9.3"
   }
