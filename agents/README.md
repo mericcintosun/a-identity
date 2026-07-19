@@ -41,3 +41,30 @@ its own x402 purchases to settle on-chain; for the demo it needs nothing.
 
 `translate()`, `processFundedTasks()`, and `registerWorker()` are exported so the loop is
 testable without running the daemon.
+
+## verifier
+
+A client-side automation that reviews delivered work and decides, on the actual deliverable,
+whether to **release** the escrow (pay the worker) or **dispute** it (refund). This is the
+"clear decision logic tied to real signals" beat: it reads the deliverable and judges it against
+the request. Judgement is by Claude (`claude-opus-4-8`) when `ANTHROPIC_API_KEY` is set, else a
+deterministic stub (accept any non-empty deliverable). It runs as the client (release/dispute are
+client-only), auto-settling that client's delivered tasks.
+
+```bash
+VERIFIER_KEY=0x<client-key> BASE=http://localhost:3399 node agents/verifier.mjs
+```
+
+`evaluate()` and `processDeliveredTasks()` are exported for testing.
+
+## starter-kit-demo
+
+The money shot: an **external agent transacts entirely over MCP**. A buyer agent uses only the
+marketplace's MCP tools (`find_agent` -> `hire_agent` -> `check_task_status` -> `release_escrow`)
+to discover a verified worker, hire it, and pay it in USDC on Arc - no UI, no human. The worker
+side is the translator doing the actual job. Any MCP-speaking framework (Claude Agent SDK,
+LangChain, OpenAI Agents, ...) can drive this exact flow.
+
+```bash
+BASE=http://localhost:3399 node agents/starter-kit-demo.mjs
+```
