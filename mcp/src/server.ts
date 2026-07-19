@@ -22,6 +22,18 @@ const json = (value: unknown) => ({
 export type ServerData = {
   listAgents?: () => Array<{ agentId: string; name?: string; chain: string; kya?: string; onchain?: string; walletAddress?: string | null }>
   getReputation?: (agentId: string) => unknown | null
+  /** Marketplace hooks the HTTP entry injects (with a per-request verified caller baked in),
+   *  so an external agent can transact over MCP. Absent on the stdio entry (read-only). The
+   *  mutating hooks are already ownership-gated in platform.ts: with no verified caller they
+   *  return a Forbidden error, so exposing them over MCP never bypasses auth. */
+  marketplace?: {
+    catalog: () => unknown
+    manifest: (agentId: string) => unknown
+    hire: (input: { agentId: string; service: string; priceUsd: number; description?: string }) => unknown
+    deliver: (taskId: string, deliverable: string) => unknown
+    checkTask: (taskId: string) => unknown
+    release: (taskId: string, opts: { rating?: number; review?: string }) => Promise<unknown>
+  }
 }
 
 export function buildServer(data: ServerData = {}): McpServer {
@@ -151,6 +163,101 @@ export function buildServer(data: ServerData = {}): McpServer {
     },
     async () => json(listCapabilities()),
   )
+
+  // ── marketplace tools (only when the HTTP entry injects the hooks) ───────────────
+  // Let an external agent transact end-to-end over MCP: find a verified worker, read its
+  // manifest, hire it, deliver, check status, release the escrow. The mutating tools require a
+  // VERIFIED session on the /mcp request (Authorization: Bearer <token>); without one the
+  // ownership gate in platform.ts returns a Forbidden error, so nothing bypasses auth.
+  if (data.marketplace) {
+    const mp = data.marketplace
+
+    server.registerTool(
+      'find_agent',
+      {
+        title: 'Find a verified worker agent',
+        description:
+          'Search the marketplace catalog of KYA-verified worker agents and their services (name, price in USDC, rating, completed jobs). Optionally filter by a keyword matched against the service, agent name, or category. Read-only.',
+        inputSchema: {
+          query: z.string().optional().describe('Optional keyword to match against service / agent name / category'),
+        },
+      },
+      async ({ query }) => {
+        const cat = mp.catalog() as { services: Array<Record<string, unknown>>; total: number }
+        const q = (query ?? '').trim().toLowerCase()
+        const services = q
+          ? cat.services.filter((s) =>
+              [s.service, s.agentName, s.category].some((f) => String(f ?? '').toLowerCase().includes(q)),
+            )
+          : cat.services
+        return json({ total: services.length, services })
+      },
+    )
+
+    server.registerTool(
+      'get_agent_manifest',
+      {
+        title: 'Get an agent manifest (AMP Discover)',
+        description:
+          "Read an agent's public manifest: its ERC-8004 identity, services, reputation, and how to hire it. Only a KYA-verified agent is hireable. Read-only.",
+        inputSchema: { agentId: z.string().describe('The platform agent id (agent_…)') },
+      },
+      async ({ agentId }) => json(mp.manifest(agentId)),
+    )
+
+    server.registerTool(
+      'hire_agent',
+      {
+        title: 'Hire a verified worker agent',
+        description:
+          'Hire a KYA-verified agent for a service; USDC is committed to an ERC-8183 escrow on Arc. Requires a VERIFIED session (send Authorization: Bearer <token> with the /mcp request; obtain one via SIWE). Returns the created task.',
+        inputSchema: {
+          agentId: z.string(),
+          service: z.string(),
+          priceUsd: z.number().positive().max(1000),
+          description: z.string().optional(),
+        },
+      },
+      async ({ agentId, service, priceUsd, description }) => json(mp.hire({ agentId, service, priceUsd, description })),
+    )
+
+    server.registerTool(
+      'deliver_task',
+      {
+        title: 'Deliver a task result',
+        description:
+          "Submit a deliverable for a task your agent was hired for (the hired agent's owner). Requires a verified session. Returns the updated task.",
+        inputSchema: { taskId: z.string(), deliverable: z.string() },
+      },
+      async ({ taskId, deliverable }) => json(mp.deliver(taskId, deliverable)),
+    )
+
+    server.registerTool(
+      'check_task_status',
+      {
+        title: 'Check a task status',
+        description:
+          'Read a task you are a party to (the client or the hired agent owner): status, deliverable, escrow settlement, and on-chain tx. Requires a verified session.',
+        inputSchema: { taskId: z.string() },
+      },
+      async ({ taskId }) => json(mp.checkTask(taskId)),
+    )
+
+    server.registerTool(
+      'release_escrow',
+      {
+        title: 'Release task escrow',
+        description:
+          'Approve and release a task (the hiring client): settles the ERC-8183 escrow to the worker in USDC on Arc, with an optional review. Requires a verified session. Returns the settled task.',
+        inputSchema: {
+          taskId: z.string(),
+          rating: z.number().min(1).max(5).optional(),
+          review: z.string().optional(),
+        },
+      },
+      async ({ taskId, rating, review }) => json(await mp.release(taskId, { rating, review })),
+    )
+  }
 
   return server
 }

@@ -169,6 +169,10 @@ function rateBudget(method: string, pathname: string): { bucket: string; max: nu
   // Marketplace release/dispute run a real ERC-8183 escrow lifecycle from the shared signer.
   if (pathname === '/api/marketplace/release' || pathname === '/api/marketplace/dispute')
     return { bucket: 'demo', max: 8, windowMs: 60_000 }
+  // MCP can also drive a release (release_escrow tool) which spends the shared signer, so cap
+  // the whole /mcp endpoint. A backstop against escrow-release spam via MCP (a per-tool limit is
+  // the finer follow-up); normal MCP usage stays well under it.
+  if (pathname === '/mcp') return { bucket: 'mcp', max: 40, windowMs: 60_000 }
   return null
 }
 
@@ -1105,7 +1109,22 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/mcp') {
     try {
       const body = await readBody(req)
-      const mcp = buildServer({ listAgents: publicAgents, getReputation: (id) => agentReputation(id) })
+      // Bake the request's VERIFIED caller into the marketplace hooks. A guest / no token →
+      // mcpCaller is undefined, so the ownership gate in platform.ts rejects the mutating tools
+      // (hire/deliver/release) with a Forbidden error — MCP never bypasses the verified-session gate.
+      const mcpCaller = isVerified(caller) ? callerId : undefined
+      const mcp = buildServer({
+        listAgents: publicAgents,
+        getReputation: (id) => agentReputation(id),
+        marketplace: {
+          catalog: () => marketplaceCatalog(),
+          manifest: (agentId) => agentManifest(agentId),
+          hire: (input) => hireAgent({ ...input, client: mcpCaller }),
+          deliver: (taskId, deliverable) => deliverTask(taskId, deliverable, mcpCaller),
+          checkTask: (taskId) => getTask(taskId, mcpCaller),
+          release: (taskId, opts) => releaseTask(taskId, opts, mcpCaller),
+        },
+      })
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
         enableJsonResponse: true,
