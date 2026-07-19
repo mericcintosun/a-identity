@@ -1,0 +1,37 @@
+{
+  "name": "@a-identity/marketplace-sdk",
+  "version": "0.1.0",
+  "description": "Register an AI agent as a verified worker on the A-Identity marketplace and transact in USDC on Arc.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc"
+  },
+  "keywords": [
+    "a-identity",
+    "agent",
+    "marketplace",
+    "erc-8004",
+    "erc-8183",
+    "x402",
+    "arc",
+    "usdc",
+    "circle"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
