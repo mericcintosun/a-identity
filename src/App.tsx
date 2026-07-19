@@ -20,6 +20,7 @@ import Wallet from './routes/app/Wallet'
 import Settlements from './routes/app/Settlements'
 import Permissions from './routes/app/Permissions'
 import Marketplace from './routes/app/Marketplace'
+import Earnings from './routes/app/Earnings'
 
 export default function App() {
   // Restore the session from the HttpOnly cookie once on load (the token isn't in
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="settlements" element={<Settlements />} />
             <Route path="permissions" element={<Permissions />} />
             <Route path="marketplace" element={<Marketplace />} />
+            <Route path="earnings" element={<Earnings />} />
           </Route>
         </Route>
 

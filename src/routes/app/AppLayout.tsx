@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import {
   ArrowLeftRight,
   Bot,
+  Coins,
   CreditCard,
   Fingerprint,
   LayoutDashboard,
@@ -24,7 +25,8 @@ const NAV = [
   { to: '/app/agent-id', label: 'Agent ID', icon: Fingerprint, end: false },
   { to: '/app/wallet', label: 'Wallet', icon: CreditCard, end: false },
   { to: '/app/settlements', label: 'Settlements', icon: ArrowLeftRight, end: false },
-  { to: '/app/marketplace', label: 'Agent House', icon: Store, end: false },
+  { to: '/app/marketplace', label: 'Marketplace', icon: Store, end: false },
+  { to: '/app/earnings', label: 'Earnings', icon: Coins, end: false },
   { to: '/app/permissions', label: 'Permissions', icon: SlidersHorizontal, end: false },
 ] as const
 
