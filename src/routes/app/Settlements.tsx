@@ -15,6 +15,7 @@ import { BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { apiFetch, readJson, explainError } from '../../lib/api'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
+import { Skeleton } from '../../components/ui/skeleton'
 
 type Status =
   | 'auto_approved'
@@ -243,6 +244,19 @@ export default function Settlements() {
 
           {/* List */}
           <ul className="mt-4 flex flex-col gap-2.5">
+            {loading &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <li key={`sk-${i}`} className="rounded-2xl border border-foreground/10 bg-card p-4">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-xl" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-3.5 w-40" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                </li>
+              ))}
             {items.map((ix) => (
               <li key={ix.id} className="rounded-2xl border border-foreground/10 bg-card p-4">
                 <div className="flex items-center gap-4">

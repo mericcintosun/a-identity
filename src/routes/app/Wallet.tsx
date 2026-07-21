@@ -13,6 +13,7 @@ import { apiFetch, readJson } from '../../lib/api'
 import { fetchPlatformAgents, subscribePlatformAgents } from '../../lib/platformAgents'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
 import { CircleWalletPanel, TreasuryPanel } from '../../components/app/WalletPanels'
+import { Skeleton } from '../../components/ui/skeleton'
 const FAUCET = 'https://faucet.circle.com'
 
 type Agent = { id: string; name: string; walletAddress: string | null }
@@ -38,6 +39,7 @@ export default function Wallet() {
   const [balance, setBalance] = useState<Balance | null>(null)
   const [assets, setAssets] = useState<AssetBalances | null>(null)
   const [txs, setTxs] = useState<Instruction[]>([])
+  const [txsLoaded, setTxsLoaded] = useState(false)
   const [loadingBal, setLoadingBal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -74,6 +76,7 @@ export default function Wallet() {
       .then((r) => r.json())
       .then((d: { instructions: Instruction[] }) => { if (isActive()) setTxs([...d.instructions].reverse().slice(0, 8)) })
       .catch(() => { if (isActive()) setTxs([]) })
+      .finally(() => { if (isActive()) setTxsLoaded(true) })
     // Live multi-asset balances (USDC / EURC / USYC) read from Arc, via the treasury
     // read (which returns all three), so the wallet shows every token it holds — not
     // only the native USDC gas balance. Best-effort: the hero USDC below is separate.
@@ -178,8 +181,14 @@ export default function Wallet() {
               {agent.walletAddress ? (
                 <>
                   <div className="mt-2 text-4xl font-bold tracking-tight">
-                    {loadingBal ? '...' : bal != null ? bal.toFixed(4) : '--'}{' '}
-                    <span className="text-lg font-semibold opacity-70">USDC</span>
+                    {loadingBal || bal == null ? (
+                      <Skeleton className="h-9 w-40" />
+                    ) : (
+                      <>
+                        {bal.toFixed(4)}{' '}
+                        <span className="text-lg font-semibold opacity-70">USDC</span>
+                      </>
+                    )}
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="font-mono text-xs opacity-70">{short(agent.walletAddress)}</span>
@@ -244,6 +253,21 @@ export default function Wallet() {
             </div>
           )}
 
+          {/* Token balances still loading from Arc: mirror the real 3-tile layout. */}
+          {agent.walletAddress && !assets && (
+            <div className="mt-4">
+              <div className="mb-2 text-xs font-semibold text-foreground/50">Token balances on Arc</div>
+              <div className="grid grid-cols-3 gap-2.5">
+                {(['USDC', 'EURC', 'USYC'] as const).map((t) => (
+                  <div key={t} className="rounded-2xl border border-foreground/[0.06] bg-card px-4 py-3">
+                    <div className="text-xs font-semibold text-foreground/55">{t}</div>
+                    <Skeleton className="mt-1 h-6 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Human-on-the-loop */}
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-accent/20 bg-accent/[0.05] p-4">
             <ShieldQuestion size={18} className="mt-0.5 shrink-0 text-accent" />
@@ -255,6 +279,23 @@ export default function Wallet() {
 
           {/* Recent payments (real instructions) */}
           <h3 className="mt-8 font-semibold">Recent payments</h3>
+          {!txsLoaded && txs.length === 0 ? (
+            <ul className="mt-3 flex flex-col gap-2.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="flex items-center gap-4 rounded-2xl border border-foreground/10 bg-card p-4">
+                  <Skeleton className="h-9 w-9 shrink-0 rounded-xl" />
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
           <ul className="mt-3 flex flex-col gap-2.5">
             {txs.map((tx) => {
               const total = tx.amountUsd * tx.count
@@ -290,7 +331,8 @@ export default function Wallet() {
               )
             })}
           </ul>
-          {txs.length === 0 && (
+          )}
+          {txsLoaded && txs.length === 0 && (
             <div className="mt-3 rounded-2xl border border-dashed border-foreground/15 bg-white/50 p-8 text-center text-sm text-foreground/50">
               No payments yet. Make one in Settlements.
             </div>

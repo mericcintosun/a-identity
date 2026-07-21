@@ -14,6 +14,7 @@ import { authHeaders, useAuth } from '../../store/auth'
 import { BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { apiFetch, readJson, explainError } from '../../lib/api'
 import WorkerCatalog from '../../components/app/WorkerCatalog'
+import { Skeleton } from '../../components/ui/skeleton'
 
 /** Shorten any full 40-hex address inside activity text so it never overflows the card. */
 const humanizeActivity = (text: string) =>
@@ -203,8 +204,29 @@ export default function Marketplace() {
       )}
 
       {loading && !error && (
-        <div className="mt-6 rounded-2xl border border-foreground/10 bg-card p-8 text-center text-sm text-foreground/45">
-          Loading the house...
+        <div className="mt-6 grid items-start gap-4 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex flex-col rounded-2xl border border-foreground/10 bg-card p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-11 w-11 rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="h-7 w-24 rounded-full" />
+              </div>
+              <div className="mt-3 space-y-2">
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-4/5" />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

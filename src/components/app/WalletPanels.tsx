@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, ExternalLink, TrendingUp, Wallet } from 'lucide-react'
 import { authHeaders } from '../../store/auth'
 import { apiFetch, readJson, explainError } from '../../lib/api'
+import { Skeleton } from '../ui/skeleton'
 
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 8)}...${a.slice(-4)}` : a)
 
@@ -113,7 +114,17 @@ export function CircleWalletPanel({ agentId }: { agentId: string }) {
       </p>
 
       {loading ? (
-        <div className="text-xs text-foreground/45">Loading Circle wallet status...</div>
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-40" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-foreground/[0.06] bg-card px-4 py-3">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="mt-1.5 h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : has ? (
         <div className="space-y-3">
           {addr && (
@@ -328,7 +339,27 @@ export function TreasuryPanel({ agentId }: { agentId: string }) {
       </p>
 
       {loading ? (
-        <div className="mt-5 text-xs text-foreground/45">Loading treasury...</div>
+        <div className="mt-5 space-y-5">
+          <div>
+            <div className="mb-2"><Skeleton className="h-3 w-28" /></div>
+            <div className="grid grid-cols-3 gap-2.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-foreground/[0.06] bg-card px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                  <Skeleton className="h-3.5 w-12" />
+                  <Skeleton className="mt-1.5 h-5 w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-foreground/[0.06] bg-card px-4 py-3">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="mt-1.5 h-4 w-14" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : t?.error ? (
         <div className="mt-5 rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-foreground/70">
           <div className="font-semibold text-amber-800 dark:text-amber-300">Nothing to show yet</div>

@@ -9,6 +9,7 @@ import { CHAINS } from '../../lib/chains'
 import { apiFetch } from '../../lib/api'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
+import { Skeleton } from '../../components/ui/skeleton'
 
 /** Shorten any full 40-hex address inside activity text so it never overflows the card. */
 const humanizeActivity = (text: string) =>
@@ -146,18 +147,20 @@ export default function Dashboard() {
 
       {/* Stat strip: hairline-divided tiles, mono figures, credit-score spectrum on reputation */}
       <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border lg:grid-cols-4">
-        <StatTile to="/app/agent-id" label="Reputation" value={rep != null ? String(rep) : dash} sub={rep != null ? `${gradeOf(rep)} · / 1000` : 'from real activity'}>
-          {rep != null && (
+        <StatTile to="/app/agent-id" label="Reputation" value={rep != null ? String(rep) : dash} sub={rep != null ? `${gradeOf(rep)} · / 1000` : 'from real activity'} loading={rep == null && !loaded}>
+          {rep != null ? (
             <div className="mt-2 mb-0.5 h-1.5 w-full rounded-full" style={{ background: 'linear-gradient(90deg,#dc2626,#d97706 45%,#059669)' }}>
               <div className="relative h-full">
                 <span className="absolute -top-0.5 h-2.5 w-[3px] -translate-x-1/2 rounded-full bg-foreground shadow-[0_0_0_2px_var(--color-card)]" style={{ left: `${Math.max(0, Math.min(100, rep / 10))}%` }} />
               </div>
             </div>
-          )}
+          ) : !loaded ? (
+            <Skeleton className="mt-2 mb-0.5 h-1.5 w-full" />
+          ) : null}
         </StatTile>
-        <StatTile to="/app/wallet" label="Wallet balance" value={balance != null ? balance.toFixed(2) : dash} sub="USDC on Arc · live" />
-        <StatTile to="/app/settlements" label="Settlements" value={settlements != null ? String(settlements) : dash} sub="settled on-chain" />
-        <StatTile to="/app/permissions" label="Daily cap" value={p ? `$${p.dailyCapUsd}` : dash} sub={p ? `auto-approve $${p.autoApproveUnderUsd}` : 'set your limits'} />
+        <StatTile to="/app/wallet" label="Wallet balance" value={balance != null ? balance.toFixed(2) : dash} sub="USDC on Arc · live" loading={balance == null && !loaded} />
+        <StatTile to="/app/settlements" label="Settlements" value={settlements != null ? String(settlements) : dash} sub="settled on-chain" loading={settlements == null && !loaded} />
+        <StatTile to="/app/permissions" label="Daily cap" value={p ? `$${p.dailyCapUsd}` : dash} sub={p ? `auto-approve $${p.autoApproveUnderUsd}` : 'set your limits'} loading={!p && !loaded} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -195,7 +198,13 @@ export default function Dashboard() {
                   <span className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: c.color + '18', color: c.color }}>{c.status}</span>
                 </div>
                 <div className="mt-2 font-mono text-[11px] leading-relaxed text-foreground/45">
-                  {c.id === 'arc' ? (agentTotal == null ? '—' : `${agentTotal} live agent${agentTotal === 1 ? '' : 's'}`) : 'no live agents yet'}
+                  {c.id === 'arc'
+                    ? agentTotal != null
+                      ? `${agentTotal} live agent${agentTotal === 1 ? '' : 's'}`
+                      : !loaded
+                        ? <Skeleton className="h-3 w-20" />
+                        : '—'
+                    : 'no live agents yet'}
                 </div>
                 {c.explorer && (
                   <a href={c.explorer} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-semibold text-accent hover:underline">
@@ -222,8 +231,20 @@ export default function Dashboard() {
                 </li>
               ))}
             </ul>
+          ) : !loaded ? (
+            <ul className="flex flex-col gap-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <li key={i} className="flex gap-3">
+                  <Skeleton className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-full" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="text-sm text-foreground/45">{loaded ? 'No activity yet. Register an agent and make a payment.' : 'Loading'}</p>
+            <p className="text-sm text-foreground/45">No activity yet. Register an agent and make a payment.</p>
           )}
           <Link to="/app/settlements" className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
             View all <ArrowUpRight size={14} />
@@ -234,13 +255,21 @@ export default function Dashboard() {
   )
 }
 
-function StatTile({ to, label, value, sub, children }: { to: string; label: string; value: string; sub: string; children?: ReactNode }) {
+function StatTile({ to, label, value, sub, loading, children }: { to: string; label: string; value: string; sub: string; loading?: boolean; children?: ReactNode }) {
   return (
     <Link to={to} className="group flex flex-col bg-card p-5 transition-colors hover:bg-foreground/[0.02]">
       <div className="text-[11px] font-medium uppercase tracking-wide text-foreground/45">{label}</div>
-      <div className="mt-1.5 font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground">{value}</div>
+      {loading ? (
+        <Skeleton className="mt-1.5 h-8 w-16" />
+      ) : (
+        <div className="mt-1.5 font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground">{value}</div>
+      )}
       {children}
-      <div className="mt-1 text-[11px] text-foreground/40">{sub}</div>
+      {loading ? (
+        <Skeleton className="mt-1 h-3 w-24" />
+      ) : (
+        <div className="mt-1 text-[11px] text-foreground/40">{sub}</div>
+      )}
     </Link>
   )
 }

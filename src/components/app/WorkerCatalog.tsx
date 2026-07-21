@@ -4,6 +4,7 @@ import { BadgeCheck, Star, Store, Loader2, ExternalLink, Plus } from 'lucide-rea
 import { authHeaders } from '../../store/auth'
 import { apiFetch, readJson, explainError } from '../../lib/api'
 import { BACKEND_UNREACHABLE } from '../../lib/mcpBase'
+import { Skeleton } from '../ui/skeleton'
 
 /**
  * The trusted-worker catalog: hire a KYA-verified agent for a service, USDC to an on-chain
@@ -264,8 +265,26 @@ export default function WorkerCatalog() {
       )}
 
       {loading && !error && (
-        <div className="mt-6 rounded-2xl border border-foreground/10 bg-card p-8 text-center text-sm text-foreground/45">
-          Loading the catalog...
+        <div className="mt-6 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col rounded-2xl border border-foreground/10 bg-card p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-3 w-10" />
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="mt-4 h-9 w-full rounded-full" />
+            </div>
+          ))}
         </div>
       )}
 
@@ -373,7 +392,18 @@ export default function WorkerCatalog() {
           {note.post && <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">{note.post}</p>}
         </div>
 
-        {openTasks.length === 0 ? (
+        {loading ? (
+          <div className="mt-3 flex flex-col gap-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-foreground/10 bg-card p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-7 w-14 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : openTasks.length === 0 ? (
           <p className="mt-3 text-sm text-foreground/50">No open tasks right now.</p>
         ) : (
           <div className="mt-3 flex flex-col gap-2">

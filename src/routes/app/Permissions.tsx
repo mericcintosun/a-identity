@@ -18,6 +18,7 @@ import { Stat } from '../../components/app/WalletPanels'
 import { BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { apiFetch, readJson, explainError } from '../../lib/api'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
+import { Skeleton } from '../../components/ui/skeleton'
 const short = (a: string) => (a.length > 14 ? `${a.slice(0, 8)}...${a.slice(-4)}` : a)
 
 type Permissions = {
@@ -172,8 +173,48 @@ export default function Permissions() {
       )}
 
       {loading && !error && (
-        <div className="mt-5 rounded-2xl border border-foreground/10 bg-card p-8 text-center text-sm text-foreground/45">
-          Loading policy...
+        <div className="mt-5 space-y-4">
+          {/* Daily-spend card */}
+          <div className="rounded-2xl border border-foreground/10 bg-card p-5">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+            <div className="mt-3 flex items-end justify-between">
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <Skeleton className="mt-3 h-2 w-full rounded-full" />
+          </div>
+          {/* Spending limits (form rows) */}
+          <div className="rounded-2xl border border-foreground/10 bg-card p-6">
+            <Skeleton className="mb-4 h-4 w-32" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            </div>
+          </div>
+          {/* Access controls (toggle rows) */}
+          <div className="rounded-2xl border border-foreground/10 bg-card p-6">
+            <Skeleton className="mb-4 h-4 w-32" />
+            <div className="space-y-4">
+              {[0, 1].map((i) => (
+                <div key={i} className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 space-y-2">
+                    <Skeleton className="h-4 w-44" />
+                    <Skeleton className="h-3 w-64" />
+                  </div>
+                  <Skeleton className="h-6 w-11 shrink-0 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -720,7 +761,17 @@ function VaultPanel({ agentId }: { agentId: string }) {
       </p>
 
       {loading ? (
-        <div className="text-xs text-foreground/45">Loading vault status...</div>
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-40" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="rounded-2xl border border-foreground/[0.06] bg-card px-4 py-3">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="mt-1.5 h-4 w-12" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : has ? (
         <div className="space-y-3">
           <a

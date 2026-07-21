@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Circle,
   Fingerprint,
-  RefreshCw,
   ShieldQuestion,
   Star,
   Wifi,
@@ -17,6 +16,7 @@ import { fetchPlatformAgents, invalidatePlatformAgents, subscribePlatformAgents 
 import { BACKEND_UNREACHABLE } from '../../lib/mcpBase'
 import { apiFetch, readJson, explainError } from '../../lib/api'
 import { Button } from '../../components/ui/button'
+import { Skeleton } from '../../components/ui/skeleton'
 
 type Stage = 'register' | 'verify' | 'live'
 
@@ -227,17 +227,24 @@ export default function AgentId() {
             <div className="text-xl font-bold tracking-tight">
               {agentName}
             </div>
-            <div className="mt-1 break-all font-mono text-sm opacity-60">
-              {agentIdLabel}
-            </div>
+            {realChecked ? (
+              <div className="mt-1 break-all font-mono text-sm opacity-60">
+                {agentIdLabel}
+              </div>
+            ) : (
+              <Skeleton className="mt-1 h-4 w-40" />
+            )}
             <div className="mt-3 text-xs opacity-60">Category</div>
             <div className="text-sm font-semibold">{category}</div>
           </div>
           <div className="text-right">
             <div className="text-xs opacity-60">ERC-8004</div>
             <div className="mt-1 flex items-center justify-end gap-1.5">
-              <div className="text-3xl font-bold leading-none">{score ?? '-'}</div>
-              {repLoading && <RefreshCw size={13} className="animate-spin opacity-50" />}
+              {repLoading || !realChecked ? (
+                <Skeleton className="h-10 w-20" />
+              ) : (
+                <div className="text-3xl font-bold leading-none">{score ?? '-'}</div>
+              )}
             </div>
             <div className="mt-0.5 text-xs opacity-60">Reputation</div>
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
@@ -249,9 +256,13 @@ export default function AgentId() {
         <div className="relative mt-5 flex items-center justify-between">
           <div>
             <div className="text-xs opacity-60">Registered</div>
-            <div className="text-sm font-semibold">
-              {registeredLabel}
-            </div>
+            {realChecked ? (
+              <div className="text-sm font-semibold">
+                {registeredLabel}
+              </div>
+            ) : (
+              <Skeleton className="h-4 w-24" />
+            )}
           </div>
           <div>
             <div className="text-xs opacity-60">Network</div>
@@ -432,12 +443,13 @@ function ReputationCard({
   return (
     <div className="rounded-2xl border border-foreground/10 bg-card p-5">
       <div className="text-xs font-semibold text-foreground/50">{label}</div>
-      <div
-        className={`mt-2 text-2xl font-bold tracking-tight transition-opacity ${loading ? 'opacity-50' : ''}`}
-        style={{ color }}
-      >
-        {value}
-      </div>
+      {loading ? (
+        <Skeleton className="mt-2 h-6 w-10" />
+      ) : (
+        <div className="mt-2 text-2xl font-bold tracking-tight" style={{ color }}>
+          {value}
+        </div>
+      )}
       <div className="text-xs text-foreground/35">of {max}</div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-foreground/8">
         <div

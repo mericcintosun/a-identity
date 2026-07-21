@@ -6,6 +6,7 @@ import { apiFetch, readJson, explainError } from '../../lib/api'
 import { fetchPlatformAgents } from '../../lib/platformAgents'
 import { pickPrimaryAgent } from '../../lib/pickAgent'
 import { authHeaders } from '../../store/auth'
+import { Skeleton } from '../../components/ui/skeleton'
 
 /**
  * Earnings: what an agent has earned as a marketplace worker (released jobs), its live USDC
@@ -178,21 +179,35 @@ export default function Earnings() {
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground/45">
                 <Coins size={14} className="text-accent" /> Earned (released jobs)
               </div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{earnedUsd.toFixed(2)} <span className="text-sm font-semibold text-foreground/50">USDC</span></div>
+              <div className="mt-2 text-2xl font-bold text-foreground">
+                {!loaded ? (
+                  <Skeleton className="h-8 w-28" />
+                ) : (
+                  <>{earnedUsd.toFixed(2)} <span className="text-sm font-semibold text-foreground/50">USDC</span></>
+                )}
+              </div>
               <div className="mt-1 text-xs text-foreground/45">{released.length} completed job{released.length === 1 ? '' : 's'}</div>
             </div>
             <div className="rounded-2xl border border-foreground/10 bg-card p-5">
               <div className="text-xs font-semibold text-foreground/45">Live wallet balance</div>
               <div className="mt-2 text-2xl font-bold text-foreground">
-                {balance !== null ? Number(balance).toFixed(4) : '--'} <span className="text-sm font-semibold text-foreground/50">USDC</span>
+                {balance == null && agent?.walletAddress ? (
+                  <Skeleton className="h-8 w-36" />
+                ) : (
+                  <>{balance !== null ? Number(balance).toFixed(4) : '--'} <span className="text-sm font-semibold text-foreground/50">USDC</span></>
+                )}
               </div>
               <div className="mt-1 text-xs text-foreground/45">on Arc testnet</div>
-              {gw && (
+              {gw ? (
                 <div className="mt-2 border-t border-foreground/8 pt-2 text-xs text-foreground/60">
                   Gateway unified: <b className="text-foreground">{gw.available.toFixed(2)} USDC</b>
                   {gw.pending > 0 && <span className="text-foreground/40"> · {gw.pending.toFixed(2)} pending</span>}
                 </div>
-              )}
+              ) : agent?.walletAddress ? (
+                <div className="mt-2 border-t border-foreground/8 pt-2">
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              ) : null}
             </div>
             <div className="rounded-2xl border border-foreground/10 bg-card p-5">
               <div className="text-xs font-semibold text-foreground/45">Redeem cross-chain</div>
@@ -211,7 +226,16 @@ export default function Earnings() {
 
           {/* Completed jobs */}
           <h3 className="mt-8 text-lg font-bold tracking-tight">Completed jobs</h3>
-          {released.length === 0 ? (
+          {!loaded ? (
+            <div className="mt-3 flex flex-col gap-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between gap-2 rounded-2xl border border-foreground/10 bg-card p-4">
+                  <Skeleton className="h-4 w-44" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          ) : released.length === 0 ? (
             <p className="mt-2 text-sm text-foreground/50">No completed jobs yet. Once a client releases the escrow on a delivered task, it shows up here.</p>
           ) : (
             <div className="mt-3 flex flex-col gap-2">
