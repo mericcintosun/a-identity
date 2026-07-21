@@ -221,6 +221,39 @@ function TrustProfile({ identity, reputation, query }: { identity: AgentIdentity
   )
 }
 
+const Shimmer = ({ className }: { className?: string }) => <div className={`animate-pulse rounded bg-foreground/[0.08] ${className ?? ''}`} />
+
+function ProfileSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-4 border-b border-border p-5">
+        <Shimmer className="h-11 w-11 rounded-lg" />
+        <div className="flex-1 space-y-2"><Shimmer className="h-4 w-40" /><Shimmer className="h-3 w-64" /></div>
+      </div>
+      <div className="space-y-3 border-b border-border p-5">
+        <Shimmer className="h-9 w-40" /><Shimmer className="h-2 w-full" />
+      </div>
+      <div className="grid gap-x-8 gap-y-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => <Shimmer key={i} className="h-4 w-full" />)}
+      </div>
+    </div>
+  )
+}
+
+function LeaderboardSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <div className="divide-y divide-border/60">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-3">
+          <Shimmer className="h-4 w-4" /><Shimmer className="h-7 w-7 rounded-lg" />
+          <div className="flex-1 space-y-1.5"><Shimmer className="h-3.5 w-36" /><Shimmer className="h-2.5 w-20" /></div>
+          <Shimmer className="hidden h-1.5 w-20 sm:block" /><Shimmer className="h-4 w-10" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Explorer() {
   const { theme } = useTheme()
   const [sp] = useSearchParams()
@@ -232,6 +265,7 @@ export default function Explorer() {
   const [reputation, setReputation] = useState<Reputation | null>(null)
   const [shown, setShown] = useState('')
   const [board, setBoard] = useState<FeedAgent[]>([])
+  const [boardLoading, setBoardLoading] = useState(true)
   const topRef = useRef<HTMLElement>(null)
 
   async function lookup(raw: string, scroll = false) {
@@ -249,7 +283,7 @@ export default function Explorer() {
 
   useEffect(() => {
     void lookup(initialQ)
-    void getLeaderboard().then((r) => { if (r.ok) setBoard(r.data.filter((a) => (a.reputation?.score ?? 0) > 0).slice(0, 12)) })
+    void getLeaderboard().then((r) => { if (r.ok) setBoard(r.data.filter((a) => (a.reputation?.score ?? 0) > 0).slice(0, 12)); setBoardLoading(false) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -298,6 +332,7 @@ export default function Explorer() {
           {/* result */}
           <div className="mt-6">
             {error && <div className="rounded-lg border border-border bg-card p-5 text-sm text-foreground/60">{error}</div>}
+            {!error && loading && !identity && !reputation && <ProfileSkeleton />}
             <AnimatePresence mode="wait">
               {!error && (identity || reputation) && (
                 <motion.div key={shown} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
@@ -308,14 +343,14 @@ export default function Explorer() {
           </div>
 
           {/* leaderboard table */}
-          {board.length > 0 && (
+          {(boardLoading || board.length > 0) && (
             <div className="mt-12">
               <div className="mb-2 flex items-baseline justify-between">
                 <h2 className="text-sm font-bold uppercase tracking-wide text-foreground/70">Most trusted agents</h2>
                 <span className="font-mono text-[11px] text-foreground/40">ranked by reputation</span>
               </div>
               <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <table className="w-full text-sm">
+                {board.length === 0 ? <LeaderboardSkeleton /> : <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-foreground/40">
                       <th className="w-10 py-2.5 pl-4 font-medium">#</th>
@@ -359,7 +394,7 @@ export default function Explorer() {
                       )
                     })}
                   </tbody>
-                </table>
+                </table>}
               </div>
             </div>
           )}

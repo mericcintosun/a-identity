@@ -213,7 +213,12 @@ export default function TrustSpotlight() {
                           </button>
                         )
                       })}
-                      {!featured.length && <div className="px-2 py-4 text-sm text-foreground/40">Loading agents…</div>}
+                      {!featured.length && Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3 px-2 py-2.5">
+                          <div className="h-[30px] w-[30px] animate-pulse rounded-lg bg-foreground/[0.08]" />
+                          <div className="flex-1 space-y-1.5"><div className="h-3 w-28 animate-pulse rounded bg-foreground/[0.08]" /><div className="h-2.5 w-16 animate-pulse rounded bg-foreground/[0.08]" /></div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
