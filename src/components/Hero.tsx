@@ -16,11 +16,12 @@ import { EASE_OUT_EXPO, PROTOCOLS } from '../lib/brand'
  * (heading=0, subtext=1, cta=2) is offset by 0.15s.
  */
 const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 28 },
+  hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.15, duration: 0.6, ease: EASE_OUT_EXPO },
+    filter: 'blur(0px)',
+    transition: { delay: i * 0.12, duration: 0.7, ease: EASE_OUT_EXPO },
   }),
 }
 
@@ -125,13 +126,13 @@ export default function Hero() {
               fontFamily: 'var(--font-body)',
               fontWeight: 600,
               fontSize: 'clamp(0.9rem, 2vw, 1rem)',
-              boxShadow: '0 4px 24px rgba(115,66,226,0.28)',
+              boxShadow: '0 8px 30px rgba(115,66,226,0.32)',
               minWidth: 210,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 32,
-              border: 'none',
+              border: '1px solid transparent',
               cursor: 'pointer',
             }}
           >
@@ -151,6 +152,7 @@ export default function Hero() {
               fontFamily: 'var(--font-body)',
               fontWeight: 600,
               fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+              border: '1px solid var(--border)',
               display: 'inline-flex',
               alignItems: 'center',
               cursor: 'pointer',
