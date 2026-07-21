@@ -44,6 +44,7 @@ import {
   getAgentCircleWallet,
   startKyaChallenge,
   verifyKya,
+  revokeAgentKya,
   getAgentKya,
   getAgentTreasury,
   startAgentAutoYield,
@@ -913,6 +914,16 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 400, { error: 'agentId, message, signature required' }); return
     }
     const r = await verifyKya(body.agentId, body.message, body.signature, callerId)
+    if ('error' in r) { sendJson(res, errStatus(r.error), r); return }
+    sendJson(res, 200, r)
+    return
+  }
+  // Revoke KYA: flag the agent as an incident (owner-only). risk_check then DENYs it; the
+  // agent is no longer hireable. Best-effort negative on-chain attestation (tag "revoked").
+  if (req.method === 'POST' && url.pathname === '/api/agents/kya/revoke') {
+    const body = (await readBody(req).catch(() => null)) as { agentId?: string; reason?: string } | null
+    if (!body?.agentId) { sendJson(res, 400, { error: 'agentId required' }); return }
+    const r = await revokeAgentKya(body.agentId, body.reason ?? '', callerId)
     if ('error' in r) { sendJson(res, errStatus(r.error), r); return }
     sendJson(res, 200, r)
     return

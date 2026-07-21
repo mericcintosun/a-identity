@@ -690,9 +690,11 @@ export function createEvmAdapter(chain: ChainDescriptor) {
   }
 
   // ── KYA attestation: ERC-8004 ValidationRegistry ────────────────────────────────
-  async function recordValidation(agentId: bigint, requestUri: string, env: NodeJS.ProcessEnv = process.env): Promise<Prepared | ValidationExecuted> {
+  async function recordValidation(agentId: bigint, requestUri: string, env: NodeJS.ProcessEnv = process.env, opts?: { response?: number; tag?: string }): Promise<Prepared | ValidationExecuted> {
+    const response = opts?.response ?? 100
+    const tag = opts?.tag ?? 'kya'
     const { keccak256, toHex } = await import('viem')
-    const requestHash = keccak256(toHex(`kya:${agentId.toString()}:${requestUri}:${Date.now()}`))
+    const requestHash = keccak256(toHex(`${tag}:${agentId.toString()}:${requestUri}:${Date.now()}`))
     const signer = await walletClient(env)
     if (!signer) {
       return {
@@ -700,7 +702,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
         contract: validationRegistry,
         function: 'validationRequest(address,uint256,string,bytes32) + validationResponse(bytes32,uint8,string,bytes32,string)',
         args: [agentId.toString(), requestUri, requestHash],
-        reason: `No ${chain.signerEnvVar ?? 'signer'} set. This opens + answers an ERC-8004 validation (response=100, tag "kya") for the agent.`,
+        reason: `No ${chain.signerEnvVar ?? 'signer'} set. This opens + answers an ERC-8004 validation (response=${response}, tag "${tag}") for the agent.`,
       }
     }
     const client = await publicClient(env)
@@ -712,7 +714,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     await client.waitForTransactionReceipt({ hash: reqTx })
     const respTx = await signer.client.writeContract({
       address: validationRegistry, abi: VALIDATION_ABI, functionName: 'validationResponse',
-      args: [requestHash, 100, requestUri, ZERO_HASH, 'kya'],
+      args: [requestHash, response, requestUri, ZERO_HASH, tag],
     })
     await client.waitForTransactionReceipt({ hash: respTx })
     return { executed: true, txHash: respTx, explorerUrl: tx(respTx), requestHash }

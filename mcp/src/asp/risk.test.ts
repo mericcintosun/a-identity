@@ -70,3 +70,17 @@ test('DENY reasons include triggered WARN reasons too', () => {
   // both deny (no identity, low rep) and warn (kya, new agent) reasons collected
   assert.ok(r.reasons.length >= 3)
 })
+
+test('DENY: a revoked KYA forces a deny even for an otherwise-strong agent (A2)', () => {
+  const r = assessRisk({ ...strong, revoked: true })
+  assert.equal(r.decision, 'DENY')
+  assert.equal(r.risk, 'high')
+  assert.ok(r.reasons.some((x) => /REVOKED/i.test(x)), 'the revoked reason must be present')
+})
+
+test('a revoked agent is not also flagged as merely "KYA not attested"', () => {
+  const r = assessRisk({ onchainVerified: true, kyaVerified: false, reputationScore: 720, tenureDays: 90, revoked: true })
+  assert.equal(r.decision, 'DENY')
+  assert.ok(r.reasons.some((x) => /REVOKED/i.test(x)))
+  assert.ok(!r.reasons.some((x) => /not attested/i.test(x)), 'revoked should suppress the redundant not-attested warn')
+})

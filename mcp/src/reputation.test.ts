@@ -58,3 +58,44 @@ test('a future createdAt never produces negative tenure', () => {
   const r = computeAgentReputation({ settledCount: 1, rejected: 0, onchainRegistered: false, createdAt: '2999-01-01' }, asOf)
   assert.equal(r.breakdown.tenure, 0)
 })
+
+// ── behavioral band (B1): real marketplace job outcomes sharpen the score ──────────
+
+test('an agent with no job history is scored exactly as before (behavior 0, backward compatible)', () => {
+  const withoutFields = computeAgentReputation({ settledCount: 8, rejected: 2, onchainRegistered: true, createdAt: '2026-05-01' }, asOf)
+  const withZeroHistory = computeAgentReputation({ settledCount: 8, rejected: 2, onchainRegistered: true, createdAt: '2026-05-01', completedTasks: 0, disputedTasks: 0, ratedCount: 0 }, asOf)
+  assert.equal(withoutFields.breakdown.behavior, 0)
+  assert.equal(withoutFields.score, withZeroHistory.score)
+})
+
+test('a high dispute rate lowers the score via a negative behavior band', () => {
+  const clean = computeAgentReputation({ settledCount: 10, rejected: 0, onchainRegistered: true, createdAt: '2026-01-01', completedTasks: 5, disputedTasks: 0 }, asOf)
+  const disputed = computeAgentReputation({ settledCount: 10, rejected: 0, onchainRegistered: true, createdAt: '2026-01-01', completedTasks: 1, disputedTasks: 4 }, asOf)
+  assert.equal(clean.breakdown.behavior, 0)
+  assert.ok(disputed.breakdown.behavior < 0, `expected a penalty, got ${disputed.breakdown.behavior}`)
+  assert.ok(disputed.score < clean.score, `${disputed.score} !< ${clean.score}`)
+})
+
+test('strong client ratings (>=2 reviews) add a small behavior bonus', () => {
+  const base = computeAgentReputation({ settledCount: 2, rejected: 0, onchainRegistered: false, createdAt: '2026-07-01', completedTasks: 3, disputedTasks: 0 }, asOf)
+  const rated = computeAgentReputation({ settledCount: 2, rejected: 0, onchainRegistered: false, createdAt: '2026-07-01', completedTasks: 3, disputedTasks: 0, avgRating: 5, ratedCount: 4 }, asOf)
+  assert.ok(rated.breakdown.behavior > base.breakdown.behavior)
+  assert.ok(rated.score > base.score)
+})
+
+test('a single review does not move the behavior band (needs >=2)', () => {
+  const one = computeAgentReputation({ settledCount: 5, rejected: 0, onchainRegistered: true, createdAt: '2026-06-01', completedTasks: 1, disputedTasks: 0, avgRating: 5, ratedCount: 1 }, asOf)
+  assert.equal(one.breakdown.behavior, 0)
+})
+
+test('the behavior adjustment is bounded at the floor (-150) even at 100% disputes + 1-star', () => {
+  const r = computeAgentReputation({ settledCount: 3, rejected: 0, onchainRegistered: true, createdAt: '2026-06-01', completedTasks: 0, disputedTasks: 50, avgRating: 1, ratedCount: 10 }, asOf)
+  assert.ok(r.breakdown.behavior >= -150, `behavior ${r.breakdown.behavior} below floor`)
+  assert.ok(r.score >= 0 && r.score <= 1000)
+})
+
+test('breakdown exposes a finite numeric behavior band', () => {
+  const r = computeAgentReputation({ settledCount: 4, rejected: 0, onchainRegistered: true, createdAt: '2026-06-01', completedTasks: 2, disputedTasks: 2 }, asOf)
+  assert.equal(typeof r.breakdown.behavior, 'number')
+  assert.ok(Number.isFinite(r.breakdown.behavior))
+})

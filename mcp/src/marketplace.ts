@@ -209,7 +209,7 @@ export type ManifestAgent = {
   category: string
   capabilities: string[]
   walletAddress: string | null
-  kya: 'verified' | 'unverified'
+  kya: 'verified' | 'unverified' | 'revoked'
   onchain: 'queued' | 'registered'
   endpoint?: string
   services: { name: string; priceUsd: number; unit: string }[]

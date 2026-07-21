@@ -23,6 +23,8 @@ export type RiskSignals = {
   reputationScore: number
   /** Days since the agent's identity was registered / created. */
   tenureDays: number
+  /** KYA was revoked / the agent is flagged as an incident. Forces DENY. */
+  revoked?: boolean
 }
 
 /** Optional transaction context — makes the decision amount-aware. */
@@ -57,6 +59,9 @@ export function assessRisk(signals: RiskSignals, txContext: TxContext | null = n
   const amount = txContext?.amountUsd
 
   // ── DENY rules ────────────────────────────────────────────────────────────
+  if (signals.revoked) {
+    denyReasons.push('KYA has been REVOKED — this agent is flagged as an incident (compromised key or repeated disputes)')
+  }
   if (!signals.onchainVerified) {
     denyReasons.push('No verifiable on-chain identity (ERC-8004) found for this agent')
   }
@@ -70,7 +75,7 @@ export function assessRisk(signals: RiskSignals, txContext: TxContext | null = n
   }
 
   // ── WARN rules ────────────────────────────────────────────────────────────
-  if (!signals.kyaVerified) {
+  if (!signals.kyaVerified && !signals.revoked) {
     warnReasons.push('Identity resolved but KYA (wallet-control) is not attested')
   }
   if (signals.reputationScore >= REP_DENY_BELOW && signals.reputationScore < REP_WARN_BELOW) {

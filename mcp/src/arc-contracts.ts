@@ -165,8 +165,8 @@ export const readPolicyVault = (vault: string) => arc.readVault(vault)
  * Attest an agent's KYA result on the ERC-8004 ValidationRegistry (two real txs).
  * Prepared without a key. Requires our signer to own the ERC-8004 agentId.
  */
-export const recordValidationOnchain = (agentId: bigint, requestUri: string, env: NodeJS.ProcessEnv = process.env) =>
-  arc.recordValidation(agentId, requestUri, env)
+export const recordValidationOnchain = (agentId: bigint, requestUri: string, env: NodeJS.ProcessEnv = process.env, opts?: { response?: number; tag?: string }) =>
+  arc.recordValidation(agentId, requestUri, env, opts)
 
 /** Read an agent's on-chain KYA validation summary (no key needed). */
 export const readValidation = (agentId: bigint, env: NodeJS.ProcessEnv = process.env) =>
