@@ -93,6 +93,13 @@ async function main() {
   await initState()
 
   const app = express()
+  // Behind Render's (and Cloudflare's) proxy, TLS terminates upstream, so Express's
+  // `req.protocol` defaults to 'http'. The OKX x402 middleware builds the 402 challenge's
+  // `resource.url` as `${req.protocol}://${req.headers.host}${req.originalUrl}`, and OKX
+  // requires a public HTTPS resource — an `http://` URL can fail the ASP review / a strict
+  // buyer client. Trusting the proxy makes `req.protocol` read `X-Forwarded-Proto` ('https'),
+  // so the advertised resource URL is correctly `https://`.
+  app.set('trust proxy', true)
   app.use(express.json({ limit: '16kb' }))
 
   // Free discovery endpoints — never charged (payment middleware only guards POST /tools/*).
