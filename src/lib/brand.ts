@@ -33,6 +33,7 @@ export const NAV_LINKS: readonly NavLink[] = [
   { label: 'Developers', href: '#developers' },
   { label: 'Blog', href: '#blog' },
   { label: 'FAQ', href: '#faq' },
+  { label: 'Explorer', href: '/explorer' },
   { label: 'Docs', href: DOCS_URL, external: true },
 ]
 
@@ -56,6 +57,7 @@ export const FOOTER_COLUMNS: readonly FooterColumn[] = [
   {
     title: 'Developers',
     links: [
+      { label: 'Trust Explorer', href: '/explorer' },
       { label: 'OKX.AI ASP — Live Proof', href: 'https://a-identity-asp.onrender.com/proof', external: true },
       { label: 'SDK', href: `${DOCS_URL}/developers/sdk`, external: true },
       { label: 'CLI', href: `${DOCS_URL}/developers/cli`, external: true },
