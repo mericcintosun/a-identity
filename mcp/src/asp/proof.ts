@@ -66,7 +66,7 @@ export const PROOF = {
   },
   // The rigor behind the numbers — deterministic and unit-tested, not an LLM guess.
   engineering: {
-    tests: 130,
+    tests: 132,
     deterministicReputation: true,
     liveOnchainReads: 'ERC-8004 IdentityRegistry + ValidationRegistry (KYA) on Circle Arc, read live via viem',
     standards: ['ERC-8004', 'x402'],
