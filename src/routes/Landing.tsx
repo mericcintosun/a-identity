@@ -11,6 +11,7 @@ import OkxAsp from '../components/sections/OkxAsp'
 import BlogTeaser from '../components/sections/BlogTeaser'
 import FAQ from '../components/sections/FAQ'
 import SiteFooter from '../components/sections/SiteFooter'
+import TrustSpotlight from '../components/TrustSpotlight'
 import { BACKGROUND_VIDEO } from '../lib/brand'
 import { useTheme } from '../components/ThemeProvider'
 
@@ -64,6 +65,9 @@ export default function Landing() {
       <BlogTeaser />
       <FAQ />
       <SiteFooter />
+
+      {/* ⌘K / floating magic trust lookup, available across the landing */}
+      <TrustSpotlight />
     </div>
   )
 }

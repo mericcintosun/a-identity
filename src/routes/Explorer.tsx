@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Loader2, Copy, Check, ArrowUpRight, ShieldCheck, ShieldAlert, ShieldX, BadgeCheck } from 'lucide-react'
 import Logo from '../components/Logo'
@@ -223,7 +223,9 @@ function TrustProfile({ identity, reputation, query }: { identity: AgentIdentity
 
 export default function Explorer() {
   const { theme } = useTheme()
-  const [query, setQuery] = useState('849980')
+  const [sp] = useSearchParams()
+  const initialQ = sp.get('q') || '849980'
+  const [query, setQuery] = useState(initialQ)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [identity, setIdentity] = useState<AgentIdentity | null>(null)
@@ -246,8 +248,9 @@ export default function Explorer() {
   }
 
   useEffect(() => {
-    void lookup('849980')
+    void lookup(initialQ)
     void getLeaderboard().then((r) => { if (r.ok) setBoard(r.data.filter((a) => (a.reputation?.score ?? 0) > 0).slice(0, 12)) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onSubmit = (e: FormEvent) => { e.preventDefault(); void lookup(query) }
