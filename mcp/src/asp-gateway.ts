@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { initState } from './platform.js'
-import { verifyAgent, reputationScore, riskCheck, agentPassport, type TxContext } from './asp/tools.js'
+import { verifyAgent, reputationScore, riskCheck, agentPassport, counterpartyCheck, type TxContext } from './asp/tools.js'
 import { applyOkxX402, type PaymentStatus } from './asp/payment.js'
 import { PROOF, METHODOLOGY } from './asp/proof.js'
 import { renderProofHtml } from './asp/proof-html.js'
@@ -53,6 +53,17 @@ function requireAgentId(req: Request): { agentId: string } | { error: string } {
   return { agentId: id.trim() }
 }
 
+/** Pull the two agent ids a counterparty_check needs (`from` = payer, `to` = counterparty). */
+function requireFromTo(req: Request): { from: string; to: string } | { error: string } {
+  const from = req.body?.from ?? req.body?.payer
+  const to = req.body?.to ?? req.body?.counterparty ?? req.body?.agentId
+  for (const [k, v] of [['from', from], ['to', to]] as const) {
+    if (typeof v !== 'string' || v.trim() === '') return { error: `Body must include a non-empty string "${k}" (the ${k === 'from' ? 'paying' : 'counterparty'} agent id).` }
+    if (v.length > 128) return { error: `"${k}" too long (max 128 characters).` }
+  }
+  return { from: (from as string).trim(), to: (to as string).trim() }
+}
+
 /** Run a tool handler, translating errors into a clean 400/500 JSON envelope. */
 function handle(fn: (req: Request) => Promise<unknown>) {
   return async (req: Request, res: Response) => {
@@ -82,6 +93,7 @@ function serviceCard(payment: PaymentStatus) {
       { name: 'reputation_score', method: 'POST /tools/reputation_score', price: payment.prices['POST /tools/reputation_score'], desc: 'On-chain 0-1000 reputation score for an agent.' },
       { name: 'risk_check', method: 'POST /tools/risk_check', price: payment.prices['POST /tools/risk_check'], desc: 'Pre-transaction counterparty risk: ALLOW / WARN / DENY.' },
       { name: 'agent_passport', method: 'POST /tools/agent_passport', price: payment.prices['POST /tools/agent_passport'], desc: 'Full agent passport (identity + reputation + KYA + risk).' },
+      { name: 'counterparty_check', method: 'POST /tools/counterparty_check', price: payment.prices['POST /tools/counterparty_check'], desc: 'Deal-specific verdict between two agents (risk + same-operator self-deal check).' },
     ],
     docs: 'https://a-identity.xyz',
     proof: '/proof',
@@ -146,6 +158,11 @@ async function main() {
   app.post('/tools/agent_passport', handle(async (req) => {
     const v = requireAgentId(req); if ('error' in v) return v
     return agentPassport(v.agentId)
+  }))
+  app.post('/tools/counterparty_check', handle(async (req) => {
+    const v = requireFromTo(req); if ('error' in v) return v
+    const txContext = (req.body?.txContext ?? req.body?.tx_context ?? null) as TxContext | null
+    return counterpartyCheck(v.from, v.to, txContext)
   }))
 
   app.listen(PORT, () => {

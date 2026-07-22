@@ -16,6 +16,7 @@ import { readValidation } from '../arc-contracts.js'
 import { computeAgentReputation, type ReputationResult } from '../reputation.js'
 import { listPlatformAgents, agentReputation, type PlatformAgent } from '../platform.js'
 import { assessRisk, type RiskSignals, type TxContext, type SybilLevel } from './risk.js'
+import { getReputationAttestation } from './attestations.js'
 
 const DAY_MS = 86_400_000
 
@@ -192,6 +193,9 @@ export async function reputationScore(agentId: string) {
     sybil: b.reputation.sybil,
     settledOnchain: b.reputation.settledOnchain,
     settledUsd: b.reputation.settledUsd,
+    // A1: the latest ERC-8004 on-chain anchor of this score (null if none published), so a
+    // caller can verify the score on-chain instead of trusting this response.
+    onchainAttestation: getReputationAttestation(b.tokenId),
     basis: b.reputation.basis,
     computedAt: new Date().toISOString(),
   }
@@ -239,7 +243,7 @@ export async function agentPassport(agentId: string) {
       : null,
     verified: b.onchainVerified,
     kya: { status: b.kyaStatus, revoked: b.revoked, onchain: b.validation ?? null },
-    reputation: { score: b.reputation.score, breakdown: b.reputation.breakdown, behavioral: b.reputation.behavioral, sybil: b.reputation.sybil, settledOnchain: b.reputation.settledOnchain, settledUsd: b.reputation.settledUsd, basis: b.reputation.basis },
+    reputation: { score: b.reputation.score, breakdown: b.reputation.breakdown, behavioral: b.reputation.behavioral, sybil: b.reputation.sybil, settledOnchain: b.reputation.settledOnchain, settledUsd: b.reputation.settledUsd, onchainAttestation: getReputationAttestation(b.tokenId), basis: b.reputation.basis },
     risk: { decision: risk.decision, level: risk.risk, reasons: risk.reasons },
     platform: b.platform
       ? {
@@ -256,6 +260,61 @@ export async function agentPassport(agentId: string) {
       : null,
     tenureDays: b.tenureDays,
     issuedAt: new Date().toISOString(),
+  }
+}
+
+/** True when two DISTINCT agents are controlled by the same human owner (or share a
+ *  settlement wallet) — i.e. paying one is paying yourself, which builds no independent trust. */
+export function sameOperator(a: PlatformAgent | null, b: PlatformAgent | null): boolean {
+  if (!a || !b || a.id === b.id) return false
+  const ao = a.owner?.toLowerCase(); const bo = b.owner?.toLowerCase()
+  if (ao && bo && ao === bo) return true
+  const aw = a.walletAddress?.toLowerCase(); const bw = b.walletAddress?.toLowerCase()
+  return Boolean(aw && bw && aw === bw)
+}
+
+/**
+ * counterparty_check — a deal-specific verdict for a SPECIFIC payment between two agents:
+ * "should `from` pay `to` (amount X, kind Y)?". It is risk_check on the counterparty (`to`)
+ * PLUS a relationship signal risk_check alone cannot see: whether `to` is operated by the
+ * same owner as `from` (a self-deal, which inflates no real reputation). A clean counterparty
+ * still surfaces as ALLOW; a same-operator self-deal is downgraded to at least WARN.
+ */
+export async function counterpartyCheck(from: string, to: string, txContext: TxContext | null = null) {
+  const [payer, cp] = await Promise.all([gather(from), gather(to)])
+  const base = assessRisk(
+    { onchainVerified: cp.onchainVerified, kyaVerified: cp.kyaVerified, reputationScore: cp.reputation.score, tenureDays: cp.tenureDays, revoked: cp.revoked, sybil: cp.reputation.sybil?.level },
+    txContext,
+  )
+  const isSelfDeal = sameOperator(payer.platform, cp.platform)
+  const reasons = [...base.reasons]
+  let decision = base.decision
+  let risk = base.risk
+  if (isSelfDeal) {
+    reasons.push('Counterparty is operated by the same owner as the payer (self-dealing); a settlement between them builds no independent reputation.')
+    if (decision === 'ALLOW') { decision = 'WARN'; if (risk === 'low') risk = 'medium' }
+  }
+  return {
+    tool: 'counterparty_check',
+    _meta: TOOL_META,
+    from: payer.agentId,
+    to: cp.agentId,
+    decision,
+    risk,
+    reasons,
+    sameOperator: isSelfDeal,
+    counterparty: {
+      agentId: cp.agentId,
+      name: cp.platform?.name ?? null,
+      verified: cp.onchainVerified,
+      kya_status: cp.kyaStatus,
+      revoked: cp.revoked,
+      reputation: cp.reputation.score,
+      sybil: cp.reputation.sybil?.level ?? 'none',
+    },
+    payer: { agentId: payer.agentId, verified: payer.onchainVerified, kya_status: payer.kyaStatus },
+    txContext: txContext ?? null,
+    checkedAt: new Date().toISOString(),
   }
 }
 

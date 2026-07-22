@@ -60,24 +60,37 @@ export const PROOF = {
     name: 'Meridian',
     erc8004TokenId: '#849980',
     chain: 'Circle Arc testnet',
-    reputation: '539 / 1000 (settlement 296 + validation 240 + tenure 3 + behavior 0; no marketplace jobs yet)',
+    reputation: '542 / 1000 (settlement 296 + validation 240 + tenure 6 + behavior 0; no marketplace jobs yet)',
     kya: 'verified',
     note: 'reputation_score and agent_passport return this live on-chain data',
+    // A1: the score is also anchored on-chain as an ERC-8004 feedback attestation, written by
+    // the A-Identity oracle validator (distinct from the agent owner, as ERC-8004 requires).
+    onchainReputationAttestation: {
+      standard: 'ERC-8004 ReputationRegistry',
+      registry: '0x8004B663056A597Dffe9eCcC1965A193B7388713',
+      validator: '0xee602A161232Aac1436E812676b6626382FC84a9',
+      scoreOnchain: '54 / 100 (the 0-1000 score on the ERC-8004 convention)',
+      tx: '0x3f5429819347fb0f75e66ee1416fc2c9ad3dade8fb1bf8dac1b9d2606de92a8c',
+      txUrl: 'https://testnet.arcscan.app/tx/0x3f5429819347fb0f75e66ee1416fc2c9ad3dade8fb1bf8dac1b9d2606de92a8c',
+      note: 'reputation_score / agent_passport return this as onchainAttestation — verify the score on-chain instead of trusting the API',
+    },
   },
   // The rigor behind the numbers — deterministic and unit-tested, not an LLM guess.
   engineering: {
-    tests: 139,
+    tests: 149,
     deterministicReputation: true,
     liveOnchainReads: 'ERC-8004 IdentityRegistry + ValidationRegistry (KYA) on Circle Arc, read live via viem',
+    onchainReputationWrites: 'ERC-8004 ReputationRegistry on Circle Arc: the score is anchored on-chain as a signed observer attestation (A1)',
     standards: ['ERC-8004', 'x402'],
     reputationBasis: 'real on-chain settlements + verified identity credit + tenure + real job outcomes (behavior) — see /methodology',
-    riskBasis: 'ALLOW / WARN / DENY composed from identity + KYA + reputation + tenure — see /methodology',
+    riskBasis: 'ALLOW / WARN / DENY composed from identity + KYA + reputation + tenure + Sybil — see /methodology',
     repo: 'https://github.com/srabyanamrod/A-Identity',
   },
   howToVerify: [
     'Call any tool endpoint (POST /tools/*) — it returns HTTP 402 with an x402 challenge on X Layer mainnet (eip155:196).',
     'Open any settlement txUrl on OKLink — each is a real USD₮0 transfer to payTo on X Layer mainnet.',
     `Check the payTo balance (${PAY_TO}) — it received every one of these settlements in USD₮0.`,
+    'Open the showcase agent onchainReputationAttestation tx on Arcscan — the reputation is anchored on the ERC-8004 ReputationRegistry, not just asserted here.',
     'GET /methodology for the exact, reproducible reputation and risk formulas.',
   ],
   docs: 'https://a-identity.xyz',
@@ -95,6 +108,14 @@ export const METHODOLOGY = {
     behavior: 'clamp(-150, +40, -round(150 * contestedJobs / (completedJobs + contestedJobs)) + (ratedJobs >= 2 ? clamp(-40, +40, round((avgRating - 4) * 40)) : 0)); 0 with no marketplace job history',
     inputs: 'all real and verifiable: on-chain USDC settlements (carry tx hashes), a verified ERC-8004 identity, clean-vs-rejected ratio, tenure, and real marketplace job outcomes (completed vs disputed/refunded jobs + mean client rating). No mock history, no self-attestation.',
     note: 'behavior uses only outcomes A-Identity records on-chain-escrowed jobs (dispute/refund + client ratings); delivery-latency and on-chain cap-breach signals are intentionally NOT yet included (not tracked with the fidelity to score them honestly).',
+  },
+  // A1: the deterministic score is anchored on-chain, so a caller can verify it without trusting us.
+  reputationAnchor: {
+    standard: 'ERC-8004 ReputationRegistry',
+    chain: 'Circle Arc',
+    write: "the score is published via giveFeedback(agentId, score, ...) by the A-Identity oracle validator — a wallet distinct from the agent owner, because ERC-8004 forbids an owner from scoring its own agent (no self-attestation).",
+    scale: 'written on the ERC-8004 0-100 convention (the 0-1000 score / 10); the raw 0-1000 value + tag are committed in the feedback hash for exact verification.',
+    surfaced: 'reputation_score and agent_passport return the latest attestation as `onchainAttestation` (chain, registry, validator, tx). Absent until an agent has a published attestation — the score is always recomputed live, so the anchor is a verifiable snapshot, never the source of truth.',
   },
   risk: {
     decisions: ['ALLOW', 'WARN', 'DENY'],
@@ -116,8 +137,16 @@ export const METHODOLOGY = {
     allow: 'none of the above — verified identity, attested KYA, strong reputation',
     note: 'DENY overrides WARN overrides ALLOW; every triggered reason is returned. Pure and unit-tested.',
   },
+  // The paid tools (each a thin wrapper over the live engine; prices settle over x402 on X Layer).
+  tools: {
+    verify_agent: '$0.001 — ERC-8004 identity + KYA status',
+    reputation_score: '$0.002 — the deterministic 0-1000 score (+ its on-chain attestation, if published)',
+    risk_check: '$0.005 — pre-transaction ALLOW / WARN / DENY on a counterparty',
+    agent_passport: '$0.01 — identity + reputation + KYA + risk in one call',
+    counterparty_check: "$0.008 — a deal-specific verdict between two agents: risk_check on the counterparty PLUS a same-operator self-deal check (paying an agent you also operate builds no independent reputation).",
+  },
   standards: {
-    'ERC-8004': 'on-chain agent identity (IdentityRegistry) + validation/KYA (ValidationRegistry)',
+    'ERC-8004': 'on-chain agent identity (IdentityRegistry) + validation/KYA (ValidationRegistry) + reputation attestation (ReputationRegistry)',
     x402: 'HTTP 402 pay-per-call settlement, here on X Layer mainnet in USD₮0',
   },
 }

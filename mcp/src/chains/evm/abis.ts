@@ -105,6 +105,28 @@ export const VALIDATION_ABI = [
 ] as const
 
 /**
+ * ERC-8004 ReputationRegistry. `giveFeedback` records a signed reputation attestation for
+ * an agent from an external observer (a "validator"): per ERC-8004 an agent's owner CANNOT
+ * score its own agent, so the caller must be a distinct validator address. `score` is a
+ * signed int128 on the standard's 0-100 convention (e.g. 95 = strong). The three free-form
+ * strings and the `feedbackHash` carry the off-chain evidence + a content hash of the score
+ * payload, so the attestation is independently verifiable. Arc canonical example:
+ *   giveFeedback(agentId, 95, 0, "successful_trade", "", "", "", keccak256("successful_trade"))
+ */
+export const REPUTATION_ABI = [
+  { type: 'function', name: 'giveFeedback', stateMutability: 'nonpayable', inputs: [
+    { name: 'agentId', type: 'uint256' },
+    { name: 'score', type: 'int128' },
+    { name: 'tag1', type: 'uint8' },
+    { name: 'tag2', type: 'string' },
+    { name: 'endpointUri', type: 'string' },
+    { name: 'fileUri', type: 'string' },
+    { name: 'fileType', type: 'string' },
+    { name: 'feedbackHash', type: 'bytes32' },
+  ], outputs: [] },
+] as const
+
+/**
  * Arc `Memo` precompile (transaction memos). `memo(target, data, memoId, memoData)`
  * wraps a contract call, preserves the EOA as `msg.sender` via the `CallFrom`
  * precompile, and emits an on-chain audit-trail event indexable by `memoId`/`sender`.

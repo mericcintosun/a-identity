@@ -171,3 +171,17 @@ export const recordValidationOnchain = (agentId: bigint, requestUri: string, env
 /** Read an agent's on-chain KYA validation summary (no key needed). */
 export const readValidation = (agentId: bigint, env: NodeJS.ProcessEnv = process.env) =>
   arc.readValidation(agentId, env)
+
+/**
+ * Anchor an agent's deterministic 0-1000 reputation on the ERC-8004 ReputationRegistry as a
+ * signed observer attestation (score normalized to the standard's 0-100 scale; the raw score
+ * + tag are committed in the feedback hash). Per ERC-8004 the validator must NOT own the
+ * agent, so it uses a distinct ARC_VALIDATOR_KEY (falling back to the signer) and fails fast
+ * on self-attestation. Prepared (not broadcast) without a validator key.
+ */
+export const recordReputationOnchain = (
+  agentId: bigint,
+  score: number,
+  env: NodeJS.ProcessEnv = process.env,
+  opts?: { validatorEnvVar?: string; tag?: string; evidenceUri?: string },
+) => arc.recordReputation(agentId, score, env, opts)

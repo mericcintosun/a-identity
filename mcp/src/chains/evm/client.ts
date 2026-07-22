@@ -35,10 +35,10 @@ export async function evmPublicClient(chain: ChainDescriptor, env: NodeJS.Proces
   return createPublicClient({ transport: await evmTransport(chain, env) })
 }
 
-/** Present only when the chain's signer env var is set. Human-on-the-loop lives one
- *  level up: nothing here broadcasts unless a caller explicitly asks to execute. */
-export async function evmWalletClient(chain: ChainDescriptor, env: NodeJS.ProcessEnv = process.env) {
-  const key = chain.signerEnvVar ? env[chain.signerEnvVar] : undefined
+/** Build a wallet client from an EXPLICIT private key (used when the signer is not the
+ *  chain's default signer, e.g. a distinct reputation-validator wallet that, per ERC-8004,
+ *  must differ from the agent owner). Returns null if the key is empty. */
+export async function evmWalletClientFromKey(chain: ChainDescriptor, key: string | undefined, env: NodeJS.ProcessEnv = process.env) {
   if (!key) return null
   if (chain.evmChainId == null) throw new Error(`Chain ${chain.id} has no EVM chain id`)
   const { createWalletClient, defineChain } = await import('viem')
@@ -49,8 +49,14 @@ export async function evmWalletClient(chain: ChainDescriptor, env: NodeJS.Proces
     nativeCurrency: chain.nativeCurrency,
     rpcUrls: { default: { http: resolveRpcUrls(chain, env) } },
   })
-  const account = privateKeyToAccount(key as `0x${string}`)
+  const account = privateKeyToAccount((key.startsWith('0x') ? key : `0x${key}`) as `0x${string}`)
   return { client: createWalletClient({ account, chain: viemChain, transport: await evmTransport(chain, env) }), account }
+}
+
+/** Present only when the chain's signer env var is set. Human-on-the-loop lives one
+ *  level up: nothing here broadcasts unless a caller explicitly asks to execute. */
+export async function evmWalletClient(chain: ChainDescriptor, env: NodeJS.ProcessEnv = process.env) {
+  return evmWalletClientFromKey(chain, chain.signerEnvVar ? env[chain.signerEnvVar] : undefined, env)
 }
 
 /** Decode a viem contract revert into the Solidity error name (e.g. "AboveAutoApprove"). */

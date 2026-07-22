@@ -4,7 +4,11 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { asTokenId, isAddress } from './tools.js'
+import { asTokenId, isAddress, sameOperator } from './tools.js'
+import type { PlatformAgent } from '../platform.js'
+
+// A minimal agent for the counterparty_check same-operator relationship signal.
+const agent = (over: Partial<PlatformAgent>): PlatformAgent => ({ id: 'a', owner: undefined, walletAddress: null, ...over } as PlatformAgent)
 
 test('asTokenId: plain number', () => {
   assert.equal(asTokenId('849980'), 849980n)
@@ -35,4 +39,25 @@ test('isAddress: rejects non-addresses', () => {
   assert.equal(isAddress('6a5f1b8e56a19d456b799c2fa00e513244f58ce6'), false) // no 0x
   assert.equal(isAddress('#849980'), false)
   assert.equal(isAddress('0xZZZZ1b8e56a19d456b799c2fa00e513244f58ce6'), false) // non-hex
+})
+
+test('sameOperator: same owner (case-insensitive) on distinct agents => true', () => {
+  assert.equal(sameOperator(agent({ id: 'a', owner: '0xABC' }), agent({ id: 'b', owner: '0xabc' })), true)
+})
+
+test('sameOperator: shared settlement wallet => true', () => {
+  assert.equal(sameOperator(agent({ id: 'a', walletAddress: '0xWALLET' }), agent({ id: 'b', walletAddress: '0xwallet' })), true)
+})
+
+test('sameOperator: different owners => false', () => {
+  assert.equal(sameOperator(agent({ id: 'a', owner: '0xAAA' }), agent({ id: 'b', owner: '0xBBB' })), false)
+})
+
+test('sameOperator: the same agent id is not a self-deal counterparty', () => {
+  assert.equal(sameOperator(agent({ id: 'a', owner: '0xABC' }), agent({ id: 'a', owner: '0xABC' })), false)
+})
+
+test('sameOperator: missing owner/wallet on either side => false (no false positive)', () => {
+  assert.equal(sameOperator(agent({ id: 'a' }), agent({ id: 'b' })), false)
+  assert.equal(sameOperator(null, agent({ id: 'b', owner: '0xABC' })), false)
 })

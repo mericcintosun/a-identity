@@ -22,13 +22,14 @@ import type {
 import {
   evmPublicClient,
   evmWalletClient,
+  evmWalletClientFromKey,
   revertReason,
   usdcUnits,
   fromUsdcUnits,
   txUrl,
   addressUrl,
 } from './client.js'
-import { IDENTITY_ABI, ERC20_ABI, COMMERCE_ABI, VALIDATION_ABI, MEMO_ABI, MULTICALL3_FROM_ABI, JOB_STATUS, ZERO_ADDRESS, ZERO_HASH } from './abis.js'
+import { IDENTITY_ABI, ERC20_ABI, COMMERCE_ABI, VALIDATION_ABI, REPUTATION_ABI, MEMO_ABI, MULTICALL3_FROM_ABI, JOB_STATUS, ZERO_ADDRESS, ZERO_HASH } from './abis.js'
 import { encodeMemo, decodeMemo, type MemoInput } from './memo.js'
 import { AgentSpendPolicyAbi, AgentSpendPolicyBytecode } from '../../contracts/AgentSpendPolicy.js'
 
@@ -45,6 +46,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
   // For the live app these are all defined; cast for viem's `0x${string}` address type.
   const identityRegistry = c.identityRegistry as Hex
   const validationRegistry = c.validationRegistry as Hex
+  const reputationRegistry = c.reputationRegistry as Hex | undefined
   const agenticCommerce = c.agenticCommerce as Hex
   const usdc = c.usdc as Hex
   // Arc-only: the predeployed Memo precompile. Undefined on chains that don't ship it,
@@ -720,6 +722,64 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     return { executed: true, txHash: respTx, explorerUrl: tx(respTx), requestHash }
   }
 
+  // ── reputation attestation: ERC-8004 ReputationRegistry ─────────────────────────
+  type ReputationExecuted = {
+    executed: true; txHash: Hex; explorerUrl: string; validator: string
+    agentId: string; score: number; score100: number; tag: string; feedbackHash: Hex
+  }
+  type ReputationBlocked = { executed: false; reverted: true; reason: string }
+  /**
+   * Anchor an agent's deterministic 0-1000 reputation on-chain as an ERC-8004 feedback
+   * attestation, so the score is independently verifiable, not just DB-asserted. The score
+   * is normalized to the standard's 0-100 convention; the raw 0-1000 value + the tag are
+   * committed in `feedbackHash`. Per ERC-8004 the caller (validator) must NOT own the agent,
+   * so this uses a distinct validator key (`opts.validatorEnvVar`, default `ARC_VALIDATOR_KEY`,
+   * falling back to the chain signer) and fails fast with a clear reason on self-attestation.
+   * Prepared (not broadcast) when no validator key is set.
+   */
+  async function recordReputation(
+    agentId: bigint,
+    score: number,
+    env: NodeJS.ProcessEnv = process.env,
+    opts?: { validatorEnvVar?: string; tag?: string; evidenceUri?: string },
+  ): Promise<Prepared | ReputationExecuted | ReputationBlocked> {
+    if (!reputationRegistry) {
+      return { executed: false, reverted: true, reason: `Chain ${chain.id} has no ReputationRegistry in its descriptor.` }
+    }
+    const tag = opts?.tag ?? 'a-identity:reputation:v1'
+    const score100 = Math.max(0, Math.min(100, Math.round(score / 10)))
+    const evidenceUri = opts?.evidenceUri ?? 'https://a-identity-asp.onrender.com/methodology'
+    const { keccak256, toHex } = await import('viem')
+    const feedbackHash = keccak256(toHex(`a-identity:rep:${agentId.toString()}:${score}:${tag}`))
+    const args = [agentId, BigInt(score100), 0, tag, evidenceUri, '', '', feedbackHash] as const
+
+    const validatorKey = (opts?.validatorEnvVar && env[opts.validatorEnvVar]) || env.ARC_VALIDATOR_KEY || (chain.signerEnvVar ? env[chain.signerEnvVar] : undefined)
+    const signer = await evmWalletClientFromKey(chain, validatorKey, env)
+    if (!signer) {
+      return {
+        executed: false,
+        contract: reputationRegistry,
+        function: 'giveFeedback(uint256,int128,uint8,string,string,string,string,bytes32)',
+        args: [agentId.toString(), score100, 0, tag, evidenceUri, '', '', feedbackHash],
+        reason: `No validator key set (ARC_VALIDATOR_KEY or ${chain.signerEnvVar ?? 'signer'}). This records agent ${agentId}'s reputation ${score}/1000 (= ${score100}/100) on the ERC-8004 ReputationRegistry as a signed observer attestation.`,
+      }
+    }
+    const client = await publicClient(env)
+    // ERC-8004 forbids an agent owner scoring its own agent; fail fast with a clear reason
+    // instead of paying gas for a guaranteed revert.
+    try {
+      const owner = (await client.readContract({ address: identityRegistry, abi: IDENTITY_ABI, functionName: 'ownerOf', args: [agentId] })) as Hex
+      if (owner.toLowerCase() === signer.account.address.toLowerCase()) {
+        return { executed: false, reverted: true, reason: `Validator ${signer.account.address} owns agent ${agentId}; ERC-8004 forbids self-attestation. Set a distinct ARC_VALIDATOR_KEY.` }
+      }
+    } catch {
+      // ownerOf may revert for an unknown id; let the write itself surface any real error.
+    }
+    const hash = await signer.client.writeContract({ address: reputationRegistry, abi: REPUTATION_ABI, functionName: 'giveFeedback', args })
+    await client.waitForTransactionReceipt({ hash })
+    return { executed: true, txHash: hash, explorerUrl: tx(hash), validator: signer.account.address, agentId: agentId.toString(), score, score100, tag, feedbackHash }
+  }
+
   async function readValidation(agentId: bigint, env: NodeJS.ProcessEnv = process.env) {
     const client = await publicClient(env)
     try {
@@ -776,6 +836,7 @@ export function createEvmAdapter(chain: ChainDescriptor) {
     readVault,
     recordValidation,
     readValidation,
+    recordReputation,
   }
 }
 

@@ -29,14 +29,17 @@ export function renderProofHtml(): string {
     scoreNum >= 800 ? 'Excellent · AAA' : scoreNum >= 650 ? 'Strong · AA' : scoreNum >= 500 ? 'Good · A'
     : scoreNum >= 350 ? 'Fair · BBB' : scoreNum >= 200 ? 'Weak · B' : 'High risk · C'
 
-  const serviceRows = [
+  const SERVICES = [
     ['verify_agent', '$0.001', 'ERC-8004 on-chain identity + KYA status'],
-    ['reputation_score', '$0.002', 'Deterministic 0-1000 reputation from real on-chain settlements'],
+    ['reputation_score', '$0.002', 'Deterministic 0-1000 reputation (+ on-chain ERC-8004 attestation)'],
     ['risk_check', '$0.005', 'Pre-transaction ALLOW / WARN / DENY with reasons'],
     ['agent_passport', '$0.01', 'Full passport: identity + KYA + reputation + risk'],
+    ['counterparty_check', '$0.008', 'Deal-specific verdict between two agents (+ same-operator self-deal check)'],
   ]
+  const serviceRows = SERVICES
     .map(([t, price, w]) => `<tr><td><code>${t}</code></td><td class="mono price">${price}</td><td class="wrapcell">${esc(w)}</td></tr>`)
     .join('')
+  const attest = (p.showcaseAgent as { onchainReputationAttestation?: { txUrl: string; tx: string; registry: string } }).onchainReputationAttestation
 
   const chips = [
     `<button class="chip active" data-f="all">All ${rev.totalSettlements}</button>`,
@@ -161,7 +164,7 @@ export function renderProofHtml(): string {
     <div><b>${rev.totalSettlements}</b><span>mainnet settlements</span></div>
     <div><b>$${rev.totalUsd}</b><span>on-chain revenue</span></div>
     <div><b id="live-recv">—</b><span>received · live</span></div>
-    <div><b>${TOOL_ORDER.length}</b><span>x402 services</span></div>
+    <div><b>${SERVICES.length}</b><span>x402 services</span></div>
     <div><b>${p.engineering.tests}</b><span>unit tests</span></div>
   </div>
 
@@ -170,6 +173,7 @@ export function renderProofHtml(): string {
     <div>
       <div style="font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;">${esc(p.showcaseAgent.name)} · ERC-8004 ${esc(p.showcaseAgent.erc8004TokenId)}</div>
       <div class="score">${scoreNum || esc(repStr)}<span style="font-size:15px;color:var(--faint);"> / 1000</span></div>
+      ${attest ? `<div style="font-size:12px;margin-top:6px;"><a href="${esc(attest.txUrl)}" target="_blank" rel="noopener">Anchored on-chain · ERC-8004 ReputationRegistry <code>${esc(short(attest.tx))}</code> ↗</a></div>` : ''}
     </div>
     <div class="spectrum">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">

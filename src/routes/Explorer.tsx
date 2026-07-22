@@ -200,6 +200,14 @@ function TrustProfile({ identity, reputation, query }: { identity: AgentIdentity
           <RiskPill verdict={verdict} />
         </div>
         <div className="mt-4"><Spectrum score={score} /></div>
+        {reputation?.onchainAttestation && (
+          <div className="mt-3 text-[11px]">
+            <a href={reputation.onchainAttestation.txUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline">
+              Anchored on-chain · ERC-8004 ReputationRegistry ↗
+            </a>
+            <span className="text-foreground/40"> verify the score on Arc, not just here</span>
+          </div>
+        )}
       </div>
 
       {/* stats grid */}

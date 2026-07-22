@@ -29,6 +29,7 @@ import { createAgentWallet, circlePay, readCircleWallet } from './circle-agent.j
 import { previewTreasury, startAutoYield, type TreasuryPreview, type TreasuryExecution } from './treasury.js'
 import { computeAgentReputation } from './reputation.js'
 import { classifySybil, type SybilSignals } from './asp/risk.js'
+import { getReputationAttestation } from './asp/attestations.js'
 import {
   type Task, type TaskStatus, type Review, type Bid,
   canTransition, normalizePriceUsd, normalizeDeadlineHours, deadlineFrom,
@@ -1084,7 +1085,10 @@ export function agentReputation(agentId: string) {
     selfDealRate: Math.round(sig.selfDealRate * 100) / 100,
     diversity: Math.round(sig.diversity * 100) / 100,
   }
-  return { agentId: agent.id, name: agent.name, onchain: agent.onchain, kya: agent.kya, ...repOf(agent), behavioral, sybil, computedAt: new Date().toISOString() }
+  // A1: the latest ERC-8004 on-chain attestation of this score (null until one is published),
+  // so the public explorer / get_reputation can link the on-chain anchor, not just the number.
+  const onchainAttestation = getReputationAttestation(agent.onchainAgentId ?? null)
+  return { agentId: agent.id, name: agent.name, onchain: agent.onchain, kya: agent.kya, ...repOf(agent), behavioral, sybil, onchainAttestation, computedAt: new Date().toISOString() }
 }
 
 // ── instructions ──────────────────────────────────────────────────────────────

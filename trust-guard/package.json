@@ -1,0 +1,57 @@
+{
+  "name": "@a-identity/trust-guard",
+  "version": "0.1.0",
+  "description": "One-line trust guard: verify an AI agent (ERC-8004 identity + KYA + 0-1000 reputation + Sybil + risk) before you pay or hire it. Throws on DENY.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc -p tsconfig.test.json && node --test dist-test/index.test.js",
+    "prepare": "tsc",
+    "prepublishOnly": "tsc"
+  },
+  "keywords": [
+    "a-identity",
+    "agent",
+    "trust",
+    "reputation",
+    "erc-8004",
+    "kya",
+    "x402",
+    "risk",
+    "guard",
+    "okx"
+  ],
+  "homepage": "https://a-identity.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/srabyanamrod/A-Identity.git",
+    "directory": "trust-guard"
+  },
+  "bugs": {
+    "url": "https://github.com/srabyanamrod/A-Identity/issues"
+  },
+  "author": "A-Identity",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

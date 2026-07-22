@@ -27,6 +27,7 @@ const PRICES: Record<string, string> = {
   'POST /tools/reputation_score': '$0.002',
   'POST /tools/risk_check': '$0.005',
   'POST /tools/agent_passport': '$0.01',
+  'POST /tools/counterparty_check': '$0.008',
 }
 
 export type PaymentStatus = {

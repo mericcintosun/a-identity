@@ -83,6 +83,18 @@ export type Reputation = {
   name?: string | null
   onchain?: string
   kya?: 'verified' | 'unverified' | 'revoked'
+  /** A1: the latest ERC-8004 on-chain attestation of this score, if one has been published. */
+  onchainAttestation?: {
+    tokenId: string
+    score: number
+    score100: number
+    chain: string
+    registry: string
+    validator: string
+    txHash: string
+    txUrl: string
+    attestedAt: string
+  } | null
   agentId: string
   computedAt: string
 }
