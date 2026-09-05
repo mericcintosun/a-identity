@@ -110,18 +110,41 @@ const chainIds = (chains.json?.chains ?? []).map((c) => c.id)
 // edit rather than a number someone bumps to make CI stop complaining.
 eq('/api/chains serves every registry descriptor', chainIds.length, CHAINS.length)
 for (const c of CHAINS) check(`  chain present: ${c.id}`, chainIds.includes(c.id))
-check('no retired chain is served', !chainIds.some((id) => /algorand/i.test(id)))
+// The other direction of the same wiring claim: nothing is served that the registry does
+// not hold. This used to be a regex banning "algorand" by name, written when that chain
+// was retired on 2026-07-29. It came back on 2026-08-30 with a real mainnet sale and the
+// check kept failing every CI run for a chain that is live on purpose. A retired chain is
+// one the registry no longer lists, so that is what is asserted, and no chain is named.
+check(
+  'nothing outside the registry is served',
+  chainIds.every((id) => CHAINS.some((c) => c.id === id)),
+  JSON.stringify(chainIds.filter((id) => !CHAINS.some((c) => c.id === id))),
+)
 // Which chains are live is a product decision that moves, so this asserts the SHAPE that
-// must always hold rather than a list that goes stale every promotion: a live chain has
-// to carry an identity registry, and nothing may be served with a status the registry
-// does not use. The exact membership is pinned in mcp/src/chains/registry.test.ts, where a
-// promotion is meant to be a deliberate two-line edit.
+// must always hold rather than a list that goes stale every promotion, and nothing may be
+// served with a status the registry does not use. The exact membership is pinned in
+// mcp/src/chains/registry.test.ts, where a promotion is meant to be a deliberate edit.
+//
+// The identity shape has two halves, because the registry has two kinds of chain. A live
+// EVM chain must carry an ERC-8004 identity registry, since that is where a passport is
+// anchored. A live non-EVM chain (Stellar, Algorand) has no ERC-8004 and must SAY so:
+// identityLive false, erc8004Native false, so the public surface never implies an anchor
+// that does not exist. The previous version demanded a registry of every live chain and
+// therefore failed the day Stellar pubnet went live, which was the registry telling the
+// truth and the test refusing to hear it.
 const served = chains.json?.chains ?? []
 check('every served chain has a known status', served.every((c) => ['live', 'beta', 'planned', 'deprecated'].includes(c.status)))
+const liveEvm = served.filter((c) => c.status === 'live' && c.evmCompatible)
+const liveNonEvm = served.filter((c) => c.status === 'live' && !c.evmCompatible)
 check(
-  'every live chain carries an identity registry',
-  served.filter((c) => c.status === 'live').every((c) => Boolean(c.registries?.identity)),
-  JSON.stringify(served.filter((c) => c.status === 'live' && !c.registries?.identity).map((c) => c.id)),
+  'every live EVM chain carries an identity registry',
+  liveEvm.every((c) => Boolean(c.registries?.identity)),
+  JSON.stringify(liveEvm.filter((c) => !c.registries?.identity).map((c) => c.id)),
+)
+check(
+  'every live non-EVM chain states plainly that it anchors no identity',
+  liveNonEvm.length > 0 && liveNonEvm.every((c) => c.identityLive === false && c.erc8004Native === false),
+  JSON.stringify(liveNonEvm.map((c) => ({ id: c.id, identityLive: c.identityLive, erc8004Native: c.erc8004Native }))),
 )
 check('arc and xlayer are still live', ['arc', 'xlayer'].every((id) => served.some((c) => c.id === id && c.status === 'live')))
 
