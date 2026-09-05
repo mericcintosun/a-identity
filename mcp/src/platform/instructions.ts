@@ -635,14 +635,25 @@ async function readSessionKeyBound(agent: PlatformAgent, vault: string): Promise
   const chain = vaultChainFor(agent)
   if (!chain || chain.ecosystem !== 'evm') return { live: false, why: 'unsupported-chain' }
   if (!chain.signerEnvVar || !process.env[chain.signerEnvVar]) return { live: false, why: 'no-read' }
+  // The deadline timer is deliberately NOT unref'd, and it was, which is a real bug rather
+  // than a style point. An unref'd timer does not keep the event loop alive, so on a
+  // process with nothing else pending (CI, no database pool, no open sockets) Node exits
+  // the moment the vault read is the only thing outstanding: the race never settles, the
+  // deadline never fires, and the caller is abandoned with a pending promise. Locally the
+  // same code passed because a Postgres pool happened to hold the loop open. The guardrail
+  // canary caught it: five session-key tests "cancelled by parent" on every hourly run
+  // from 2026-08-30. A deadline that cannot fire is not a deadline. The timer is cleared as
+  // soon as the read answers, so it never holds the process open longer than the read.
+  let deadline: ReturnType<typeof setTimeout> | undefined
   const giveUp = new Promise<null>((resolve) => {
-    // Unref'd so a pending deadline cannot hold the process open on its own.
-    setTimeout(() => resolve(null), SESSION_KEY_READ_MS).unref?.()
+    deadline = setTimeout(() => resolve(null), SESSION_KEY_READ_MS)
   })
   try {
     return sessionKeyBound(await Promise.race([settlement.readVault(vault), giveUp]))
   } catch {
     return { live: false, why: 'no-read' }
+  } finally {
+    if (deadline) clearTimeout(deadline)
   }
 }
 
