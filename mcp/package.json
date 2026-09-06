@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/node": "^22.19.21",
+    "@types/node": "^26.4.1",
     "solc": "^0.8.36",
     "typescript": "^5.9.3"
   },
