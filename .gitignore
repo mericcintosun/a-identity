@@ -122,3 +122,9 @@ dashboard-examples/
 # It carries its own .git, so committing it would embed a foreign repo in ours.
 stellar-build/
 new-brand/
+
+# Google Analytics screenshots for the Instawards evidence package (2026-09-05). Local only:
+# they carry the browser chrome and are pasted into the Google Doc by hand.
+/analytics.png
+/rapor.png
+/trafik-edinme.png
