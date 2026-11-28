@@ -49,12 +49,15 @@ export type Chain = {
   identity: string
   erc8004Native: boolean
   x402: boolean
-  /** Canonical ERC-8004 addresses this chain carries. An absent key is an absent
-   *  deployment: the UI must never infer one. */
+  /** Canonical ERC-8004 addresses the chain registry lists for this chain. An absent key
+   *  means the chain registry lists no canonical ERC-8004 address here: not that none is
+   *  deployed (Avalanche), and not that nothing of ours reads one (the NEAR engine reads
+   *  Arras's NEAR registries). The UI must never infer either. */
   registries: { identity?: string; reputation?: string; validation?: string }
   /** True when a live identity read works on this chain today. */
   identityLive: boolean
-  /** Symbol our x402 rail settles in here, or null when we run no rail on this chain. */
+  /** Symbol our x402 rail settles in here, or null when we run no rail on this chain. A
+   *  paused rail still names it: CHAIN_SETTLEMENT_PAUSED says where nothing of ours sells today. */
   settlementSymbol: string | null
 }
 
@@ -637,17 +640,17 @@ export const CHAINS: readonly Chain[] = [
     ],
     "rpcUrl": "https://rpc.testnet.fastnear.com",
     "explorer": "https://testnet.nearblocks.io",
-    "role": "NEAR testnet, read side only: A-Identity's NEAR verdict engine reads accounts, contract views and Circle's testnet USDC here, pinned to one block, for GET /api/near/check and the trust tools. No contract or payment rail of ours runs on it, and nothing settles here.",
+    "role": "NEAR testnet, where the hosted backend only reads: A-Identity's NEAR verdict engine reads accounts, contract views and Circle's testnet USDC here, pinned to one block, for GET /api/near/check and the trust tools. Two contracts of ours were deployed here on 2026-11-12, the NEAR verdict registry registry.a-identity.testnet and the demo spend vault vault.aid-demo-owner.testnet. Our x402 rail for this network is off on the hosted backend (no relayer key), so nothing settles here through the hosted service; it settled one 0.01 USDC payment on 2026-11-12 from a local run.",
     "status": "beta",
     "protocols": {
       "payment": {
         "x402": false,
-        "note": "No x402 rail settles on NEAR yet. Circle's testnet USDC is documented here, and nothing of ours settles in it."
+        "note": "Our near:testnet x402 rail (GET /api/near/x402/check) is off on the hosted backend; it settled one 0.01 USDC payment in Circle's testnet USDC on 2026-11-12 from a local run (near/deployments/testnet.json)."
       },
       "identity": {
         "standard": "NEAR account id",
         "erc8004Native": false,
-        "note": "No ERC-8004 on NEAR: that standard is EVM-only, so an agent's passport is bridged from an EVM chain and KYA is not anchored here. A NEAR account id is a name or an implicit key-derived id, not an agent registry."
+        "note": "NEAR has no canonical ERC-8004 deployment we anchor on: Arras's NEAR port of the identity and reputation registries (identity-registry.erc-8004.testnet and reputation-registry.erc-8004.testnet) is only a signal the verdict engine reads, so an agent's passport is bridged from an EVM chain and KYA is not anchored here. A NEAR account id is a name or an implicit key-derived id, not an agent registry."
       }
     },
     "identity": "NEAR account id",
@@ -832,3 +835,17 @@ export const CHAIN_NEAR: Partial<Record<ChainId, { vault: string | null; tokens:
 
 /** One token an issuer documents on a NEAR chain, as the registry lists it. */
 export type NearDocumentedToken = { symbol: string; name: string; address: string; decimals: number; issuer: string }
+
+/**
+ * Chains where no rail of ours sells today although a settlement token is still declared:
+ * `settlementSymbol` names it and the payments it settled stand, but every declared rail for it
+ * carries the registry's `pausedSince` and no Circle Gateway rail sells there. `since` is the
+ * day the last of them paused. A surface says "paused since" for these, never "settles in". An
+ * absent key means a rail of ours sells there, or none is declared.
+ */
+export const CHAIN_SETTLEMENT_PAUSED: Partial<Record<ChainId, { symbol: string; since: string }>> = {
+  "arbitrum": {
+    "symbol": "USDC",
+    "since": "2026-11-11"
+  }
+}

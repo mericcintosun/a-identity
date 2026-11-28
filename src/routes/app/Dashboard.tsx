@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, CreditCard, ExternalLink, Fingerprint, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../../store/auth'
-import { CHAINS, type Chain } from '../../lib/chains'
+import { CHAINS } from '../../lib/chains'
+import { onNetworkList, registryLine } from '../../lib/network-rows'
 
 import { apiFetch } from '../../lib/api'
 import { BACKEND_UNREACHABLE } from '../../lib/mcpBase'
@@ -32,41 +33,6 @@ type Agent = {
   onchain: 'queued' | 'registered'
   permissions: Perms
   activity: { at: string; text: string }[]
-}
-
-/**
- * Which chains get a row on this console's Network list: live and beta only, the same
- * status rule the wallet lists use (chainsFor in lib/wallet/types.ts). A planned entry is
- * descriptor only, so a row for it would describe nothing of ours. On 2026-11-28 that is
- * Avalanche: the canonical ERC-8004 registries are live there, but we hold no agent on
- * them and no rail of ours is wired. The filter reads the registry status, never a list
- * of ids, so promoting a chain in mcp/src/chains/registry.ts brings its row back with no
- * edit here.
- */
-const onNetworkList = (c: Chain): boolean => c.status === 'live' || c.status === 'beta'
-
-/**
- * What one network row can honestly say under its status badge.
- *
- * Every non-Arc row used to read "no live agents yet", which was false for the three
- * chains carrying real registries and real agents. We do not have a per-chain agent
- * count (an ERC-8004 registry is not enumerable), so the row states what the registry
- * does know: which canonical contracts that chain actually carries. An absent key is an
- * absent deployment, so this can never claim one.
- */
-function registryLine(c: Chain): string {
-  const parts = [
-    c.registries.identity && 'identity',
-    c.registries.reputation && 'reputation',
-    c.registries.validation && 'validation',
-  ].filter((p): p is string => Boolean(p))
-  // Money is the more interesting fact where it is true, so it leads. Both halves are
-  // derived from the registry: a chain says what it carries, this line does not guess.
-  const settles = c.settlementSymbol ? `settles in ${c.settlementSymbol}` : ''
-  if (parts.length === 0) return settles || 'no identity registry deployed yet'
-  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
-  const registries = `${list} registr${parts.length === 1 ? 'y' : 'ies'} live`
-  return settles ? `${registries}, ${settles}` : registries
 }
 
 export default function Dashboard() {
@@ -420,10 +386,14 @@ export default function Dashboard() {
           )}
 
           <h3 className={`mb-3 text-sm font-bold text-foreground/80 ${showChecklist ? '' : 'mt-6'}`}>Network</h3>
-          {/* One row per live or beta network (onNetworkList above): the official mark
-              on a token disc, the name, and a quiet status. Arc leads with its real agent
-              count; every other row says which registries that chain carries, so none of
-              them can claim more than the chain registry knows. */}
+          {/* One row per live or beta network (onNetworkList in lib/network-rows): the
+              official mark on a token disc, the name, and a quiet status. Arc leads with its
+              real agent count; every other row names the canonical ERC-8004 registries the
+              chain registry lists for that chain (not every contract deployed there, nor
+              every registry an engine reads: NEAR's reads Arras's port) and the token of a
+              settlement rail the registry declares, or the day that rail paused (a rail with
+              no declared token, like Celo's through Celo's facilitator, is not named), so none
+              of them can claim more than the chain registry knows. */}
           <ul data-tour="network" className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background/40">
             {CHAINS.filter(onNetworkList).map((c) => (
               <li key={c.id} className="flex items-center gap-3 px-3.5 py-2.5 transition-colors duration-[120ms] hover:bg-foreground/[0.02]">

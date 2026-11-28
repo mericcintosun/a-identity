@@ -133,7 +133,7 @@
           "caip2": "near:testnet",
           "identity": "NEAR account id",
           "erc8004Native": false,
-          "note": "No ERC-8004 on NEAR; the passport is bridged from an EVM chain and KYA is not anchored here. Read-only so far: no contract of ours is deployed on this network.",
+          "note": "NEAR has no canonical ERC-8004 deployment we anchor on: Arras's NEAR port of the identity and reputation registries (identity-registry.erc-8004.testnet and reputation-registry.erc-8004.testnet) is only a signal the verdict engine reads, so the passport is bridged from an EVM chain and KYA is not anchored here. Two contracts of ours were deployed on this network on 2026-11-12, the NEAR verdict registry and a demo spend vault; neither is an agent identity registry.",
           "status": "beta"
         },
         {
@@ -265,7 +265,7 @@
           "id": "near-testnet",
           "name": "NEAR Testnet",
           "caip2": "near:testnet",
-          "role": "NEAR testnet, read side only: A-Identity's NEAR verdict engine reads accounts, contract views and Circle's testnet USDC here, pinned to one block, for GET /api/near/check and the trust tools. No contract or payment rail of ours runs on it, and nothing settles here.",
+          "role": "NEAR testnet, where the hosted backend only reads: A-Identity's NEAR verdict engine reads accounts, contract views and Circle's testnet USDC here, pinned to one block, for GET /api/near/check and the trust tools. Two contracts of ours were deployed here on 2026-11-12, the NEAR verdict registry registry.a-identity.testnet and the demo spend vault vault.aid-demo-owner.testnet. Our x402 rail for this network is off on the hosted backend (no relayer key), so nothing settles here through the hosted service; it settled one 0.01 USDC payment on 2026-11-12 from a local run.",
           "x402": false,
           "status": "beta"
         },

@@ -201,11 +201,14 @@ const VERIFY_BY_ECOSYSTEM: Record<ChainDescriptor['ecosystem'], (chains: ChainDe
 const GATEWAY_LED_CHAINS = new Set(['arc-mainnet'])
 
 /**
- * Mainnets where our EIP-3009 rail is paused: since 2026-11-11 its gas-only broadcaster holds no gas there, so the server's
- * X402_3009_NETWORKS leaves them out and "How to check this" must not say payments go through it. Named by chain id, like
- * GATEWAY_LED_CHAINS, and taken out again the day the rail sells there.
+ * The day our EIP-3009 rail paused on a chain, or null while it sells there: read from the registry (`pausedSince` on the
+ * chain's EIP-3009 settlement token), so this page and the console's Network list cannot disagree about it. On Base and
+ * Arbitrum One it is 2026-11-11: since then its gas-only broadcaster holds no gas there, so the server's X402_3009_NETWORKS
+ * leaves them out and "How to check this" must not say payments go through it.
  */
-const EIP3009_PAUSED_CHAINS = new Set(['base', 'arbitrum'])
+function eip3009PausedSince(c: ChainDescriptor): string | null {
+  return (c.settlementTokens ?? []).find((t) => t.authorization === 'eip3009' && t.pausedSince)?.pausedSince ?? null
+}
 
 /** "A, B and C", for a sentence. */
 function listNames(names: string[]): string {
@@ -260,8 +263,8 @@ function evmVerifyLines(chains: ChainDescriptor[]): string[] {
   }
 
   const eip3009 = chains.filter((c) => !c.testnet && (c.settlementTokens ?? []).some((t) => t.authorization === 'eip3009'))
-  const ours = eip3009.filter((c) => !EIP3009_PAUSED_CHAINS.has(c.id))
-  const paused = eip3009.filter((c) => EIP3009_PAUSED_CHAINS.has(c.id))
+  const ours = eip3009.filter((c) => !eip3009PausedSince(c))
+  const paused = eip3009.filter((c) => eip3009PausedSince(c))
   const gateway = chains.filter((c) => !c.testnet && c.gateway)
   const gatewayLed = gateway.filter((c) => GATEWAY_LED_CHAINS.has(c.id))
   const gatewaySays =
@@ -275,9 +278,10 @@ function evmVerifyLines(chains: ChainDescriptor[]): string[] {
       `${facilitatorOpens} the EIP-3009 facilitator we run: the buyer signs, we broadcast, and a payment counts only on a receipt carrying a matching Transfer log, never on a third party reporting success. A payment from a wallet we own is labeled internal, not hidden. See GET /api/facilitator/proof.`,
     )
   }
-  if (paused.length) {
+  // One line per pause day, so a chain is never given another chain's date.
+  for (const day of [...new Set(paused.map((c) => eip3009PausedSince(c)!))].sort()) {
     lines.push(
-      `On ${listNames(paused.map((c) => c.name))} the EIP-3009 facilitator we run has been paused since 2026-11-11, until its gas-only broadcaster holds gas there. The payments it settled there before counted only on a receipt carrying a matching Transfer log, and they stay listed. See GET /api/facilitator/proof.`,
+      `On ${listNames(paused.filter((c) => eip3009PausedSince(c) === day).map((c) => c.name))} the EIP-3009 facilitator we run has been paused since ${day}, until its gas-only broadcaster holds gas there. The payments it settled there before counted only on a receipt carrying a matching Transfer log, and they stay listed. See GET /api/facilitator/proof.`,
     )
   }
   if (gateway.length > gatewayLed.length) {

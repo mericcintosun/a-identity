@@ -233,6 +233,14 @@ export interface SettlementToken {
   settlementFeeUsd?: number
   feeBasis?: string
   /**
+   * The UTC day (YYYY-MM-DD) our rail stopped selling in this token here. The token stays
+   * declared, because the payments it settled and their receipts stand; it just takes no new
+   * payment. Absent while the rail sells. This is the record the surfaces read (the proof
+   * page's "How to check this", the console's Network list), not the switch: the server's own
+   * configuration (X402_3009_NETWORKS for the EIP-3009 rail) is what turns a rail off.
+   */
+  pausedSince?: string
+  /**
    * The classic Stellar asset a SAC wraps, as `CODE:ISSUER` (Stellar only). A SAC id is a
    * derivation of exactly this plus the network passphrase, so recording it next to the
    * derived id keeps the derivation checkable, and it is what Horizon's order-book and

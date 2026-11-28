@@ -79,10 +79,10 @@
       "ws": "7.5.13"
     },
     "smart-account-kit-bindings": {
-      "@stellar/stellar-sdk": "16.3.0"
+      "@stellar/stellar-sdk": "16.4.1"
     },
     "@creit.tech/stellar-wallets-kit": {
-      "@stellar/stellar-sdk": "17.0.1"
+      "@stellar/stellar-sdk": "17.3.0"
     },
     "shell-quote": "^1.11.0"
   }

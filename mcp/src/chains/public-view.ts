@@ -58,8 +58,11 @@ export type PublicChain = {
   erc8004Native: boolean
   x402: boolean
   /**
-   * The canonical ERC-8004 addresses this chain actually carries. An absent key is an
-   * absent deployment: nothing is listed that eth_getCode did not confirm.
+   * The canonical ERC-8004 addresses the chain registry lists for this chain: nothing is
+   * listed that eth_getCode did not confirm. An absent key means the chain registry lists no
+   * canonical ERC-8004 address here: not that none is deployed (Avalanche carries the
+   * canonical pair, and several chains carry a ValidationRegistry the registry does not list),
+   * and not that nothing of ours reads one (the NEAR engine reads Arras's NEAR registries).
    *
    * This exists because the frontend had no way to know which chains carry a registry,
    * so it guessed - and the console told every non-Arc chain it had "no live agents yet"
@@ -70,7 +73,8 @@ export type PublicChain = {
   identityLive: boolean
   /** Symbol of the token our own x402 rail settles in on this chain, or null when we run
    *  no rail here. Derived from the descriptor's settlement tokens, so a surface can say
-   *  which chains actually take money without keeping its own list. */
+   *  which chains take money without keeping its own list. A rail the registry records as
+   *  paused (`pausedSince` on its token) still names its symbol here. */
   settlementSymbol: string | null
 }
 
@@ -174,6 +178,17 @@ export function renderFrontendChains(): string {
       return [[c.id, { vault: d.contracts.spendVaultExample ?? null, tokens }]]
     }),
   )
+  // Where a settlement token is still declared (settlementSymbol names it) but no rail of ours
+  // sells: every declared rail carries pausedSince and Circle Gateway does not serve the chain.
+  // Base is not one: its EIP-3009 rail is paused, and Gateway still sells there.
+  const paused = Object.fromEntries(
+    chains.flatMap((c) => {
+      const d = descriptor.get(c.id)
+      const rails = (d?.settlementTokens ?? []).filter((t) => t.authorization !== 'none')
+      if (!d || !c.settlementSymbol || d.gateway || rails.length === 0 || rails.some((t) => !t.pausedSince)) return []
+      return [[c.id, { symbol: c.settlementSymbol, since: rails.map((t) => t.pausedSince!).sort().at(-1)! }]]
+    }),
+  )
 
   return `${GENERATED_HEADER}
 /** Short slug of a chain in the registry. */
@@ -216,12 +231,15 @@ export type Chain = {
   identity: string
   erc8004Native: boolean
   x402: boolean
-  /** Canonical ERC-8004 addresses this chain carries. An absent key is an absent
-   *  deployment: the UI must never infer one. */
+  /** Canonical ERC-8004 addresses the chain registry lists for this chain. An absent key
+   *  means the chain registry lists no canonical ERC-8004 address here: not that none is
+   *  deployed (Avalanche), and not that nothing of ours reads one (the NEAR engine reads
+   *  Arras's NEAR registries). The UI must never infer either. */
   registries: { identity?: string; reputation?: string; validation?: string }
   /** True when a live identity read works on this chain today. */
   identityLive: boolean
-  /** Symbol our x402 rail settles in here, or null when we run no rail on this chain. */
+  /** Symbol our x402 rail settles in here, or null when we run no rail on this chain. A
+   *  paused rail still names it: CHAIN_SETTLEMENT_PAUSED says where nothing of ours sells today. */
   settlementSymbol: string | null
 }
 
@@ -261,5 +279,14 @@ export const CHAIN_NEAR: Partial<Record<ChainId, { vault: string | null; tokens:
 
 /** One token an issuer documents on a NEAR chain, as the registry lists it. */
 export type NearDocumentedToken = { symbol: string; name: string; address: string; decimals: number; issuer: string }
+
+/**
+ * Chains where no rail of ours sells today although a settlement token is still declared:
+ * \`settlementSymbol\` names it and the payments it settled stand, but every declared rail for it
+ * carries the registry's \`pausedSince\` and no Circle Gateway rail sells there. \`since\` is the
+ * day the last of them paused. A surface says "paused since" for these, never "settles in". An
+ * absent key means a rail of ours sells there, or none is declared.
+ */
+export const CHAIN_SETTLEMENT_PAUSED: Partial<Record<ChainId, { symbol: string; since: string }>> = ${JSON.stringify(paused, null, 2)}
 `
 }

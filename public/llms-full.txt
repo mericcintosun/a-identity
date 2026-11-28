@@ -744,9 +744,15 @@ Beta, wired and readable:
   is the explorer (a transaction opens at /txns/<hash>), and Circle's testnet USDC is
   documented at the NEP-141 account
   `3e2210e1184b45b64c8a434c0a7e7b23cc04ea7eb7a6c3c32520d03d4afcb8af` (6 decimals, read live
-  that day). Testnet only and read live: no contract of ours is on this network, no x402
-  rail settles here, nothing settles on NEAR through A-Identity yet, and NEAR has no
-  ERC-8004, so an agent's passport stays bridged from an EVM chain.
+  that day). Testnet only and read live: two contracts of ours were deployed here on
+  2026-11-12, the NEAR verdict registry (registry.a-identity.testnet, which the engine reads)
+  and a demo spend vault (vault.aid-demo-owner.testnet). The hosted backend only reads here:
+  our x402 rail for near:testnet (GET /api/near/x402/check) answers 503 rail_off until a
+  relayer key is set. That rail settled one 0.01 USDC payment on 2026-11-12 from a local run
+  (near/deployments/testnet.json), and nothing settles here through the hosted service. NEAR
+  has no canonical ERC-8004 deployment we anchor on (the engine reads Arras's NEAR port of
+  the identity and reputation registries as a signal only), so an agent's passport stays
+  bridged from an EVM chain.
 
 Planned, descriptor only:
 

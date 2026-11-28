@@ -86,7 +86,7 @@ test('the frontend module exposes every registry chain, and nothing else', () =>
 
 /** The JSON object a generated `export const NAME: Type = {...}` holds. */
 function jsonExport(text: string, name: string): Record<string, unknown> {
-  const m = new RegExp(`export const ${name}: [^\\n]+ = (\\{[\\s\\S]*?\\n\\})\\n`).exec(text)
+  const m = new RegExp(`export const ${name}: [^\\n]+ = (\\{\\}|\\{[\\s\\S]*?\\n\\})\\n`).exec(text)
   assert.ok(m, `${name} is missing from the frontend module`)
   return JSON.parse(m[1]) as Record<string, unknown>
 }
@@ -116,6 +116,22 @@ test('the frontend RPC lists and USDC contracts are the registry descriptors, un
       assert.equal(near[c.id], undefined, `${c.id} is not a NEAR chain, so the NEAR console must not carry it`)
     }
   }
+
+  // The console's Network list says "paused since" from this lookup instead of "settles in".
+  // A chain belongs in it only when every declared rail carries pausedSince and Gateway does
+  // not sell there, so a pause that leaves another rail of ours selling never reads as none.
+  const paused = jsonExport(onDisk, 'CHAIN_SETTLEMENT_PAUSED')
+  for (const c of CHAINS) {
+    const rails = (c.settlementTokens ?? []).filter((t) => t.authorization !== 'none')
+    for (const t of rails) if (t.pausedSince) assert.match(t.pausedSince, /^\d{4}-\d{2}-\d{2}$/, `${c.id} ${t.symbol}: pausedSince is a UTC day`)
+    const none = rails.length > 0 && rails.every((t) => t.pausedSince) && !c.gateway
+    assert.equal(paused[c.id] !== undefined, none, `${c.id}: CHAIN_SETTLEMENT_PAUSED must name exactly the chains where no rail of ours sells`)
+  }
+  // Pinned to the record of 2026-11-11: Arbitrum One's only rail paused, while on Base the
+  // EIP-3009 rail paused and Circle Gateway still sells.
+  assert.deepEqual(paused.arbitrum, { symbol: 'USDC', since: '2026-11-11' })
+  assert.equal(paused.base, undefined, 'Circle Gateway still sells on Base')
+  assert.equal(CHAINS.find((c) => c.id === 'base')?.settlementTokens?.find((t) => t.authorization === 'eip3009')?.pausedSince, '2026-11-11')
 })
 
 test('the public projection keeps the legacy /api/chains keys', () => {

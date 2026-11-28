@@ -17,8 +17,9 @@ where phase 1 started and it still carries all three ERC-8004 registries (identi
 reputation + validation), which is what makes KYA anchorable there. No mainnet descriptor
 in the registry carries a ValidationRegistry we wire, so KYA is anchored on none of them. The four
 testnet mirrors (Stellar, Algorand, Robinhood Chain, Celo Sepolia) are `beta`, and so is
-**NEAR Testnet** (added 2026-11-12): read-only, with no mainnet entry, no signer, and no
-contract or payment rail of ours on it yet. Avalanche is the only `planned` entry. This header
+**NEAR Testnet** (added 2026-11-12): read-only for the hosted backend, with no mainnet entry and no signer. Two contracts of
+ours were deployed there on 2026-11-12 (the NEAR verdict registry and a demo spend vault),
+and our x402 rail for it is off on the hosted backend. Avalanche is the only `planned` entry. This header
 said "eleven registry entries" and described Stellar pubnet as merely holding a vault until
 2026-08-30; both had gone stale, and understating the blast radius is the expensive direction
 for that kind of error to point.

@@ -767,6 +767,11 @@ export const CHAINS: ChainDescriptor[] = [
         settlementFeeUsd: 0.005,
         feeBasis:
           'A real settlement measured 102828 gas at an effective 0.006 gwei on 2026-08-27 UTC (tx 0xb59ae67c, block 50540810), costing 0.000000617 ETH L2 plus a 0.00000000094 ETH L1 data fee, roughly $0.0025. The fee is 2x that, the same headroom logic as Arbitrum One: Base\'s base fee sits near a floor rather than moving, so buying more headroom against it buys nothing. It stops covering cost if ETH roughly doubles AND gas doubles, at which point we re-measure and edit this line.',
+        // Our EIP-3009 facilitator has sold nothing here since this day: the key that paid its
+        // gas was retired, and the new gas-only key holds no ETH on Base yet. Circle Gateway
+        // (below) still sells here, so the chain still takes USDC. Delete the line the day
+        // X402_3009_NETWORKS lists Base again.
+        pausedSince: '2026-11-11',
         verified:
           'Native Circle USDC on Base mainnet, the same address the descriptor already carried for contracts.usdc. Read live 2026-08-28: name() "USD Coin", symbol() "USDC", version() "2", decimals() 6, DOMAIN_SEPARATOR 0x02fa7265e7c5d81118673727957699e4d68f74cd74b7db77da710fe8a2c7834f, which those four fields reproduce exactly. EIP-3009 confirmed by a read-only authorizationState call. Canonical Circle USDC, so it legitimately shares the contracts.usdc slot.',
       },
@@ -986,6 +991,11 @@ export const CHAINS: ChainDescriptor[] = [
         settlementFeeUsd: 0.005,
         feeBasis:
           'A real settlement measured 103569 gas at an effective 0.02 gwei on 2026-08-13 (tx 0x69abb8a9), costing 0.00000207 ETH, roughly $0.004. The fee is 1.28x that, and the headroom is deliberately thinner than Robinhood Chain\'s because this chain\'s base fee has sat at its 0.02 gwei floor rather than moving: buying 2x headroom against a pinned floor buys nothing. It stops covering cost if ETH roughly doubles or gas passes about 133000, at which point we re-measure and edit this line.',
+        // Our EIP-3009 facilitator has sold nothing here since this day: the key that paid its
+        // gas was retired, and the new gas-only key holds no ETH on Arbitrum One yet. It is
+        // the only rail of ours here (no Circle Gateway), so nothing of ours sells here now.
+        // Delete the line the day X402_3009_NETWORKS lists Arbitrum One again.
+        pausedSince: '2026-11-11',
         verified:
           'Native Circle USDC on Arbitrum One, the same address the descriptor already carried for contracts.usdc. Read live 2026-08-13: name() "USD Coin", symbol() "USDC", version() "2", decimals() 6, DOMAIN_SEPARATOR 0x08d11903f8419e68b1b8721bcbe2e9fc68569122a77ef18c216f10b3b5112c78, which those four fields reproduce exactly. EIP-3009 confirmed by a read-only authorizationState call. Unlike Robinhood Chain this IS canonical Circle USDC, so it is the one settlement token that legitimately shares the contracts.usdc slot.',
       },
@@ -1165,12 +1175,14 @@ export const CHAINS: ChainDescriptor[] = [
   // NEAR hackathon work. There is deliberately no NEAR mainnet entry beside it: nothing of
   // ours runs on NEAR mainnet, and a `planned` twin would be a name with nothing behind it.
   // `beta` rather than `planned` on the registry's own definition: the network is wired and
-  // readable here and nothing has settled on it. Two readers use the hosts below:
-  // chains/near/client.ts (JSON-RPC views, behind the liveCheck of /proof/:rail, which runs only
-  // for a chain with a provenance entry, and NEAR has none), and, since 2026-11-12, the NEAR
-  // verdict engine copied from near/sdk (chains/near/engine.ts builds its hosts from this entry),
-  // which answers GET /api/near/check and the trust tools for a NEAR testnet account. Both only
-  // read. The role says so. Every value was read live on 2026-11-12.
+  // readable here, and nothing settles on it through the hosted backend. Two readers use the
+  // hosts below: chains/near/client.ts (JSON-RPC views, behind the liveCheck of /proof/:rail,
+  // which runs only for a chain with a provenance entry, and NEAR has none), and, since
+  // 2026-11-12, the NEAR verdict engine copied from near/sdk (chains/near/engine.ts builds its
+  // hosts from this entry), which answers GET /api/near/check and the trust tools for a NEAR
+  // testnet account. Both only read. One writer can use them: the NEAR x402 rail's relayer
+  // (near-x402/relay.ts), only with a relayer key, which the hosted backend does not set. The
+  // role says so. Every value was read live on 2026-11-12.
   {
     // The id NEAR's own wallet-selector builds (`near:${networkId}`). The ChainAgnostic
     // namespaces registry has no NEAR profile yet, so this is the de-facto form, not a CASA one.
@@ -1182,7 +1194,14 @@ export const CHAINS: ChainDescriptor[] = [
     // docs.json colors.primary, read 2026-11-12). NEAR's mark itself is monochrome, which would
     // fail the chip rule in one theme, the same reason Algorand and X Layer carry a non-mark color.
     color: '#1FB858',
-    role: 'NEAR testnet, read side only: A-Identity\'s NEAR verdict engine reads accounts, contract views and Circle\'s testnet USDC here, pinned to one block, for GET /api/near/check and the trust tools. No contract or payment rail of ours runs on it, and nothing settles here.',
+    // Our two contracts here are recorded in near/deployments/testnet.json: the verdict registry
+    // (deploy tx 5F38SuVm..., block 277401995) and the demo vault (contracts.spendVaultExample
+    // below). The verdict engine reads the registry's get_verdict in a check, and a vault's
+    // counters when one is named. The hosted backend writes nothing on this network: its NEAR
+    // x402 rail stays off without a relayer key (GET /api/near/x402/check: 503 rail_off,
+    // 2026-11-28). That rail settled one 0.01 USDC payment on 2026-11-12 from a local run (tx
+    // 72D6D4Qc..., block 277425039: x402.settlement in near/deployments/testnet.json).
+    role: 'NEAR testnet, where the hosted backend only reads: A-Identity\'s NEAR verdict engine reads accounts, contract views and Circle\'s testnet USDC here, pinned to one block, for GET /api/near/check and the trust tools. Two contracts of ours were deployed here on 2026-11-12, the NEAR verdict registry registry.a-identity.testnet and the demo spend vault vault.aid-demo-owner.testnet. Our x402 rail for this network is off on the hosted backend (no relayer key), so nothing settles here through the hosted service; it settled one 0.01 USDC payment on 2026-11-12 from a local run.',
     ecosystem: 'near',
     testnet: true,
     status: 'beta',
@@ -1223,8 +1242,10 @@ export const CHAINS: ChainDescriptor[] = [
     // A read at `final` finality cannot be reverted on NEAR, so one is enough.
     confirmations: 1,
     stablecoins: ['USDC'],
-    // Documented, not settled: payment.x402 is false and nothing of ours settles in it. NEVER
-    // `usdc.testnet`, which is a different account and not Circle's.
+    // Documented, not a SettlementToken: payment.x402 is false because our NEAR x402 rail is off
+    // on the hosted backend. That rail settles in this token when a relayer key is set, and it
+    // settled one payment in it from a local run on 2026-11-12 (the documentedTokens exception
+    // in types.ts). NEVER `usdc.testnet`, which is a different account and not Circle's.
     documentedTokens: [
       {
         symbol: 'USDC',
@@ -1243,13 +1264,14 @@ export const CHAINS: ChainDescriptor[] = [
       standard: 'NEAR account id',
       erc8004Native: false,
       note:
-        'No ERC-8004 on NEAR: that standard is EVM-only, so an agent\'s passport is bridged from an EVM ' +
-        'chain and KYA is not anchored here. A NEAR account id is a name or an implicit key-derived id, ' +
-        'not an agent registry.',
+        'NEAR has no canonical ERC-8004 deployment we anchor on: Arras\'s NEAR port of the identity and ' +
+        'reputation registries (identity-registry.erc-8004.testnet and reputation-registry.erc-8004.testnet) ' +
+        'is only a signal the verdict engine reads, so an agent\'s passport is bridged from an EVM chain and ' +
+        'KYA is not anchored here. A NEAR account id is a name or an implicit key-derived id, not an agent registry.',
     },
     payment: {
       x402: false,
-      note: 'No x402 rail settles on NEAR yet. Circle\'s testnet USDC is documented here, and nothing of ours settles in it.',
+      note: 'Our near:testnet x402 rail (GET /api/near/x402/check) is off on the hosted backend; it settled one 0.01 USDC payment in Circle\'s testnet USDC on 2026-11-12 from a local run (near/deployments/testnet.json).',
     },
   },
   {

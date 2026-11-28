@@ -26,14 +26,26 @@
  * the landing bundle nor the prerender snapshot ever imports it.
  *
  * Two Stellar SDKs live in node_modules on purpose, and package.json has the overrides
- * that keep them apart. smart-account-kit 0.8.0 needs @stellar/stellar-sdk 16.3 (17
- * changed the authorization API), while the wallets kit needs 17. The trap is that
+ * that keep them apart. smart-account-kit 0.8.0 needs @stellar/stellar-sdk ^16.3.0 (17
+ * changed the authorization API), while the wallets kit needs ^17.0.0. The trap is that
  * smart-account-kit-bindings declares a loose ">=16" peer, so npm hoisted 17 into the
- * bindings while the kit itself loaded 16.3, and that splits the xdr classes across the
+ * bindings while the kit itself loaded 16, and that splits the xdr classes across the
  * one boundary where it matters: the kit passes ScVals into the bindings' Spec, which
  * checks them with instanceof, so a value from the other copy is rejected as the wrong
- * type. The override pins the bindings to the kit's exact version; a second override
- * holds the wallets kit at the 17.0.1 it already had, so nothing else moved.
+ * type. The override pins the bindings to 16.4.1, the one copy the kit loads too; a
+ * second override holds the wallets kit's own copy at 17.3.0.
+ *
+ * The floors are 16.4.0 and 17.3.0, and both pins sit at or above them. Both networks run
+ * protocol 30, whose ledger headers carry
+ * StellarValueType 3, and no release before 16.4.0 on the 16 line or 17.3.0 on the 17 line
+ * decodes it: getLatestLedger throws instead of answering. The kit reads the latest ledger
+ * to set a signature's expiry, to connect a wallet and to list its context rules, so on
+ * 16.3.0 each of those reads threw on both networks. 16.4.1 is the lts-16 release (16.4.0
+ * plus axios 1.20.0) and the copy mcp gives the kit as well. The wallets kit reads no
+ * ledger header: only its Ledger and Trezor modules import its copy, to parse a
+ * transaction, and the default modules ./kit.ts loads include neither, so that copy is not
+ * in today's bundle. It is held to the same floor anyway, so adding either module later
+ * cannot bring in a copy that predates protocol 30.
  *
  * Nothing in src/ imports either SDK. Every xdr value handed to the kit is built by the
  * kit's own exports, so it belongs to the copy the kit's Spec checks against (see scvals).
